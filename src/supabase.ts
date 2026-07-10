@@ -254,3 +254,165 @@ export const loadSuiterLogsFromCloud = async (): Promise<SuiterLog[]> => {
   }
   return (data || []).map((row) => logFromRow(row as Record<string, unknown>));
 };
+
+// --- Auth (Supabase Auth) ---
+
+export type AuthProfile = {
+  name: string;
+  email: string;
+  role: string;
+  photoUrl?: string;
+};
+
+const defaultAvatar = (seed: string) =>
+  `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(seed)}`;
+
+/** Traduz erros comuns do Auth para PT-BR. */
+export const mapAuthErrorMessage = (message: string): string => {
+  const m = message.toLowerCase();
+  if (m.includes("invalid login credentials")) {
+    return "E-mail ou senha inválidos.";
+  }
+  if (m.includes("user already registered") || m.includes("already been registered")) {
+    return "Este e-mail já possui uma conta. Faça login.";
+  }
+  if (m.includes("email not confirmed")) {
+    return "Confirme seu e-mail antes de entrar (verifique a caixa de entrada).";
+  }
+  if (m.includes("password should be") || m.includes("password is known")) {
+    return "Senha fraca demais. Use no mínimo 8 caracteres com maiúscula, minúscula e especial.";
+  }
+  if (m.includes("rate limit") || m.includes("too many requests")) {
+    return "Muitas tentativas. Aguarde um momento e tente de novo.";
+  }
+  return message || "Não foi possível autenticar. Tente novamente.";
+};
+
+export const ensurePermittedUserProfile = async (input: {
+  email: string;
+  name: string;
+  role?: string;
+  photoUrl?: string;
+}): Promise<AuthProfile> => {
+  const email = input.email.trim().toLowerCase();
+  const existing = await loadPermittedUsersFromCloud();
+  const found = existing.find((u) => u.email.toLowerCase() === email);
+
+  if (found) {
+    return {
+      name: found.name || input.name,
+      email: found.email,
+      role: found.role || "user",
+      photoUrl: found.photoUrl || found.photo,
+    };
+  }
+
+  const profile: PermittedUser = {
+    id: email,
+    name: input.name.trim() || email.split("@")[0],
+    email,
+    role: input.role || "user",
+    photoUrl: input.photoUrl || defaultAvatar(input.name || email),
+    googleCalendarLinked: false,
+  };
+
+  await savePermittedUserInCloud(profile);
+  return {
+    name: profile.name,
+    email: profile.email,
+    role: profile.role,
+    photoUrl: profile.photoUrl,
+  };
+};
+
+export const signUpWithEmail = async (params: {
+  name: string;
+  email: string;
+  password: string;
+}): Promise<{ profile: AuthProfile | null; needsEmailConfirmation: boolean }> => {
+  if (!isSupabaseConfigured) {
+    throw new Error("Supabase não configurado.");
+  }
+
+  const email = params.email.trim().toLowerCase();
+  const name = params.name.trim();
+
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password: params.password,
+    options: {
+      data: {
+        name,
+        full_name: name,
+      },
+    },
+  });
+
+  if (error) {
+    throw new Error(mapAuthErrorMessage(error.message));
+  }
+
+  const profile = await ensurePermittedUserProfile({ email, name, role: "user" });
+  const needsEmailConfirmation = !data.session;
+
+  return {
+    profile: data.session ? profile : null,
+    needsEmailConfirmation,
+  };
+};
+
+export const signInWithEmail = async (params: {
+  email: string;
+  password: string;
+}): Promise<AuthProfile> => {
+  if (!isSupabaseConfigured) {
+    throw new Error("Supabase não configurado.");
+  }
+
+  const email = params.email.trim().toLowerCase();
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password: params.password,
+  });
+
+  if (error) {
+    throw new Error(mapAuthErrorMessage(error.message));
+  }
+
+  const metaName =
+    (data.user?.user_metadata?.name as string | undefined) ||
+    (data.user?.user_metadata?.full_name as string | undefined) ||
+    email.split("@")[0];
+
+  return ensurePermittedUserProfile({
+    email: data.user?.email || email,
+    name: metaName,
+  });
+};
+
+export const signOutAuth = async () => {
+  if (!isSupabaseConfigured) return;
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    console.error("Erro ao encerrar sessão Supabase Auth:", error.message);
+  }
+};
+
+export const getAuthSessionProfile = async (): Promise<AuthProfile | null> => {
+  if (!isSupabaseConfigured) return null;
+
+  const { data, error } = await supabase.auth.getSession();
+  if (error || !data.session?.user) return null;
+
+  const user = data.session.user;
+  const email = (user.email || "").toLowerCase();
+  if (!email) return null;
+
+  const metaName =
+    (user.user_metadata?.name as string | undefined) ||
+    (user.user_metadata?.full_name as string | undefined) ||
+    email.split("@")[0];
+
+  return ensurePermittedUserProfile({ email, name: metaName });
+};

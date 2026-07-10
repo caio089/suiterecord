@@ -21,7 +21,7 @@ import {
 import triforceLogo from "./assets/images/suiter_record_logo_1783097489467.jpg";
 import { Meeting, SuiterConfig, SuiterLog, PermittedUser, GoogleCalendarEvent } from "./types";
 import LandingPage from "./LandingPage";
-import LoginPage from "./LoginPage";
+import LoginPage, { type AuthMode } from "./LoginPage";
 import {
   saveMeetingInCloud,
   deleteMeetingInCloud,
@@ -33,6 +33,11 @@ import {
   loadSuiterConfigFromCloud,
   saveSuiterLogsInCloud,
   loadSuiterLogsFromCloud,
+  signInWithEmail,
+  signUpWithEmail,
+  signOutAuth,
+  getAuthSessionProfile,
+  isSupabaseConfigured,
 } from "./supabase";
 import {
   connectGoogleCalendar,
@@ -297,9 +302,13 @@ export default function App() {
 
   // Login Form States
   const [authScreen, setAuthScreen] = useState<"landing" | "login">("landing");
+  const [authMode, setAuthMode] = useState<AuthMode>("login");
+  const [loginName, setLoginName] = useState("");
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+  const [loginPasswordConfirm, setLoginPasswordConfirm] = useState("");
   const [loginError, setLoginError] = useState("");
+  const [loginSuccess, setLoginSuccess] = useState("");
 
   // GOOGLE CALENDAR ACCESS TOKEN
   const [googleAccessToken, setGoogleAccessToken] = useState<string | null>(null);
@@ -333,53 +342,154 @@ export default function App() {
 
   const [isLoginSubmitting, setIsLoginSubmitting] = useState(false);
 
-  // AUTHENTICATION HANDLERS — e-mail + senha, sem etapas extras
-  const handleLogin = (e: React.FormEvent) => {
+  const persistAuthenticatedUser = (userPayload: {
+    name: string;
+    email: string;
+    role: string;
+    photoUrl?: string;
+  }) => {
+    setCurrentUser(userPayload);
+    localStorage.setItem("plaud_authenticated", "true");
+    localStorage.setItem("plaud_current_user", JSON.stringify(userPayload));
+    setLoginName("");
+    setLoginEmail("");
+    setLoginPassword("");
+    setLoginPasswordConfirm("");
+    setLoginError("");
+    setLoginSuccess("");
+    setIsAuthenticated(true);
+  };
+
+  // AUTHENTICATION HANDLERS — Supabase Auth (+ fallback legado permitted_users)
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError("");
+    setLoginSuccess("");
 
     if (!isDbLoaded) {
       setLoginError("Aguarde um instante — ainda estamos preparando o acesso.");
       return;
     }
 
-    setIsLoginSubmitting(true);
-
     const email = loginEmail.trim().toLowerCase();
     const password = loginPassword;
 
-    const user = permittedUsers.find(
-      (u) =>
-        u.email.toLowerCase() === email &&
-        String(u.password ?? "") === password
-    );
+    if (authMode === "signup") {
+      const name = loginName.trim();
+      if (!name) {
+        setLoginError("Informe seu nome para criar a conta.");
+        return;
+      }
+      if (password !== loginPasswordConfirm) {
+        setLoginError("As senhas não coincidem.");
+        return;
+      }
+      const strength = validatePasswordStrength(password);
+      if (!strength.isValid) {
+        setLoginError(strength.message);
+        return;
+      }
+      if (!isSupabaseConfigured) {
+        setLoginError("Supabase Auth não está configurado neste ambiente.");
+        return;
+      }
 
-    if (user) {
-      const userPayload = {
+      setIsLoginSubmitting(true);
+      try {
+        const { profile, needsEmailConfirmation } = await signUpWithEmail({
+          name,
+          email,
+          password,
+        });
+
+        // Atualiza lista local de perfis
+        const refreshed = await loadPermittedUsersFromCloud();
+        setPermittedUsers(refreshed);
+
+        if (needsEmailConfirmation || !profile) {
+          setAuthMode("login");
+          setLoginSuccess(
+            "Conta criada! Verifique seu e-mail para confirmar e depois faça login."
+          );
+          setLoginPassword("");
+          setLoginPasswordConfirm("");
+          return;
+        }
+
+        persistAuthenticatedUser(profile);
+      } catch (err) {
+        setLoginError(
+          err instanceof Error ? err.message : "Não foi possível criar a conta."
+        );
+      } finally {
+        setIsLoginSubmitting(false);
+      }
+      return;
+    }
+
+    setIsLoginSubmitting(true);
+    try {
+      if (isSupabaseConfigured) {
+        try {
+          const profile = await signInWithEmail({ email, password });
+          const refreshed = await loadPermittedUsersFromCloud();
+          setPermittedUsers(refreshed);
+          persistAuthenticatedUser(profile);
+          return;
+        } catch (authErr) {
+          // Fallback: contas antigas com senha em permitted_users
+          const legacyUser = permittedUsers.find(
+            (u) =>
+              u.email.toLowerCase() === email &&
+              String(u.password ?? "") === password
+          );
+          if (!legacyUser) {
+            throw authErr;
+          }
+          persistAuthenticatedUser({
+            name: legacyUser.name,
+            email: legacyUser.email,
+            role: legacyUser.role,
+            photoUrl: legacyUser.photoUrl,
+          });
+          return;
+        }
+      }
+
+      const user = permittedUsers.find(
+        (u) =>
+          u.email.toLowerCase() === email &&
+          String(u.password ?? "") === password
+      );
+
+      if (!user) {
+        setLoginError("E-mail ou senha inválidos.");
+        return;
+      }
+
+      persistAuthenticatedUser({
         name: user.name,
         email: user.email,
         role: user.role,
         photoUrl: user.photoUrl,
-      };
-      setCurrentUser(userPayload);
-      localStorage.setItem("plaud_authenticated", "true");
-      localStorage.setItem("plaud_current_user", JSON.stringify(userPayload));
-      setLoginEmail("");
-      setLoginPassword("");
-      setIsAuthenticated(true);
-    } else {
-      setLoginError("E-mail ou senha inválidos.");
+      });
+    } catch (err) {
+      setLoginError(
+        err instanceof Error ? err.message : "E-mail ou senha inválidos."
+      );
+    } finally {
+      setIsLoginSubmitting(false);
     }
-
-    setIsLoginSubmitting(false);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await signOutAuth();
     setIsAuthenticated(false);
     setCurrentUser(null);
     setGoogleAccessToken(null);
     clearStoredGoogleAccessToken();
     setAuthScreen("landing");
+    setAuthMode("login");
     localStorage.removeItem("plaud_authenticated");
     localStorage.removeItem("plaud_current_user");
   };
@@ -933,6 +1043,31 @@ export default function App() {
 
     loadAllData();
   }, []);
+
+  // Restaura sessão do Supabase Auth (se existir)
+  useEffect(() => {
+    if (!isDbLoaded || !isSupabaseConfigured) return;
+
+    let cancelled = false;
+
+    const restoreSession = async () => {
+      try {
+        const profile = await getAuthSessionProfile();
+        if (cancelled || !profile) return;
+        setCurrentUser(profile);
+        localStorage.setItem("plaud_authenticated", "true");
+        localStorage.setItem("plaud_current_user", JSON.stringify(profile));
+        setIsAuthenticated(true);
+      } catch (err) {
+        console.error("Erro ao restaurar sessão Auth:", err);
+      }
+    };
+
+    restoreSession();
+    return () => {
+      cancelled = true;
+    };
+  }, [isDbLoaded]);
 
   // LOAD USER MEETINGS REACTIVELY WITH ROLE-BASED ACCESS CONTROL
   useEffect(() => {
@@ -2273,16 +2408,29 @@ Reunião vinculada ao Google Agenda:
     return (
       <LoginPage
         logoSrc={triforceLogo}
+        mode={authMode}
+        loginName={loginName}
         loginEmail={loginEmail}
         loginPassword={loginPassword}
+        loginPasswordConfirm={loginPasswordConfirm}
         loginError={loginError}
+        loginSuccess={loginSuccess}
         isReady={isDbLoaded}
         isSubmitting={isLoginSubmitting}
+        onModeChange={(mode) => {
+          setAuthMode(mode);
+          setLoginError("");
+          setLoginSuccess("");
+        }}
+        onNameChange={setLoginName}
         onEmailChange={setLoginEmail}
         onPasswordChange={setLoginPassword}
+        onPasswordConfirmChange={setLoginPasswordConfirm}
         onSubmit={handleLogin}
         onBackToLanding={() => {
           setLoginError("");
+          setLoginSuccess("");
+          setAuthMode("login");
           setAuthScreen("landing");
         }}
       />
@@ -4189,7 +4337,7 @@ Reunião vinculada ao Google Agenda:
                         Módulo de Administração Corporativa
                       </h2>
                       <p className="text-xs text-zinc-400 mt-1">
-                        Cadastre e gerencie a lista de colaboradores permitidos a acessar o Suiter Record. Novas criações de contas públicas são proibidas; apenas usuários nesta lista estão autorizados.
+                        Gerencie colaboradores e cargos. Novos usuários também podem criar conta na tela de login (Supabase Auth); aqui você define perfil e permissões.
                       </p>
                     </div>
 
