@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
+import multer from "multer";
 
 dotenv.config();
 
@@ -37,22 +38,41 @@ function getAllowedOrigins(): string[] {
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   const allowed = getAllowedOrigins();
-  if (origin && allowed.includes(origin.replace(/\/$/, ""))) {
+  const originNorm = origin ? origin.replace(/\/$/, "") : "";
+  const allowAll = allowed.includes("*");
+  const isAllowed =
+    Boolean(originNorm) &&
+    (allowAll ||
+      allowed.includes(originNorm) ||
+      // Fallback: mesmo projeto Render (static vs api) quando FRONTEND_URL ainda não foi setado
+      (originNorm.endsWith(".onrender.com") &&
+        allowed.some((a) => a.includes("onrender.com"))));
+
+  if (origin && isAllowed) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader(
       "Access-Control-Allow-Headers",
-      "Content-Type, Authorization, X-User-Email"
+      "Content-Type, Authorization, X-User-Email",
     );
     res.setHeader(
       "Access-Control-Allow-Methods",
-      "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+    );
+  } else if (origin && req.path.startsWith("/api")) {
+    console.warn(
+      `[CORS] Origin bloqueada: ${origin}. Permitidas: ${allowed.join(", ") || "(nenhuma)"}`,
     );
   }
   if (req.method === "OPTIONS") {
     return res.sendStatus(204);
   }
   next();
+});
+
+const audioUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 30 * 1024 * 1024 },
 });
 
 const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
@@ -240,17 +260,27 @@ const MEETING_JSON_SCHEMA_HINT = `{
 }`;
 
 // Background Worker — Groq Whisper (STT) + Llama (estruturação)
-async function runTranscriptionBackground(jobId: string, body: any) {
+async function runTranscriptionBackground(
+  jobId: string,
+  body: {
+    audioBase64?: string;
+    audioBuffer?: Buffer;
+    mimeType?: string;
+    context?: string;
+  },
+) {
   let tempFilePath: string | null = null;
 
   try {
-    const { audioBase64, mimeType, context } = body;
+    const { audioBase64, audioBuffer, mimeType, context } = body;
 
-    if (!audioBase64) {
+    if (!audioBuffer && !audioBase64) {
       throw new Error("Nenhum arquivo de áudio enviado ou áudio corrompido.");
     }
 
-    const fileExtension = mimeType ? mimeType.split("/")[1]?.split(";")[0] || "webm" : "webm";
+    const fileExtension = mimeType
+      ? mimeType.split("/")[1]?.split(";")[0] || "webm"
+      : "webm";
     const tempDir = path.join(process.cwd(), "tmp");
     if (!fs.existsSync(tempDir)) {
       fs.mkdirSync(tempDir, { recursive: true });
@@ -261,8 +291,8 @@ async function runTranscriptionBackground(jobId: string, body: any) {
     transcriptionJobs[jobId].progressMessage =
       "Preparando áudio para a Groq Whisper (etapa 1 de 2)...";
 
-    const audioBuffer = Buffer.from(audioBase64, "base64");
-    fs.writeFileSync(tempFilePath, audioBuffer);
+    const buffer = audioBuffer || Buffer.from(audioBase64!, "base64");
+    fs.writeFileSync(tempFilePath, buffer);
 
     let cleanMimeType = mimeType || "audio/webm";
     if (cleanMimeType.includes(";")) {
@@ -270,7 +300,7 @@ async function runTranscriptionBackground(jobId: string, body: any) {
     }
 
     console.log(
-      `[Job ${jobId}] Enviando áudio para Groq Whisper (${cleanMimeType}): ${tempFilePath} (${audioBuffer.length} bytes)`
+      `[Job ${jobId}] Enviando áudio para Groq Whisper (${cleanMimeType}): ${tempFilePath} (${buffer.length} bytes)`,
     );
 
     transcriptionJobs[jobId].status = "processing";
@@ -278,7 +308,9 @@ async function runTranscriptionBackground(jobId: string, body: any) {
       "Transcrevendo áudio com Groq Whisper (etapa 1 de 2)...";
 
     const rawTranscript = await groqTranscribeAudio(tempFilePath, cleanMimeType);
-    console.log(`[Job ${jobId}] Whisper OK (${rawTranscript.length} chars). Estruturando com Llama...`);
+    console.log(
+      `[Job ${jobId}] Whisper OK (${rawTranscript.length} chars). Estruturando com Llama...`,
+    );
 
     transcriptionJobs[jobId].status = "transcribing";
     transcriptionJobs[jobId].progressMessage =
@@ -315,7 +347,9 @@ Todos os campos obrigatórios devem existir. Use português brasileiro.`;
     result.topics = Array.isArray(result.topics) ? result.topics : [];
     result.decisions = Array.isArray(result.decisions) ? result.decisions : [];
     result.actions = Array.isArray(result.actions) ? result.actions : [];
-    result.suggestedTags = Array.isArray(result.suggestedTags) ? result.suggestedTags : [];
+    result.suggestedTags = Array.isArray(result.suggestedTags)
+      ? result.suggestedTags
+      : [];
     result.participants = result.participants || {
       membersTriforce: [],
       membersClient: [],
@@ -343,37 +377,85 @@ Todos os campos obrigatórios devem existir. Use português brasileiro.`;
 }
 
 // API endpoint to start an asynchronous Transcription Job
-app.post("/api/transcribe", authenticateRequest, async (req, res) => {
-  try {
-    const { audioBase64 } = req.body;
-
-    if (!audioBase64) {
-      return res.status(400).json({ error: "Nenhum arquivo de áudio enviado ou áudio corrompido." });
+// Aceita multipart (preferido em produção) ou JSON base64 (legado)
+app.post(
+  "/api/transcribe",
+  authenticateRequest,
+  (req, res, next) => {
+    const contentType = String(req.headers["content-type"] || "");
+    if (contentType.includes("multipart/form-data")) {
+      return audioUpload.single("audio")(req, res, (err: unknown) => {
+        if (err) {
+          const message =
+            err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE"
+              ? "Áudio muito grande (máx. 30 MB). Grave em trechos menores."
+              : err instanceof Error
+                ? err.message
+                : "Falha no upload do áudio.";
+          return res.status(400).json({ error: message });
+        }
+        return next();
+      });
     }
+    return next();
+  },
+  async (req, res) => {
+    try {
+      const file = (req as express.Request & { file?: Express.Multer.File }).file;
+      const audioBase64 = file ? undefined : req.body?.audioBase64;
+      const mimeType = file
+        ? file.mimetype || req.body?.mimeType
+        : req.body?.mimeType;
+      const context = file ? req.body?.context : req.body?.context;
 
-    const jobId = `job_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-    transcriptionJobs[jobId] = {
-      id: jobId,
-      status: "pending",
-      progressMessage: "Codificando áudio enviado e agendando processamento na Groq...",
-      createdAt: Date.now()
-    };
+      if (!file && !audioBase64) {
+        return res.status(400).json({
+          error: "Nenhum arquivo de áudio enviado ou áudio corrompido.",
+        });
+      }
 
-    // Run the long transcription in the background without awaiting it
-    runTranscriptionBackground(jobId, req.body).catch(err => {
-      console.error(`Erro crítico não capturado no job background ${jobId}:`, err);
-    });
+      // Valida Groq cedo — evita job "fantasma" que só falha no poll
+      try {
+        getGroqApiKey();
+      } catch (err: any) {
+        return res.status(500).json({
+          error: err.message || "GROQ_API_KEY não configurada na API.",
+        });
+      }
 
-    // Respond immediately with the jobId so that client can start polling
-    return res.json({ jobId, status: "pending" });
-  } catch (error: any) {
-    console.error("Erro ao iniciar job de transcrição:", error);
-    return res.status(500).json({
-      error: "Falha ao iniciar o processamento de áudio.",
-      details: error.message || error,
-    });
-  }
-});
+      const jobId = `job_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+      transcriptionJobs[jobId] = {
+        id: jobId,
+        status: "pending",
+        progressMessage:
+          "Codificando áudio enviado e agendando processamento na Groq...",
+        createdAt: Date.now(),
+      };
+
+      const payload = {
+        audioBuffer: file ? Buffer.from(file.buffer) : undefined,
+        audioBase64: audioBase64 as string | undefined,
+        mimeType: mimeType as string | undefined,
+        context: context as string | undefined,
+      };
+
+      runTranscriptionBackground(jobId, payload).catch((err) => {
+        console.error(
+          `Erro crítico não capturado no job background ${jobId}:`,
+          err,
+        );
+      });
+
+      return res.json({ jobId, status: "pending" });
+    } catch (error: any) {
+      console.error("Erro ao iniciar job de transcrição:", error);
+      return res.status(500).json({
+        error: "Falha ao iniciar o processamento de áudio.",
+        details: error.message || error,
+      });
+    }
+  },
+);
 
 // API endpoint to check the status of a Transcription Job
 app.get("/api/transcribe/status/:jobId", authenticateRequest, (req, res) => {
@@ -585,7 +667,26 @@ app.get("/api/google-client-id", (_req, res) => {
   });
 });
 
-function getGoogleOAuthConfig() {
+function resolveApiPublicUrl(req?: express.Request): string {
+  const configured = (
+    process.env.API_PUBLIC_URL ||
+    process.env.RENDER_EXTERNAL_URL ||
+    ""
+  )
+    .trim()
+    .replace(/\/$/, "");
+  if (configured) return configured;
+  if (req) {
+    const proto = (req.get("x-forwarded-proto") || req.protocol || "https")
+      .split(",")[0]
+      .trim();
+    const host = req.get("x-forwarded-host") || req.get("host") || "localhost:3000";
+    return `${proto}://${host}`.replace(/\/$/, "");
+  }
+  return "http://localhost:3000";
+}
+
+function getGoogleOAuthConfig(req?: express.Request) {
   const clientId = (
     process.env.VITE_GOOGLE_CLIENT_ID ||
     process.env.API_GOOGLE_CALENDAR_TOKEN ||
@@ -596,43 +697,82 @@ function getGoogleOAuthConfig() {
     process.env.SECRET_GOOGLE_CLIENT_ID ||
     ""
   ).trim();
-  // Frontend (static) — destino do postMessage / redirect final
+  // Frontend (static) — destino do redirect final quando não há opener
   const frontendUrl = (
     process.env.FRONTEND_URL ||
     process.env.APP_URL ||
+    process.env.CORS_ORIGINS?.split(",")[0] ||
     "http://localhost:3000"
-  ).replace(/\/$/, "");
-  // API pública — redirect URI do Google deve apontar para o backend
-  const apiPublicUrl = (
-    process.env.API_PUBLIC_URL ||
-    process.env.RENDER_EXTERNAL_URL ||
-    frontendUrl
-  ).replace(/\/$/, "");
+  )
+    .trim()
+    .replace(/\/$/, "");
+  // Nunca use a URL do static como redirect URI do Google
+  const apiPublicUrl = resolveApiPublicUrl(req);
   const redirectUri = `${apiPublicUrl}/api/google/oauth/callback`;
   return { clientId, clientSecret, frontendUrl, apiPublicUrl, redirectUri };
 }
 
-const googleOAuthStates = new Map<string, number>();
+/** State assinado (HMAC) — sobrevive a cold start / restart no Render free */
+const oauthStateSecret =
+  process.env.GOOGLE_OAUTH_STATE_SECRET ||
+  process.env.GOOGLE_CLIENT_SECRET ||
+  process.env.SECRET_GOOGLE_CLIENT_ID ||
+  "suiter-oauth-dev-secret";
 
-// Limpa states antigos (15 min)
-setInterval(() => {
-  const now = Date.now();
-  for (const [state, createdAt] of googleOAuthStates.entries()) {
-    if (now - createdAt > 15 * 60 * 1000) googleOAuthStates.delete(state);
+function signOAuthState(): string {
+  const payload = Buffer.from(
+    JSON.stringify({ t: Date.now(), n: crypto.randomBytes(8).toString("hex") }),
+    "utf8",
+  ).toString("base64url");
+  const sig = crypto.createHmac("sha256", oauthStateSecret).update(payload).digest("base64url");
+  return `${payload}.${sig}`;
+}
+
+function verifyOAuthState(state: string): boolean {
+  const [payload, sig] = state.split(".");
+  if (!payload || !sig) return false;
+  const expected = crypto.createHmac("sha256", oauthStateSecret).update(payload).digest("base64url");
+  const a = Buffer.from(sig);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return false;
+  try {
+    const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { t?: number };
+    if (!data.t) return false;
+    return Date.now() - data.t <= 15 * 60 * 1000;
+  } catch {
+    return false;
   }
-}, 5 * 60 * 1000);
+}
+
+/** Diagnóstico — frontend checa se OAuth está pronto antes de abrir o popup */
+app.get("/api/google/oauth/status", (req, res) => {
+  const cfg = getGoogleOAuthConfig(req);
+  res.json({
+    ok: true,
+    oauthConfigured: Boolean(cfg.clientId && cfg.clientSecret),
+    hasClientId: Boolean(cfg.clientId),
+    hasClientSecret: Boolean(cfg.clientSecret),
+    frontendUrl: cfg.frontendUrl,
+    redirectUri: cfg.redirectUri,
+    apiPublicUrl: cfg.apiPublicUrl,
+  });
+});
 
 /** Inicia OAuth Google Calendar (authorization code) — evita invalid_client do popup GIS */
 app.get("/api/google/oauth/start", (req, res) => {
-  const { clientId, clientSecret, redirectUri } = getGoogleOAuthConfig();
+  const { clientId, clientSecret, redirectUri, frontendUrl, apiPublicUrl } =
+    getGoogleOAuthConfig(req);
   if (!clientId || !clientSecret) {
-    return res.status(500).send(
-      "Configure VITE_GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET (ou SECRET_GOOGLE_CLIENT_ID) no .env"
-    );
+    return res
+      .status(500)
+      .type("html")
+      .send(
+        "<h1>Google OAuth não configurado</h1><p>Defina <code>VITE_GOOGLE_CLIENT_ID</code> e <code>GOOGLE_CLIENT_SECRET</code> no Web Service da API.</p>",
+      );
   }
 
-  const state = crypto.randomBytes(16).toString("hex");
-  googleOAuthStates.set(state, Date.now());
+  const state = signOAuthState();
+  console.log("[oauth/start]", { redirectUri, frontendUrl, apiPublicUrl });
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -651,15 +791,19 @@ app.get("/api/google/oauth/start", (req, res) => {
     state,
   });
 
+  // Evita Cross-Origin-Opener-Policy quebrar window.opener no callback
+  res.setHeader("Cross-Origin-Opener-Policy", "unsafe-none");
   return res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
 });
 
 /** Callback OAuth — troca code por access_token e devolve ao frontend */
 app.get("/api/google/oauth/callback", async (req, res) => {
-  const { clientId, clientSecret, redirectUri, frontendUrl } = getGoogleOAuthConfig();
+  const { clientId, clientSecret, redirectUri, frontendUrl } = getGoogleOAuthConfig(req);
   const code = String(req.query.code || "");
   const state = String(req.query.state || "");
   const oauthError = req.query.error ? String(req.query.error) : "";
+
+  res.setHeader("Cross-Origin-Opener-Policy", "unsafe-none");
 
   if (oauthError) {
     return res.status(400).send(renderOAuthResultPage({
@@ -669,14 +813,13 @@ app.get("/api/google/oauth/callback", async (req, res) => {
     }));
   }
 
-  if (!code || !state || !googleOAuthStates.has(state)) {
+  if (!code || !state || !verifyOAuthState(state)) {
     return res.status(400).send(renderOAuthResultPage({
       ok: false,
       error: "State OAuth inválido ou expirado. Tente conectar novamente.",
       frontendUrl,
     }));
   }
-  googleOAuthStates.delete(state);
 
   try {
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
@@ -693,13 +836,13 @@ app.get("/api/google/oauth/callback", async (req, res) => {
 
     const tokenData = await tokenRes.json();
     if (!tokenRes.ok || !tokenData.access_token) {
-      console.error("Google token exchange failed:", tokenData);
+      console.error("Google token exchange failed:", tokenData, { redirectUri });
       return res.status(400).send(renderOAuthResultPage({
         ok: false,
         error:
           tokenData.error_description ||
           tokenData.error ||
-          "Falha ao trocar o código OAuth por access token. Confira Client ID/Secret e o redirect URI.",
+          "Falha ao trocar o código OAuth. Confira Client ID/Secret e o redirect URI no Google Cloud.",
         frontendUrl,
       }));
     }
@@ -737,6 +880,7 @@ function renderOAuthResultPage(opts: {
     refreshToken: opts.refreshToken || null,
     error: opts.error || null,
   });
+  const frontend = JSON.stringify(opts.frontendUrl);
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -757,16 +901,22 @@ function renderOAuthResultPage(opts: {
   <script>
     (function () {
       var payload = ${payload};
+      var frontend = ${frontend};
+      // postMessage com '*' — FRONTEND_URL errado no Render quebrava o targetOrigin e o popup fechava sem avisar
       try {
         if (window.opener && !window.opener.closed) {
-          window.opener.postMessage(payload, ${JSON.stringify(opts.frontendUrl)});
-          setTimeout(function () { window.close(); }, 400);
+          try { window.opener.postMessage(payload, frontend); } catch (e1) {}
+          try { window.opener.postMessage(payload, "*"); } catch (e2) {}
+          setTimeout(function () { window.close(); }, 600);
           return;
         }
       } catch (e) {}
       if (payload.ok && payload.accessToken) {
-        var url = ${JSON.stringify(opts.frontendUrl)} + "/?google_oauth=1&access_token=" + encodeURIComponent(payload.accessToken) + "&expires_in=" + encodeURIComponent(String(payload.expiresIn || 3600));
+        var url = frontend + "/?google_oauth=1&access_token=" + encodeURIComponent(payload.accessToken) + "&expires_in=" + encodeURIComponent(String(payload.expiresIn || 3600));
         window.location.replace(url);
+      } else {
+        var errUrl = frontend + "/?google_oauth=0&error=" + encodeURIComponent(String(payload.error || "oauth_failed"));
+        window.location.replace(errUrl);
       }
     })();
   </script>

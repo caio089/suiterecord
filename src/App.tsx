@@ -46,7 +46,7 @@ import {
   updateGoogleCalendarEvent,
   buildEventDateTimes,
 } from "./googleCalendar";
-import { apiUrl } from "./api";
+import { apiUrl, assertApiConfigured, readApiJson } from "./api";
 import type { LocalRecording } from "./indexedDb";
 import {
   saveLocalRecording,
@@ -516,6 +516,13 @@ export default function App() {
       window.history.replaceState({}, "", clean);
       return;
     }
+    if (params.get("google_oauth") === "0") {
+      const err = params.get("error") || "Falha no OAuth Google";
+      setCalendarSyncSuccess(`Erro ao vincular: ${err}`);
+      const clean = window.location.pathname + window.location.hash;
+      window.history.replaceState({}, "", clean);
+      return;
+    }
 
     const stored = getStoredGoogleAccessToken();
     if (stored) setGoogleAccessToken(stored);
@@ -555,7 +562,10 @@ export default function App() {
       setCalendarSyncSuccess("Agenda Google vinculada. Exibindo seus compromissos reais.");
     } catch (err: any) {
       console.error("Erro ao vincular Google Agenda:", err);
-      setCalendarSyncSuccess(`Erro ao vincular: ${err.message || err}`);
+      const message = String(err?.message || err);
+      setCalendarSyncSuccess(`Erro ao vincular: ${message}`);
+      // Em produção o erro ficava só num texto discreto — alerta deixa claro o que falta
+      window.alert(`Não foi possível conectar a Google Agenda.\n\n${message}`);
     } finally {
       setIsSyncingCalendar(false);
     }
@@ -1299,12 +1309,9 @@ export default function App() {
       await saveLocalRecording(offlineRecording);
       await loadBackups();
 
-      setProcessingStatus("Codificando áudio para processamento seguro...");
+      setProcessingStatus("Enviando áudio para a API (multipart)...");
       setProcessingProgress(35);
-      const base64 = await convertBlobToBase64(prepared.blob);
 
-      setProcessingStatus("Iniciando Transcrição por Inteligência Artificial...");
-      
       const contextText = `
 Usuário que gravou a reunião (Triforce): ${currentUser?.name} (${currentUser?.email})
 Título definido pelo usuário: ${meetingTitle}
@@ -1317,40 +1324,37 @@ Reunião vinculada ao Google Agenda:
 ` : "Gravação direta de áudio (sem evento do Google Agenda vinculado)."}
       `.trim();
 
+      assertApiConfigured();
+
+      const form = new FormData();
+      form.append(
+        "audio",
+        prepared.blob,
+        `gravacao_${Date.now()}.${(prepared.mimeType.split("/")[1] || "webm").split(";")[0]}`,
+      );
+      form.append("mimeType", prepared.mimeType);
+      form.append("context", contextText);
+
       const response = await fetch(apiUrl("/api/transcribe"), {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "X-User-Email": currentUser?.email || ""
+        headers: {
+          "X-User-Email": currentUser?.email || "",
         },
-        body: JSON.stringify({
-          audioBase64: base64,
-          mimeType: prepared.mimeType,
-          filename: `gravacao_${Date.now()}`,
-          context: contextText
-        })
+        body: form,
       });
 
-      if (!response.ok) {
-        let errMsg = "Erro no servidor durante a transcrição";
-        try {
-          const errData = await response.json();
-          errMsg = errData.error || errMsg;
-        } catch (_) {
-          try {
-            const errText = await response.text();
-            errMsg = `Erro ${response.status}: ${errText.substring(0, 150)}`;
-          } catch (__) {
-            errMsg = `Erro ${response.status} no servidor.`;
-          }
-        }
-        throw new Error(errMsg);
-      }
+      const startResult = await readApiJson<{ jobId?: string; error?: string; status?: string }>(
+        response,
+      );
 
-      const startResult = await response.json();
+      if (!response.ok) {
+        throw new Error(startResult.error || `Erro ${response.status} no servidor durante a transcrição`);
+      }
       if (!startResult.jobId) {
         throw new Error("O servidor não retornou um ID de tarefa de transcrição válido.");
       }
+
+      setProcessingStatus("Iniciando Transcrição por Inteligência Artificial...");
 
       const aiResult = await pollTranscriptionJob(startResult.jobId, (msg) => {
         setProcessingStatus(msg);
@@ -1464,7 +1468,6 @@ Reunião vinculada ao Google Agenda:
 
         setProcessingStatus("Transmitindo áudio comprimido para análise da IA...");
         setProcessingProgress(40);
-        const base64 = await convertBlobToBase64(prepared.blob);
 
         const contextText = `
 Usuário que fez o upload do arquivo (Triforce): ${currentUser?.name} (${currentUser?.email})
@@ -1478,26 +1481,26 @@ Reunião vinculada ao Google Agenda:
 ` : "Gravação direta via upload (sem evento do Google Agenda vinculado)."}
         `.trim();
 
+        assertApiConfigured();
+
+        const form = new FormData();
+        form.append("audio", prepared.blob, file.name || `upload_${Date.now()}.webm`);
+        form.append("mimeType", prepared.mimeType);
+        form.append("context", contextText);
+
         const response = await fetch(apiUrl("/api/transcribe"), {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
             "X-User-Email": currentUser?.email || "",
           },
-          body: JSON.stringify({
-            audioBase64: base64,
-            mimeType: prepared.mimeType,
-            filename: file.name,
-            context: contextText,
-          }),
+          body: form,
         });
 
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.error || "Erro ao processar o arquivo de áudio");
-        }
+        const startResult = await readApiJson<{ jobId?: string; error?: string }>(response);
 
-        const startResult = await response.json();
+        if (!response.ok) {
+          throw new Error(startResult.error || "Erro ao processar o arquivo de áudio");
+        }
         if (!startResult.jobId) {
           throw new Error("O servidor não retornou um ID de tarefa válido para processamento de áudio.");
         }
@@ -1567,37 +1570,31 @@ Reunião vinculada ao Google Agenda:
     })();
   };
 
-  // Helper to read blob data to base64
-  const convertBlobToBase64 = (blob: Blob): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onerror = reject;
-      reader.onloadend = () => {
-        const dataUrl = reader.result as string;
-        const base64 = dataUrl.split(",")[1];
-        resolve(base64);
-      };
-      reader.readAsDataURL(blob);
-    });
-  };
-
   // Helper to poll the status of an asynchronous transcription job
   const pollTranscriptionJob = async (jobId: string, onProgress: (msg: string) => void): Promise<any> => {
     const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
     const maxPolls = 180; // Up to 15 minutes of max processing for extremely long recordings
     
     for (let i = 0; i < maxPolls; i++) {
+      assertApiConfigured();
       const response = await fetch(apiUrl(`/api/transcribe/status/${jobId}`), {
         headers: {
           "X-User-Email": currentUser?.email || ""
         }
       });
-      
+
+      const job = await readApiJson<{
+        status?: string;
+        result?: unknown;
+        error?: string;
+        progressMessage?: string;
+      }>(response);
+
       if (!response.ok) {
-        throw new Error(`Erro ao consultar o status do processador (${response.status})`);
+        throw new Error(
+          job.error || `Erro ao consultar o status do processador (${response.status})`,
+        );
       }
-      
-      const job = await response.json();
       
       if (job.status === "completed") {
         return job.result;
@@ -1612,7 +1609,7 @@ Reunião vinculada ao Google Agenda:
       await delay(5000); // Poll every 5 seconds
     }
     
-    throw new Error("O tempo limite de processamento de áudio do Gemini foi excedido (máximo de 15 minutos).");
+    throw new Error("O tempo limite de processamento de áudio foi excedido (máximo de 15 minutos).");
   };
 
   // EXPORT TO PDF (jspdf) with executive-level premium layout

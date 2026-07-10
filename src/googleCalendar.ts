@@ -1,4 +1,4 @@
-import { apiUrl, getApiOrigin } from "./api";
+import { apiUrl, getApiBaseUrl, getApiOrigin } from "./api";
 import type { GoogleCalendarEvent } from "./types";
 
 const TOKEN_STORAGE_KEY = "suiter_google_calendar_token";
@@ -94,8 +94,60 @@ export async function connectGoogleCalendar(
 ): Promise<string> {
   const frontendOrigin =
     typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+  const apiBase = getApiBaseUrl();
+  const isLocalHost =
+    /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname) ||
+    window.location.hostname === "";
+
+  // Em produção (Static + API), VITE_API_URL é obrigatório — sem ele o popup abre no próprio static e "nada acontece"
+  if (!apiBase && !isLocalHost) {
+    throw new Error(
+      "VITE_API_URL não está configurada no build do frontend.\n\n" +
+        "No Render → Static Site → Environment, defina:\n" +
+        "VITE_API_URL=https://SUA-API.onrender.com\n" +
+        "Depois faça Clear cache & deploy do static.",
+    );
+  }
+
   const apiOrigin = getApiOrigin() || frontendOrigin;
   const oauthStart = apiUrl("/api/google/oauth/start");
+  const statusUrl = apiUrl("/api/google/oauth/status");
+
+  // Preflight: acorda a API (cold start) e valida config OAuth
+  try {
+    const ctrl = new AbortController();
+    const timeout = window.setTimeout(() => ctrl.abort(), 45_000);
+    const statusRes = await fetch(statusUrl, { signal: ctrl.signal, credentials: "omit" });
+    window.clearTimeout(timeout);
+    if (!statusRes.ok) {
+      throw new Error(`API respondeu ${statusRes.status} em ${statusUrl}`);
+    }
+    const status = (await statusRes.json()) as {
+      oauthConfigured?: boolean;
+      hasClientId?: boolean;
+      hasClientSecret?: boolean;
+      redirectUri?: string;
+      frontendUrl?: string;
+    };
+    if (!status.oauthConfigured) {
+      throw new Error(
+        "Google OAuth incompleto na API.\n\n" +
+          `Client ID: ${status.hasClientId ? "ok" : "faltando"}\n` +
+          `Client Secret: ${status.hasClientSecret ? "ok" : "faltando"}\n\n` +
+          "Defina VITE_GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET no Web Service da API.",
+      );
+    }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("Google OAuth incompleto") || msg.includes("VITE_API_URL")) {
+      throw err instanceof Error ? err : new Error(msg);
+    }
+    throw new Error(
+      `Não foi possível falar com a API (${statusUrl}).\n\n` +
+        `${msg}\n\n` +
+        "Confira se VITE_API_URL aponta para o Web Service (não o Static) e se a API está no ar.",
+    );
+  }
 
   return new Promise((resolve, reject) => {
     const width = 520;
@@ -106,16 +158,12 @@ export async function connectGoogleCalendar(
     const popup = window.open(
       oauthStart,
       "suiter_google_oauth",
-      `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,status=no`
+      `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,status=no`,
     );
 
     if (!popup) {
-      window.location.href = oauthStart;
-      reject(
-        new Error(
-          "Popup bloqueado. Redirecionando para o login Google nesta aba..."
-        )
-      );
+      // Popup bloqueado — segue na mesma aba (não rejeita antes do redirect)
+      window.location.assign(oauthStart);
       return;
     }
 
@@ -130,6 +178,11 @@ export async function connectGoogleCalendar(
       if (settled) return;
       settled = true;
       cleanup();
+      try {
+        popup.close();
+      } catch {
+        /* ignore */
+      }
       storeGoogleAccessToken(token, expiresIn);
       resolve(token);
     };
@@ -142,16 +195,16 @@ export async function connectGoogleCalendar(
         new Error(
           `${message}\n\nNo Google Cloud → Credenciais → OAuth Client (Web), cadastre:\n` +
             `URI de redirecionamento: ${apiOrigin}/api/google/oauth/callback\n` +
-            `Origem JavaScript: ${frontendOrigin}`
-        )
+            `Origem JavaScript: ${frontendOrigin}\n\n` +
+            `Na API (Render): FRONTEND_URL=${frontendOrigin}`,
+        ),
       );
     };
 
     const onMessage = (event: MessageEvent) => {
-      // Mensagem vem da página de callback na API
-      if (event.origin !== apiOrigin && event.origin !== frontendOrigin) return;
       const data = event.data;
       if (!data || data.type !== "suiter-google-oauth") return;
+      // Prefer origem da API; ainda aceita o payload tipado (FRONTEND_URL / proxy)
 
       if (data.ok && data.accessToken) {
         finishOk(String(data.accessToken), Number(data.expiresIn || 3600));
