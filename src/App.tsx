@@ -1407,95 +1407,6 @@ Reunião vinculada ao Google Agenda:
     }
   };
 
-  // DEMO SIMULATOR BUTTON (Allows testing full flow without microphone audio)
-  const runDemoSimulation = async () => {
-    setIsProcessingAudio(true);
-    setProcessingStatus("Iniciando fluxo de gravação demonstrativo...");
-
-    try {
-      setProcessingStatus("Simulando captação física de áudio de reunião...");
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      setProcessingStatus("Processando áudio capturado localmente (Modo Demonstrativo)...");
-      await new Promise(resolve => setTimeout(resolve, 1200));
-
-      setProcessingStatus("Gerando relatório estruturado via inteligência artificial...");
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      const titleInput = (document.getElementById("custom-meeting-title") as HTMLInputElement)?.value;
-      const simulatedTitle = titleInput || (selectedCalendarEvent ? selectedCalendarEvent.summary : "Alinhamento de Planejamento Triforce");
-
-      const mockAiResult = {
-        title: simulatedTitle,
-        transcript: `[00:15] Rodolfo: Pessoal, iniciamos aqui o nosso alinhamento estratégico semanal da Triforce. O objetivo principal hoje é fechar o plano de ação para a implantação dos novos portais de clientes no sistema Suiter.
-[01:10] Consultor: Perfeito, Rodolfo. No meu lado, as APIs de webhook já foram desenhadas. Falta apenas validar o fuso horário e a autenticação segura dos tokens.
-[02:05] Rodolfo: Excelente. Eu vou ficar responsável por desenhar a matriz de conformidade e as regras de segurança do Firestore para garantir que as informações fiquem totalmente isoladas por cliente.
-[03:40] Consultor: Maravilha. Vou definir o prazo para as APIs até o final desta semana. Podemos documentar as decisões e as prioridades no Suiter Record.`,
-        overview: "Reunião de alinhamento estratégico interna para definição de entregáveis de APIs, segurança no Firestore e conexão com o sistema corporativo Suiter.",
-        topics: [
-          {
-            topic: "Desenho das APIs e Webhooks",
-            details: "As APIs de webhook foram planejadas e o mapeamento de campos está pronto. Falta apenas homologar em produção e garantir integridade."
-          },
-          {
-            topic: "Regras de Segurança e Banco de Dados",
-            details: "Foi discutida a necessidade de restringir as regras do Firestore, garantindo autenticação em todas as coleções sensíveis."
-          }
-        ],
-        decisions: [
-          "Definição da stack final do projeto utilizando React e Express backend.",
-          "Homologação do plano de teste e simulação de concorrência local."
-        ],
-        actions: [
-          {
-            action: "Ajustar fuso horário do Google Agenda",
-            assignee: currentUser?.name || "Rodolfo",
-            priority: "Média" as const
-          },
-          {
-            action: "Homologar webhooks seguros no Suiter",
-            assignee: "Consultor Triforce",
-            priority: "Alta" as const
-          }
-        ],
-        participants: {
-          membersTriforce: [currentUser?.name || "Rodolfo", "Consultor Triforce"],
-          membersClient: selectedCalendarEvent
-            ? (selectedCalendarEvent.attendees?.map(a => a.displayName || a.email.split("@")[0]).filter(name => name && !name.toLowerCase().includes("suiter") && !name.toLowerCase().includes("atendimento@triforce")) || [])
-            : []
-        },
-        suggestedTags: ["Planejamento", "API", "Segurança"]
-      };
-
-      const newMtg: Meeting = {
-        id: `mtg_${Date.now()}`,
-        title: `${mockAiResult.title} (Amostra)`,
-        date: getLocalDateString(new Date()),
-        duration: 215,
-        tags: mockAiResult.suggestedTags,
-        transcript: mockAiResult.transcript,
-        overview: mockAiResult.overview,
-        topics: mockAiResult.topics,
-        actions: mockAiResult.actions as any[],
-        decisions: mockAiResult.decisions,
-        participants: mockAiResult.participants,
-        createdBy: currentUser?.email || "atendimento@triforceconsultoria.com"
-      };
-
-      setMeetings(prev => [newMtg, ...prev]);
-      setSelectedMeetingId(newMtg.id);
-      setActiveTab("summary");
-      setIsMobileSidebarOpen(false);
-      setActiveView("history");
-    } catch (err: any) {
-      console.error("Erro na simulação:", err);
-      setCustomAlertMessage("A simulação de transcrição falhou. Por favor, tente novamente.");
-    } finally {
-      setIsProcessingAudio(false);
-      setProcessingStatus("");
-    }
-  };
-
   // FILE UPLOAD HANDLER — valida, comprime e processa áudio pronto
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -3821,27 +3732,6 @@ Reunião vinculada ao Google Agenda:
                                     onChange={handleFileUpload}
                                     className="hidden"
                                   />
-                                </div>
-                              </div>
-
-                              {/* 3. SIMULAÇÃO CORPORATIVA DE ALTA FIDELIDADE */}
-                              <div className="p-5 rounded-2xl border border-zinc-800 bg-zinc-900/10">
-                                <h4 className="text-xs font-bold text-white flex items-center gap-1.5 uppercase tracking-wider">
-                                  <Sparkles size={13} className="text-emerald-400" />
-                                  Simulador Completo Inteligente (Gemini AI)
-                                </h4>
-                                <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">
-                                  Gere uma ata completa de demonstração imediatamente. O sistema utilizará a chave do Gemini configurada para simular um alinhamento corporativo real com ata, plano de ação e dados detalhados.
-                                </p>
-
-                                <div className="mt-4">
-                                  <button
-                                    onClick={runDemoSimulation}
-                                    className="w-full py-2.5 px-4 rounded-xl border border-zinc-800 hover:border-emerald-500/30 bg-zinc-950 hover:bg-zinc-900 text-emerald-400 hover:text-emerald-300 font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
-                                  >
-                                    <Sparkles size={13} />
-                                    Executar Simulação de IA Completa
-                                  </button>
                                 </div>
                               </div>
                             </div>
