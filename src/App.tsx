@@ -1270,41 +1270,96 @@ export default function App() {
     draw();
   };
 
-  // Convert blob to base64 and hit Groq API server transcriber
-  const processRecordedAudio = async (mimeType: string, customBlob?: Blob, customDuration?: number, customTitle?: string) => {
+  // Processa áudio (gravação nova ou reprocessamento de backup existente)
+  const processRecordedAudio = async (
+    mimeType: string,
+    customBlob?: Blob,
+    customDuration?: number,
+    customTitle?: string,
+    options?: {
+      existingBackupId?: string;
+      existingMeetingId?: string;
+      /** No reprocessamento, não recompacta nem cria outro backup */
+      isReprocess?: boolean;
+    },
+  ) => {
     setIsProcessingAudio(true);
-    setProcessingStatus("Agrupando áudio gravado...");
+    setProcessingStatus(
+      options?.isReprocess ? "Reprocessando áudio existente..." : "Agrupando áudio gravado...",
+    );
     setProcessingProgress(5);
 
     const rawBlob = customBlob || new Blob(audioChunksRef.current, { type: mimeType });
     const titleInput = (document.getElementById("custom-meeting-title") as HTMLInputElement)?.value;
-    const meetingTitle = customTitle || titleInput || (selectedCalendarEvent ? selectedCalendarEvent.summary : `Reunião Gravada #${meetings.length + 1}`);
-    const localRecordingId = "rec_" + Date.now();
+    const meetingTitle =
+      customTitle ||
+      titleInput ||
+      (selectedCalendarEvent
+        ? selectedCalendarEvent.summary
+        : `Reunião Gravada #${meetings.length + 1}`);
+    const isReprocess = Boolean(options?.isReprocess && options.existingBackupId);
+    const localRecordingId = isReprocess
+      ? options!.existingBackupId!
+      : `rec_${Date.now()}`;
 
     try {
-      setProcessingStatus("Validando e comprimindo áudio para reduzir o peso no armazenamento...");
-      setProcessingProgress(15);
-      const prepared = await prepareAudioForStorage(rawBlob, undefined, (msg) => {
-        setProcessingStatus(msg);
-      });
+      let prepared: {
+        blob: Blob;
+        mimeType: string;
+        durationSeconds: number;
+        originalBytes: number;
+        compressedBytes: number;
+      };
 
-      const duration = customDuration || prepared.durationSeconds || recordingSecondsRef.current || 5;
+      if (isReprocess) {
+        // Reusa o blob já salvo — não gera outro arquivo nem reencode
+        setProcessingStatus("Preparando reprocessamento com IA...");
+        setProcessingProgress(20);
+        prepared = {
+          blob: rawBlob,
+          mimeType,
+          durationSeconds: customDuration || 5,
+          originalBytes: rawBlob.size,
+          compressedBytes: rawBlob.size,
+        };
+      } else {
+        setProcessingStatus("Validando e comprimindo áudio para reduzir o peso no armazenamento...");
+        setProcessingProgress(15);
+        prepared = await prepareAudioForStorage(rawBlob, undefined, (msg) => {
+          setProcessingStatus(msg);
+        });
+      }
+
+      const duration =
+        customDuration || prepared.durationSeconds || recordingSecondsRef.current || 5;
 
       setProcessingStatus(
-        `Salvando backup otimizado (${(prepared.compressedBytes / (1024 * 1024)).toFixed(2)} MB)...`
+        isReprocess
+          ? "Atualizando backup existente..."
+          : `Salvando backup otimizado (${(prepared.compressedBytes / (1024 * 1024)).toFixed(2)} MB)...`,
       );
       setProcessingProgress(25);
+
+      const existingBackup = isReprocess
+        ? localBackups.find((b) => b.id === localRecordingId)
+        : undefined;
+
       const offlineRecording: LocalRecording = {
         id: localRecordingId,
         title: meetingTitle,
-        date: getLocalDateString(new Date()),
+        date: existingBackup?.date || getLocalDateString(new Date()),
         duration,
         mimeType: prepared.mimeType,
         audioBlob: prepared.blob,
         status: "pending",
-        createdBy: currentUser?.email || "atendimento@triforceconsultoria.com",
-        originalBytes: prepared.originalBytes,
+        createdBy:
+          existingBackup?.createdBy ||
+          currentUser?.email ||
+          "atendimento@triforceconsultoria.com",
+        originalBytes: existingBackup?.originalBytes || prepared.originalBytes,
         compressedBytes: prepared.compressedBytes,
+        meetingId: existingBackup?.meetingId || options?.existingMeetingId,
+        overview: existingBackup?.overview,
       };
       await saveLocalRecording(offlineRecording);
       await loadBackups();
@@ -1360,10 +1415,22 @@ Reunião vinculada ao Google Agenda:
         setProcessingStatus(msg);
       });
 
-      const newMtg: Meeting = {
-        id: `mtg_${Date.now()}`,
+      const linkedMeetingId =
+        options?.existingMeetingId ||
+        existingBackup?.meetingId ||
+        `mtg_${Date.now()}`;
+      const isUpdatingMeeting = meetings.some((m) => m.id === linkedMeetingId);
+
+      const meetingPayload: Meeting = {
+        id: linkedMeetingId,
         title: meetingTitle,
-        date: meetingConfirmedDate || getLocalDateString(new Date()),
+        date:
+          (isUpdatingMeeting
+            ? meetings.find((m) => m.id === linkedMeetingId)?.date
+            : undefined) ||
+          meetingConfirmedDate ||
+          existingBackup?.date ||
+          getLocalDateString(new Date()),
         duration: duration,
         tags: aiResult.suggestedTags || (selectedCalendarEvent ? ["Google Agenda"] : ["Geral"]),
         transcript: aiResult.transcript,
@@ -1381,23 +1448,32 @@ Reunião vinculada ao Google Agenda:
               ? (selectedCalendarEvent.attendees?.map(a => a.displayName || a.email.split("@")[0]).filter(name => name && !name.toLowerCase().includes("suiter") && !name.toLowerCase().includes("atendimento@triforce")) || [])
               : []
         },
-        createdBy: currentUser?.email || "atendimento@triforceconsultoria.com",
+        createdBy:
+          existingBackup?.createdBy ||
+          currentUser?.email ||
+          "atendimento@triforceconsultoria.com",
         hasAudio: true,
         audioRecordingId: localRecordingId,
         audioSizeBytes: prepared.compressedBytes,
       };
 
-      setMeetings(prev => [newMtg, ...prev]);
-      setSelectedMeetingId(newMtg.id);
+      if (isUpdatingMeeting) {
+        setMeetings((prev) =>
+          prev.map((m) => (m.id === linkedMeetingId ? { ...m, ...meetingPayload } : m)),
+        );
+      } else {
+        setMeetings((prev) => [meetingPayload, ...prev]);
+      }
+      setSelectedMeetingId(meetingPayload.id);
       setActiveTab("summary");
       setIsMobileSidebarOpen(false);
       setActiveView("history");
       setProcessingProgress(100);
 
       await updateLocalRecordingStatus(localRecordingId, "completed", {
-        meetingId: newMtg.id,
-        overview: newMtg.overview,
-        title: newMtg.title,
+        meetingId: meetingPayload.id,
+        overview: meetingPayload.overview,
+        title: meetingPayload.title,
       });
       await loadBackups();
     } catch (err: any) {
@@ -4124,7 +4200,13 @@ Reunião vinculada ao Google Agenda:
                                             item.backup!.mimeType,
                                             item.backup!.audioBlob,
                                             item.backup!.duration,
-                                            item.backup!.title
+                                            item.backup!.title,
+                                            {
+                                              isReprocess: true,
+                                              existingBackupId: item.backup!.id,
+                                              existingMeetingId:
+                                                item.backup!.meetingId || item.meeting?.id,
+                                            },
                                           );
                                         }}
                                         className="py-1.5 px-3 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-black text-xs font-bold cursor-pointer flex items-center gap-1.5"
