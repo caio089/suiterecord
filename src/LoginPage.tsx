@@ -60,7 +60,7 @@ export default function LoginPage({
   const isSignup = mode === "signup";
 
   return (
-    <div className="relative flex h-screen w-screen items-center justify-center overflow-hidden bg-zinc-950 p-5 font-sans text-white select-none sm:p-6">
+    <div className="relative flex min-h-[100svh] w-full items-start justify-center overflow-x-hidden overflow-y-auto bg-zinc-950 px-4 py-8 font-sans text-white select-none sm:items-center sm:p-6 sm:py-10">
       <div className="pointer-events-none absolute inset-0">
         <div
           className="absolute inset-x-0 top-0 h-[55%]"
@@ -160,7 +160,18 @@ export default function LoginPage({
           )}
 
           {passwordRecoveryMode ? (
-            <form onSubmit={onRecoverySubmit} className="space-y-4">
+            <form
+              onSubmit={onRecoverySubmit}
+              className="space-y-4"
+              onFocusCapture={(e) => {
+                const el = e.target as HTMLElement;
+                if (el.tagName === "INPUT") {
+                  window.setTimeout(() => {
+                    el.scrollIntoView({ block: "center", behavior: "smooth" });
+                  }, 280);
+                }
+              }}
+            >
               <div>
                 <label className="mb-1.5 block text-[11px] font-medium tracking-wide text-zinc-400">
                   Nova senha
@@ -213,7 +224,18 @@ export default function LoginPage({
               </button>
             </form>
           ) : (
-            <form onSubmit={onSubmit} className="space-y-4">
+            <form
+              onSubmit={onSubmit}
+              className="space-y-4"
+              onFocusCapture={(e) => {
+                const el = e.target as HTMLElement;
+                if (el.tagName === "INPUT") {
+                  window.setTimeout(() => {
+                    el.scrollIntoView({ block: "center", behavior: "smooth" });
+                  }, 280);
+                }
+              }}
+            >
               {isSignup && (
                 <div>
                   <label className="mb-1.5 block text-[11px] font-medium tracking-wide text-zinc-400">

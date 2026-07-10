@@ -2356,7 +2356,7 @@ Reunião vinculada ao Google Agenda:
 
   if (!isDbLoaded) {
     return (
-      <div className="app-shell flex h-screen w-screen flex-col items-center justify-center gap-3 text-sm text-zinc-400">
+      <div className="app-shell flex h-[100svh] w-screen flex-col items-center justify-center gap-3 text-sm text-zinc-400">
         <div className="h-9 w-9 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-400" />
         <p className="font-medium tracking-tight text-zinc-300">Carregando seu workspace...</p>
       </div>
@@ -2364,7 +2364,7 @@ Reunião vinculada ao Google Agenda:
   }
 
   return (
-    <div className="app-shell flex h-screen w-screen text-white font-sans antialiased overflow-hidden relative">
+    <div className="app-shell relative flex h-[100svh] w-screen overflow-hidden font-sans text-white antialiased">
       
       {/* Mobile Sidebar Backdrop Overlay */}
       <AnimatePresence>

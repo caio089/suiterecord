@@ -187,6 +187,19 @@ html {
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
   }
+
+  /* Evita “zoom/aproximação” visual quando o teclado abre (layout estável com svh) */
+  .app-shell,
+  .landing-page {
+    min-height: 100svh;
+  }
+}
+
+/* Inputs: ao focar, não deixa o teclado cobrir o campo sem scroll */
+input,
+textarea,
+select {
+  scroll-margin-bottom: 8rem;
 }
 
 @media (pointer: coarse) {

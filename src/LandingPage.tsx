@@ -247,7 +247,7 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
   return (
     <div
       ref={pageRef}
-      className="landing-page relative min-h-[100dvh] w-full overflow-x-hidden bg-[#070809] text-white font-sans antialiased selection:bg-emerald-500/30"
+      className="landing-page relative min-h-[100svh] w-full overflow-x-hidden bg-[#070809] text-white font-sans antialiased selection:bg-emerald-500/30"
     >
       {contentReady && (
         <motion.div
@@ -278,16 +278,16 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
             )}
 
             {(introPhase === "brand" || introPhase === "fade") && (
-              <div className="flex flex-wrap items-center justify-center gap-x-[0.08em] px-2 text-center font-display text-[clamp(2rem,11vw,4.5rem)] font-bold tracking-tight">
+              <div className="flex max-w-full flex-nowrap items-center justify-center gap-x-[0.06em] overflow-hidden px-3 font-display text-[clamp(1.35rem,5.8vw,4.5rem)] font-bold tracking-tight whitespace-nowrap">
                 {BRAND_LETTERS.map((letter, i) => (
                   <motion.span
                     key={`${letter}-${i}`}
                     className={
                       letter === " "
-                        ? "inline-block w-[0.28em]"
+                        ? "inline-block w-[0.28em] shrink-0"
                         : i > 6
-                          ? "text-emerald-400"
-                          : "text-white"
+                          ? "shrink-0 text-emerald-400"
+                          : "shrink-0 text-white"
                     }
                     initial={{ opacity: 0, y: 18, filter: "blur(6px)" }}
                     animate={
@@ -423,7 +423,7 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
       <section
         ref={heroRef}
         onMouseMove={onHeroMove}
-        className="relative z-10 flex min-h-[calc(100dvh-3.5rem-env(safe-area-inset-top))] flex-col justify-end overflow-hidden sm:min-h-[calc(100dvh-4rem)]"
+        className="relative z-10 flex min-h-[calc(100svh-3.5rem-env(safe-area-inset-top))] flex-col justify-end overflow-hidden sm:min-h-[calc(100svh-4rem)]"
       >
         <motion.div
           className="pointer-events-none absolute inset-x-0 bottom-0 h-[68%] sm:h-[60%]"
@@ -454,7 +454,7 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
                 y: contentReady ? 0 : 20,
               }}
               transition={{ duration: 0.45, delay: 0.02, ease }}
-              className="mb-3 font-display text-[clamp(2.35rem,10vw,4.5rem)] font-bold leading-[0.95] tracking-tight text-white sm:mb-4"
+              className="mb-3 font-display text-[clamp(1.85rem,7.2vw,4.5rem)] font-bold leading-[0.95] tracking-tight text-white whitespace-nowrap sm:mb-4"
             >
               Suiter <span className="text-emerald-400">Record</span>
             </motion.p>
