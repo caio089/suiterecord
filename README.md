@@ -47,15 +47,26 @@ No Google Cloud Console → OAuth Client (Web):
 
 ### Aplicar RLS no Supabase (obrigatório)
 
-No SQL Editor do projeto, rode o arquivo:
+Já aplicado no projeto **Record** (`brzefsmeghkzzwrsvrlt`) em 2026-07-10.
 
-`supabase/migrations/20260710150000_rls_tenant_isolation.sql`
+Para reaplicar / outro ambiente:
+
+```bash
+chmod +x scripts/apply-migrations.sh
+./scripts/apply-migrations.sh
+```
 
 ### Auth sem confirmação no cadastro
 
-Supabase → **Authentication → Providers → Email** → desative **Confirm email**.
+No painel (token da API não tem permissão de Owner para alterar Auth):
+
+Supabase → projeto **Record** → **Authentication → Providers → Email** → desative **Confirm email**.
 
 Mantenha o e-mail ativo para **Reset password**.
 
-Site URL / Redirect URLs = URL do Static Site (Render).
+**URL Configuration:**
+- Site URL = URL do Static Site (Render) em produção, ou `http://localhost:3000` local
+- Redirect URLs = mesma URL
+
+Usuários já existentes foram confirmados no banco.
 
