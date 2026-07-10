@@ -475,7 +475,7 @@ export default function App() {
   };
 
   // MULTI-VIEW NAVIGATION STATE
-  const [activeView, setActiveView] = useState<"history" | "new_meeting" | "admin" | "suiter" | "dashboard" | "backups">("history");
+  const [activeView, setActiveView] = useState<"history" | "new_meeting" | "admin" | "suiter" | "dashboard" | "backups">("dashboard");
 
   // LOCAL RECORDINGS BACKUP STATES
   const [localBackups, setLocalBackups] = useState<LocalRecording[]>([]);

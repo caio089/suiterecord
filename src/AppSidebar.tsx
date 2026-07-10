@@ -148,13 +148,14 @@ export default function AppSidebar({
     <aside
       className={`app-sidebar fixed inset-y-0 left-0 z-50 flex h-full shrink-0 flex-col transition-all duration-300 ease-out md:relative md:translate-x-0 ${
         collapsed
-          ? "md:w-[var(--sidebar-rail)]"
+          ? "md:w-0 md:overflow-hidden md:border-0 md:opacity-0 md:pointer-events-none"
           : "w-[var(--sidebar-w)] md:w-[var(--sidebar-w)]"
       } ${
         mobileOpen
           ? "translate-x-0 shadow-[0_0_60px_-12px_rgba(0,0,0,0.8)]"
           : "-translate-x-full md:translate-x-0"
       }`}
+      aria-hidden={collapsed && !mobileOpen}
     >
       {/* Brand */}
       <div

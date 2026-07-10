@@ -58,7 +58,7 @@ export default function AppTopBar({
           type="button"
           onClick={onToggleSidebarCollapsed}
           className="hidden rounded-xl p-2 text-zinc-400 transition-colors hover:bg-white/[0.05] hover:text-white md:flex"
-          title={sidebarCollapsed ? "Expandir menu" : "Recolher menu"}
+          title={sidebarCollapsed ? "Abrir menu" : "Fechar menu (tela cheia)"}
         >
           {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
