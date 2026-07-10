@@ -7,10 +7,13 @@ export type AuthMode = "login" | "signup";
 type LoginPageProps = {
   logoSrc: string;
   mode: AuthMode;
+  passwordRecoveryMode?: boolean;
   loginName: string;
   loginEmail: string;
   loginPassword: string;
   loginPasswordConfirm: string;
+  recoveryPassword?: string;
+  recoveryPasswordConfirm?: string;
   loginError: string;
   loginSuccess: string;
   isReady: boolean;
@@ -20,17 +23,24 @@ type LoginPageProps = {
   onEmailChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
   onPasswordConfirmChange: (value: string) => void;
+  onRecoveryPasswordChange?: (value: string) => void;
+  onRecoveryPasswordConfirmChange?: (value: string) => void;
   onSubmit: (e: FormEvent) => void;
+  onRecoverySubmit?: (e: FormEvent) => void;
+  onForgotPassword?: () => void;
   onBackToLanding: () => void;
 };
 
 export default function LoginPage({
   logoSrc,
   mode,
+  passwordRecoveryMode = false,
   loginName,
   loginEmail,
   loginPassword,
   loginPasswordConfirm,
+  recoveryPassword = "",
+  recoveryPasswordConfirm = "",
   loginError,
   loginSuccess,
   isReady,
@@ -40,7 +50,11 @@ export default function LoginPage({
   onEmailChange,
   onPasswordChange,
   onPasswordConfirmChange,
+  onRecoveryPasswordChange,
+  onRecoveryPasswordConfirmChange,
   onSubmit,
+  onRecoverySubmit,
+  onForgotPassword,
   onBackToLanding,
 }: LoginPageProps) {
   const isSignup = mode === "signup";
@@ -88,36 +102,40 @@ export default function LoginPage({
               Suiter <span className="text-emerald-400">Record</span>
             </h1>
             <p className="mt-1.5 text-xs leading-relaxed text-zinc-500">
-              {isSignup
-                ? "Crie sua conta com e-mail e senha"
-                : "Entre com seu e-mail e senha"}
+              {passwordRecoveryMode
+                ? "Defina sua nova senha"
+                : isSignup
+                  ? "Crie sua conta com e-mail e senha"
+                  : "Entre com seu e-mail e senha"}
             </p>
           </div>
 
-          <div className="mb-5 grid grid-cols-2 gap-1 rounded-xl border border-white/[0.06] bg-zinc-950/60 p-1">
-            <button
-              type="button"
-              onClick={() => onModeChange("login")}
-              className={`rounded-lg py-2 text-xs font-semibold transition-colors ${
-                !isSignup
-                  ? "bg-emerald-500 text-black"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              Entrar
-            </button>
-            <button
-              type="button"
-              onClick={() => onModeChange("signup")}
-              className={`rounded-lg py-2 text-xs font-semibold transition-colors ${
-                isSignup
-                  ? "bg-emerald-500 text-black"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              Criar conta
-            </button>
-          </div>
+          {!passwordRecoveryMode && (
+            <div className="mb-5 grid grid-cols-2 gap-1 rounded-xl border border-white/[0.06] bg-zinc-950/60 p-1">
+              <button
+                type="button"
+                onClick={() => onModeChange("login")}
+                className={`rounded-lg py-2 text-xs font-semibold transition-colors ${
+                  !isSignup
+                    ? "bg-emerald-500 text-black"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                Entrar
+              </button>
+              <button
+                type="button"
+                onClick={() => onModeChange("signup")}
+                className={`rounded-lg py-2 text-xs font-semibold transition-colors ${
+                  isSignup
+                    ? "bg-emerald-500 text-black"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                Criar conta
+              </button>
+            </div>
+          )}
 
           {loginError && (
             <motion.div
@@ -141,79 +159,11 @@ export default function LoginPage({
             </motion.div>
           )}
 
-          <form onSubmit={onSubmit} className="space-y-4">
-            {isSignup && (
+          {passwordRecoveryMode ? (
+            <form onSubmit={onRecoverySubmit} className="space-y-4">
               <div>
                 <label className="mb-1.5 block text-[11px] font-medium tracking-wide text-zinc-400">
-                  Nome
-                </label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-zinc-500">
-                    <User size={15} />
-                  </span>
-                  <input
-                    type="text"
-                    required
-                    autoComplete="name"
-                    placeholder="Seu nome"
-                    value={loginName}
-                    onChange={(e) => onNameChange(e.target.value)}
-                    className="w-full rounded-xl border border-white/[0.07] bg-zinc-950/70 py-2.5 pr-3.5 pl-10 text-sm text-white placeholder-zinc-600 outline-none transition-all focus:border-emerald-500/50 focus:bg-zinc-950 focus:ring-2 focus:ring-emerald-500/15"
-                  />
-                </div>
-              </div>
-            )}
-
-            <div>
-              <label className="mb-1.5 block text-[11px] font-medium tracking-wide text-zinc-400">
-                E-mail
-              </label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-zinc-500">
-                  <Mail size={15} />
-                </span>
-                <input
-                  type="email"
-                  required
-                  autoFocus={!isSignup}
-                  autoComplete="email"
-                  placeholder="seu@email.com"
-                  value={loginEmail}
-                  onChange={(e) => onEmailChange(e.target.value)}
-                  className="w-full rounded-xl border border-white/[0.07] bg-zinc-950/70 py-2.5 pr-3.5 pl-10 text-sm text-white placeholder-zinc-600 outline-none transition-all focus:border-emerald-500/50 focus:bg-zinc-950 focus:ring-2 focus:ring-emerald-500/15"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-[11px] font-medium tracking-wide text-zinc-400">
-                Senha
-              </label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-zinc-500">
-                  <Lock size={15} />
-                </span>
-                <input
-                  type="password"
-                  required
-                  autoComplete={isSignup ? "new-password" : "current-password"}
-                  placeholder="••••••••"
-                  value={loginPassword}
-                  onChange={(e) => onPasswordChange(e.target.value)}
-                  className="w-full rounded-xl border border-white/[0.07] bg-zinc-950/70 py-2.5 pr-3.5 pl-10 text-sm text-white placeholder-zinc-600 outline-none transition-all focus:border-emerald-500/50 focus:bg-zinc-950 focus:ring-2 focus:ring-emerald-500/15"
-                />
-              </div>
-              {isSignup && (
-                <p className="mt-1.5 text-[10px] leading-relaxed text-zinc-500">
-                  Mín. 8 caracteres, com maiúscula, minúscula e caractere especial.
-                </p>
-              )}
-            </div>
-
-            {isSignup && (
-              <div>
-                <label className="mb-1.5 block text-[11px] font-medium tracking-wide text-zinc-400">
-                  Confirmar senha
+                  Nova senha
                 </label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-zinc-500">
@@ -224,30 +174,164 @@ export default function LoginPage({
                     required
                     autoComplete="new-password"
                     placeholder="••••••••"
-                    value={loginPasswordConfirm}
-                    onChange={(e) => onPasswordConfirmChange(e.target.value)}
+                    value={recoveryPassword}
+                    onChange={(e) => onRecoveryPasswordChange?.(e.target.value)}
+                    className="w-full rounded-xl border border-white/[0.07] bg-zinc-950/70 py-2.5 pr-3.5 pl-10 text-sm text-white placeholder-zinc-600 outline-none transition-all focus:border-emerald-500/50 focus:bg-zinc-950 focus:ring-2 focus:ring-emerald-500/15"
+                  />
+                </div>
+                <p className="mt-1.5 text-[10px] leading-relaxed text-zinc-500">
+                  Mín. 8 caracteres, com maiúscula, minúscula e caractere especial.
+                </p>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[11px] font-medium tracking-wide text-zinc-400">
+                  Confirmar nova senha
+                </label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-zinc-500">
+                    <Lock size={15} />
+                  </span>
+                  <input
+                    type="password"
+                    required
+                    autoComplete="new-password"
+                    placeholder="••••••••"
+                    value={recoveryPasswordConfirm}
+                    onChange={(e) =>
+                      onRecoveryPasswordConfirmChange?.(e.target.value)
+                    }
                     className="w-full rounded-xl border border-white/[0.07] bg-zinc-950/70 py-2.5 pr-3.5 pl-10 text-sm text-white placeholder-zinc-600 outline-none transition-all focus:border-emerald-500/50 focus:bg-zinc-950 focus:ring-2 focus:ring-emerald-500/15"
                   />
                 </div>
               </div>
-            )}
+              <button
+                type="submit"
+                disabled={!isReady || isSubmitting}
+                className="mt-2 w-full cursor-pointer rounded-xl bg-emerald-500 py-2.5 text-sm font-semibold text-black shadow-[0_8px_24px_-8px_rgba(16,185,129,0.5)] transition-all hover:bg-emerald-400 active:scale-[0.99] disabled:cursor-wait disabled:opacity-60"
+              >
+                {isSubmitting ? "Salvando..." : "Salvar nova senha"}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={onSubmit} className="space-y-4">
+              {isSignup && (
+                <div>
+                  <label className="mb-1.5 block text-[11px] font-medium tracking-wide text-zinc-400">
+                    Nome
+                  </label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-zinc-500">
+                      <User size={15} />
+                    </span>
+                    <input
+                      type="text"
+                      required
+                      autoComplete="name"
+                      placeholder="Seu nome"
+                      value={loginName}
+                      onChange={(e) => onNameChange(e.target.value)}
+                      className="w-full rounded-xl border border-white/[0.07] bg-zinc-950/70 py-2.5 pr-3.5 pl-10 text-sm text-white placeholder-zinc-600 outline-none transition-all focus:border-emerald-500/50 focus:bg-zinc-950 focus:ring-2 focus:ring-emerald-500/15"
+                    />
+                  </div>
+                </div>
+              )}
 
-            <button
-              type="submit"
-              disabled={!isReady || isSubmitting}
-              className="mt-2 w-full cursor-pointer rounded-xl bg-emerald-500 py-2.5 text-sm font-semibold text-black shadow-[0_8px_24px_-8px_rgba(16,185,129,0.5)] transition-all hover:bg-emerald-400 active:scale-[0.99] disabled:cursor-wait disabled:opacity-60"
-            >
-              {!isReady
-                ? "Preparando..."
-                : isSubmitting
-                  ? isSignup
-                    ? "Criando conta..."
-                    : "Entrando..."
-                  : isSignup
-                    ? "Criar conta"
-                    : "Entrar"}
-            </button>
-          </form>
+              <div>
+                <label className="mb-1.5 block text-[11px] font-medium tracking-wide text-zinc-400">
+                  E-mail
+                </label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-zinc-500">
+                    <Mail size={15} />
+                  </span>
+                  <input
+                    type="email"
+                    required
+                    autoFocus={!isSignup}
+                    autoComplete="email"
+                    placeholder="seu@email.com"
+                    value={loginEmail}
+                    onChange={(e) => onEmailChange(e.target.value)}
+                    className="w-full rounded-xl border border-white/[0.07] bg-zinc-950/70 py-2.5 pr-3.5 pl-10 text-sm text-white placeholder-zinc-600 outline-none transition-all focus:border-emerald-500/50 focus:bg-zinc-950 focus:ring-2 focus:ring-emerald-500/15"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="block text-[11px] font-medium tracking-wide text-zinc-400">
+                    Senha
+                  </label>
+                  {!isSignup && onForgotPassword && (
+                    <button
+                      type="button"
+                      onClick={onForgotPassword}
+                      className="text-[10px] font-medium text-emerald-400/90 hover:text-emerald-300"
+                    >
+                      Esqueci a senha
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-zinc-500">
+                    <Lock size={15} />
+                  </span>
+                  <input
+                    type="password"
+                    required
+                    autoComplete={isSignup ? "new-password" : "current-password"}
+                    placeholder="••••••••"
+                    value={loginPassword}
+                    onChange={(e) => onPasswordChange(e.target.value)}
+                    className="w-full rounded-xl border border-white/[0.07] bg-zinc-950/70 py-2.5 pr-3.5 pl-10 text-sm text-white placeholder-zinc-600 outline-none transition-all focus:border-emerald-500/50 focus:bg-zinc-950 focus:ring-2 focus:ring-emerald-500/15"
+                  />
+                </div>
+                {isSignup && (
+                  <p className="mt-1.5 text-[10px] leading-relaxed text-zinc-500">
+                    Mín. 8 caracteres, com maiúscula, minúscula e caractere especial.
+                  </p>
+                )}
+              </div>
+
+              {isSignup && (
+                <div>
+                  <label className="mb-1.5 block text-[11px] font-medium tracking-wide text-zinc-400">
+                    Confirmar senha
+                  </label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-zinc-500">
+                      <Lock size={15} />
+                    </span>
+                    <input
+                      type="password"
+                      required
+                      autoComplete="new-password"
+                      placeholder="••••••••"
+                      value={loginPasswordConfirm}
+                      onChange={(e) => onPasswordConfirmChange(e.target.value)}
+                      className="w-full rounded-xl border border-white/[0.07] bg-zinc-950/70 py-2.5 pr-3.5 pl-10 text-sm text-white placeholder-zinc-600 outline-none transition-all focus:border-emerald-500/50 focus:bg-zinc-950 focus:ring-2 focus:ring-emerald-500/15"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={!isReady || isSubmitting}
+                className="mt-2 w-full cursor-pointer rounded-xl bg-emerald-500 py-2.5 text-sm font-semibold text-black shadow-[0_8px_24px_-8px_rgba(16,185,129,0.5)] transition-all hover:bg-emerald-400 active:scale-[0.99] disabled:cursor-wait disabled:opacity-60"
+              >
+                {!isReady
+                  ? "Preparando..."
+                  : isSubmitting
+                    ? isSignup
+                      ? "Criando conta..."
+                      : "Entrando..."
+                    : isSignup
+                      ? "Criar conta"
+                      : "Entrar"}
+              </button>
+            </form>
+          )}
         </div>
       </motion.div>
     </div>

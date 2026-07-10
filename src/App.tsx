@@ -38,6 +38,9 @@ import {
   signOutAuth,
   getAuthSessionProfile,
   isSupabaseConfigured,
+  requestPasswordReset,
+  updatePasswordAfterRecovery,
+  onAuthStateChange,
 } from "./supabase";
 import {
   connectGoogleCalendar,
@@ -268,37 +271,14 @@ export default function App() {
   // DYNAMIC SYSTEM ACCOUNTS FOR ADMINISTRATION MODULE
   const [permittedUsers, setPermittedUsers] = useState<PermittedUser[]>([]);
 
-  // AUTHENTICATION STATE
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    const savedUser = localStorage.getItem("plaud_current_user");
-    if (savedUser) {
-      try {
-        const parsed = JSON.parse(savedUser);
-        if (["luiz.silva@suiter.com", "sofia.almeida@suiter.com", "diretor@suiter.com"].includes(parsed.email)) {
-          return false;
-        }
-      } catch (e) {}
-    }
-    return localStorage.getItem("plaud_authenticated") === "true";
-  });
-
-  const [currentUser, setCurrentUser] = useState<{ name: string; email: string; role: string; photoUrl?: string } | null>(() => {
-    const saved = localStorage.getItem("plaud_current_user");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (["luiz.silva@suiter.com", "sofia.almeida@suiter.com", "diretor@suiter.com"].includes(parsed.email)) {
-          localStorage.removeItem("plaud_authenticated");
-          localStorage.removeItem("plaud_current_user");
-          return null;
-        }
-        return parsed;
-      } catch (e) {
-        return null;
-      }
-    }
-    return null;
-  });
+  // AUTHENTICATION STATE — só sessão Auth válida (sem “login fantasma” via localStorage)
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{
+    name: string;
+    email: string;
+    role: string;
+    photoUrl?: string;
+  } | null>(null);
 
   // Login Form States
   const [authScreen, setAuthScreen] = useState<"landing" | "login">("landing");
@@ -309,6 +289,9 @@ export default function App() {
   const [loginPasswordConfirm, setLoginPasswordConfirm] = useState("");
   const [loginError, setLoginError] = useState("");
   const [loginSuccess, setLoginSuccess] = useState("");
+  const [passwordRecoveryMode, setPasswordRecoveryMode] = useState(false);
+  const [recoveryPassword, setRecoveryPassword] = useState("");
+  const [recoveryPasswordConfirm, setRecoveryPasswordConfirm] = useState("");
 
   // GOOGLE CALENDAR ACCESS TOKEN
   const [googleAccessToken, setGoogleAccessToken] = useState<string | null>(null);
@@ -360,14 +343,14 @@ export default function App() {
     setIsAuthenticated(true);
   };
 
-  // AUTHENTICATION HANDLERS — Supabase Auth (+ fallback legado permitted_users)
+  // AUTHENTICATION HANDLERS — Supabase Auth (isolamento por conta)
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError("");
     setLoginSuccess("");
 
-    if (!isDbLoaded) {
-      setLoginError("Aguarde um instante — ainda estamos preparando o acesso.");
+    if (!isSupabaseConfigured) {
+      setLoginError("Supabase Auth não está configurado neste ambiente.");
       return;
     }
 
@@ -389,34 +372,16 @@ export default function App() {
         setLoginError(strength.message);
         return;
       }
-      if (!isSupabaseConfigured) {
-        setLoginError("Supabase Auth não está configurado neste ambiente.");
-        return;
-      }
 
       setIsLoginSubmitting(true);
       try {
-        const { profile, needsEmailConfirmation } = await signUpWithEmail({
-          name,
-          email,
-          password,
-        });
-
-        // Atualiza lista local de perfis
-        const refreshed = await loadPermittedUsersFromCloud();
-        setPermittedUsers(refreshed);
-
-        if (needsEmailConfirmation || !profile) {
-          setAuthMode("login");
-          setLoginSuccess(
-            "Conta criada! Verifique seu e-mail para confirmar e depois faça login."
-          );
-          setLoginPassword("");
-          setLoginPasswordConfirm("");
+        const { profile } = await signUpWithEmail({ name, email, password });
+        if (!profile) {
+          setLoginError("Não foi possível criar o perfil da conta.");
           return;
         }
-
         persistAuthenticatedUser(profile);
+        setIsDbLoaded(false);
       } catch (err) {
         setLoginError(
           err instanceof Error ? err.message : "Não foi possível criar a conta."
@@ -429,53 +394,71 @@ export default function App() {
 
     setIsLoginSubmitting(true);
     try {
-      if (isSupabaseConfigured) {
-        try {
-          const profile = await signInWithEmail({ email, password });
-          const refreshed = await loadPermittedUsersFromCloud();
-          setPermittedUsers(refreshed);
-          persistAuthenticatedUser(profile);
-          return;
-        } catch (authErr) {
-          // Fallback: contas antigas com senha em permitted_users
-          const legacyUser = permittedUsers.find(
-            (u) =>
-              u.email.toLowerCase() === email &&
-              String(u.password ?? "") === password
-          );
-          if (!legacyUser) {
-            throw authErr;
-          }
-          persistAuthenticatedUser({
-            name: legacyUser.name,
-            email: legacyUser.email,
-            role: legacyUser.role,
-            photoUrl: legacyUser.photoUrl,
-          });
-          return;
-        }
-      }
-
-      const user = permittedUsers.find(
-        (u) =>
-          u.email.toLowerCase() === email &&
-          String(u.password ?? "") === password
-      );
-
-      if (!user) {
-        setLoginError("E-mail ou senha inválidos.");
-        return;
-      }
-
-      persistAuthenticatedUser({
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        photoUrl: user.photoUrl,
-      });
+      const profile = await signInWithEmail({ email, password });
+      persistAuthenticatedUser(profile);
+      setIsDbLoaded(false);
     } catch (err) {
       setLoginError(
         err instanceof Error ? err.message : "E-mail ou senha inválidos."
+      );
+    } finally {
+      setIsLoginSubmitting(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    setLoginError("");
+    setLoginSuccess("");
+    const email = loginEmail.trim().toLowerCase();
+    if (!email) {
+      setLoginError("Informe seu e-mail para receber o link de redefinição.");
+      return;
+    }
+    setIsLoginSubmitting(true);
+    try {
+      await requestPasswordReset(email);
+      setLoginSuccess(
+        "Enviamos um e-mail para confirmar a troca de senha. Abra o link e defina a nova senha."
+      );
+    } catch (err) {
+      setLoginError(
+        err instanceof Error ? err.message : "Não foi possível enviar o e-mail."
+      );
+    } finally {
+      setIsLoginSubmitting(false);
+    }
+  };
+
+  const handleRecoveryPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError("");
+    if (recoveryPassword !== recoveryPasswordConfirm) {
+      setLoginError("As senhas não coincidem.");
+      return;
+    }
+    const strength = validatePasswordStrength(recoveryPassword);
+    if (!strength.isValid) {
+      setLoginError(strength.message);
+      return;
+    }
+    setIsLoginSubmitting(true);
+    try {
+      await updatePasswordAfterRecovery(recoveryPassword);
+      setPasswordRecoveryMode(false);
+      setRecoveryPassword("");
+      setRecoveryPasswordConfirm("");
+      setLoginSuccess("Senha atualizada. Você já pode usar o painel.");
+      const profile = await getAuthSessionProfile();
+      if (profile) {
+        persistAuthenticatedUser(profile);
+        setIsDbLoaded(false);
+      } else {
+        setAuthMode("login");
+        setAuthScreen("login");
+      }
+    } catch (err) {
+      setLoginError(
+        err instanceof Error ? err.message : "Não foi possível atualizar a senha."
       );
     } finally {
       setIsLoginSubmitting(false);
@@ -490,8 +473,14 @@ export default function App() {
     clearStoredGoogleAccessToken();
     setAuthScreen("landing");
     setAuthMode("login");
+    setIsDbLoaded(false);
+    setMeetings([]);
+    setPermittedUsers([]);
+    setIsMeetingsLoaded(false);
     localStorage.removeItem("plaud_authenticated");
     localStorage.removeItem("plaud_current_user");
+    localStorage.removeItem("plaud_meetings");
+    localStorage.removeItem("suiter_permitted_users");
   };
 
   // MULTI-VIEW NAVIGATION STATE
@@ -967,90 +956,13 @@ export default function App() {
     }
   };
 
-  // CLOUD PERSISTENCE — inicialização via Supabase
+  // Auth listener: restaura sessão + modo recuperação de senha (e-mail)
   useEffect(() => {
-    const loadAllData = async () => {
-      try {
-        // 1. Load Permitted Users
-        let pUsers = await loadPermittedUsersFromCloud();
-        if (pUsers.length === 0) {
-          const defaultUsers = [
-            {
-              id: "rodolfo",
-              email: "atendimento@triforceconsultoria.com",
-              name: "Rodolfo",
-              role: "Administrador",
-              photoUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=150&q=80",
-              password: "admin",
-              googleCalendarLinked: true
-            },
-            {
-              id: "consultor_triforce",
-              email: "consultor@triforceconsultoria.com",
-              name: "Consultor Triforce",
-              role: "user",
-              photoUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80",
-              password: "user",
-              googleCalendarLinked: true
-            }
-          ];
-          for (const u of defaultUsers) {
-            await savePermittedUserInCloud(u);
-          }
-          pUsers = defaultUsers;
-        }
-        // Garante senha padrão em contas seed sem password no banco (login direto)
-        const withPasswords = pUsers.map((u) => {
-          if (u.password) return u;
-          const email = u.email.toLowerCase();
-          if (email === "atendimento@triforceconsultoria.com") {
-            return { ...u, password: "admin" };
-          }
-          if (email === "consultor@triforceconsultoria.com") {
-            return { ...u, password: "user" };
-          }
-          return u;
-        });
-        setPermittedUsers(withPasswords);
-
-        // 2. Load Suiter Config
-        const loadedConfig = await loadSuiterConfigFromCloud();
-        if (loadedConfig) {
-          setSuiterConfig(loadedConfig);
-        } else {
-          const defaultConfig = {
-            apiUrl: "https://api.suiter.interno/v1/meetings",
-            token: "suiter_token_live_2026_94f83b2a",
-            isMock: true,
-            mapping: "standard"
-          };
-          await saveSuiterConfigInCloud(defaultConfig);
-          setSuiterConfig(defaultConfig);
-        }
-
-        // 3. Load Suiter Logs
-        const loadedLogs = await loadSuiterLogsFromCloud();
-        setSuiterLogs(loadedLogs);
-
-        setIsDbLoaded(true);
-      } catch (err) {
-        console.error("Error loading initial data from Supabase:", err);
-        const savedUsers = localStorage.getItem("suiter_permitted_users");
-        if (savedUsers) setPermittedUsers(JSON.parse(savedUsers));
-        setIsDbLoaded(true);
-      }
-    };
-
-    loadAllData();
-  }, []);
-
-  // Restaura sessão do Supabase Auth (se existir)
-  useEffect(() => {
-    if (!isDbLoaded || !isSupabaseConfigured) return;
+    if (!isSupabaseConfigured) return;
 
     let cancelled = false;
 
-    const restoreSession = async () => {
+    const bootstrapAuth = async () => {
       try {
         const profile = await getAuthSessionProfile();
         if (cancelled || !profile) return;
@@ -1063,42 +975,93 @@ export default function App() {
       }
     };
 
-    restoreSession();
+    bootstrapAuth();
+
+    const { data } = onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setPasswordRecoveryMode(true);
+        setAuthScreen("login");
+        setLoginSuccess("Confirme a nova senha abaixo (link do e-mail validado).");
+      }
+      if (event === "SIGNED_OUT") {
+        setIsAuthenticated(false);
+        setCurrentUser(null);
+        setIsDbLoaded(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      data.subscription.unsubscribe();
+    };
+  }, []);
+
+  // CLOUD PERSISTENCE — só após login (RLS: cada conta vê só o seu)
+  useEffect(() => {
+    if (!isAuthenticated || !currentUser?.email) return;
+
+    let cancelled = false;
+
+    const loadAllData = async () => {
+      try {
+        const pUsers = await loadPermittedUsersFromCloud();
+        if (cancelled) return;
+        setPermittedUsers(pUsers);
+
+        if (currentUser.role === "Administrador") {
+          const loadedConfig = await loadSuiterConfigFromCloud();
+          if (cancelled) return;
+          if (loadedConfig) {
+            setSuiterConfig(loadedConfig);
+          }
+
+          const loadedLogs = await loadSuiterLogsFromCloud();
+          if (cancelled) return;
+          setSuiterLogs(loadedLogs);
+        }
+
+        setIsDbLoaded(true);
+      } catch (err) {
+        console.error("Error loading account data from Supabase:", err);
+        if (!cancelled) setIsDbLoaded(true);
+      }
+    };
+
+    loadAllData();
     return () => {
       cancelled = true;
     };
-  }, [isDbLoaded]);
+  }, [isAuthenticated, currentUser?.email, currentUser?.role]);
 
-  // LOAD USER MEETINGS REACTIVELY WITH ROLE-BASED ACCESS CONTROL
+  // LOAD USER MEETINGS — RLS isola no banco; filtro client é defesa em profundidade
   useEffect(() => {
-    if (!isDbLoaded) return;
+    if (!isDbLoaded || !isAuthenticated || !currentUser?.email) return;
 
     let active = true;
-    
-    // Safety reset: Clear stale state to prevent synchronizing old user's meetings or false deletes
     setIsMeetingsLoaded(false);
     setMeetings([]);
 
     const loadUserMeetings = async () => {
       try {
         const loadedMeetings = await loadMeetingsFromCloud();
-
-        // Sample meetings are never written to Supabase. A fresh database starts empty.
-
         if (!active) return;
 
-        // Clean up sample meetings mtg_1 and mtg_2 if they slipped in
-        const filteredMeetings = loadedMeetings.filter(m => m.id !== "mtg_1" && m.id !== "mtg_2");
+        const filteredMeetings = loadedMeetings.filter(
+          (m) => m.id !== "mtg_1" && m.id !== "mtg_2"
+        );
 
-        // SECURITY: Administrators see all meetings; standard users see ONLY meetings they created
-        const meetingsForUser = currentUser?.role === "Administrador"
-          ? filteredMeetings
-          : filteredMeetings.filter(m => m.createdBy === currentUser?.email);
+        const meetingsForUser =
+          currentUser.role === "Administrador"
+            ? filteredMeetings
+            : filteredMeetings.filter(
+                (m) =>
+                  (m.createdBy || "").toLowerCase() ===
+                  currentUser.email.toLowerCase()
+              );
 
         setMeetings(meetingsForUser);
 
-        // Adjust selectedMeetingId if it points to a meeting this user cannot access
-        const accessibleIds = meetingsForUser.map(m => m.id);
+        const accessibleIds = meetingsForUser.map((m) => m.id);
         if (selectedMeetingId && !accessibleIds.includes(selectedMeetingId)) {
           const nextMtgId = meetingsForUser.length > 0 ? meetingsForUser[0].id : null;
           setSelectedMeetingId(nextMtgId);
@@ -1111,68 +1074,49 @@ export default function App() {
         setIsMeetingsLoaded(true);
       } catch (err) {
         console.error("Error loading user meetings:", err);
-        // Fallback to local storage
-        const savedMeetings = localStorage.getItem("plaud_meetings");
-        if (savedMeetings) {
-          try {
-            const parsed = JSON.parse(savedMeetings) as Meeting[];
-            const filtered = parsed.filter(m => m.id !== "mtg_1" && m.id !== "mtg_2");
-            const userMeetings = currentUser?.role === "Administrador"
-              ? filtered
-              : filtered.filter(m => m.createdBy === currentUser?.email);
-            setMeetings(userMeetings);
-          } catch (e) {
-            setMeetings([]);
-          }
-        } else {
+        if (active) {
           setMeetings([]);
+          setIsMeetingsLoaded(true);
         }
-        setIsMeetingsLoaded(true);
       }
     };
 
     loadUserMeetings();
-
     return () => {
       active = false;
     };
-  }, [currentUser?.email, isAuthenticated, isDbLoaded]);
+  }, [currentUser?.email, currentUser?.role, isAuthenticated, isDbLoaded]);
 
-  // SYNC CHANGES TO SUPABASE — só upsert; deletes são explícitos no handler de exclusão
+  // SYNC meetings — nunca grava reunião de outra conta
   useEffect(() => {
-    if (!isDbLoaded || !isMeetingsLoaded) return;
-    
+    if (!isDbLoaded || !isMeetingsLoaded || !currentUser?.email) return;
+
     const syncMeetings = async () => {
       try {
         for (const m of meetings) {
-          if (currentUser?.role !== "Administrador" && m.createdBy !== currentUser?.email) {
-            continue;
-          }
-          await saveMeetingInCloud(m);
+          const owner = (m.createdBy || "").toLowerCase();
+          const me = currentUser.email.toLowerCase();
+          if (currentUser.role !== "Administrador" && owner !== me) continue;
+          if (!owner) continue;
+          await saveMeetingInCloud({
+            ...m,
+            createdBy: m.createdBy || currentUser.email,
+          });
         }
       } catch (err) {
         console.error("Failed to sync meetings to Supabase:", err);
       }
     };
-    
-    syncMeetings();
-    localStorage.setItem("plaud_meetings", JSON.stringify(meetings));
-  }, [meetings, isDbLoaded, isMeetingsLoaded, currentUser?.email]);
 
+    syncMeetings();
+  }, [meetings, isDbLoaded, isMeetingsLoaded, currentUser?.email, currentUser?.role]);
+
+  // SYNC profiles — só admin; NUNCA apaga contas automaticamente
   useEffect(() => {
-    if (!isDbLoaded) return;
+    if (!isDbLoaded || currentUser?.role !== "Administrador") return;
 
     const syncUsers = async () => {
       try {
-        const cloudUsers = await loadPermittedUsersFromCloud();
-        const cloudIds = cloudUsers.map(u => u.id);
-        const localIds = permittedUsers.map(u => u.id);
-
-        const toDelete = cloudIds.filter(id => !localIds.includes(id));
-        for (const id of toDelete) {
-          await deletePermittedUserFromCloud(id);
-        }
-
         for (const u of permittedUsers) {
           await savePermittedUserInCloud(u);
         }
@@ -1182,20 +1126,21 @@ export default function App() {
     };
 
     syncUsers();
-    localStorage.setItem("suiter_permitted_users", JSON.stringify(permittedUsers));
-  }, [permittedUsers, isDbLoaded]);
+  }, [permittedUsers, isDbLoaded, currentUser?.role]);
 
   useEffect(() => {
-    if (!isDbLoaded) return;
-    saveSuiterConfigInCloud(suiterConfig);
-    localStorage.setItem("plaud_suiter_config", JSON.stringify(suiterConfig));
-  }, [suiterConfig, isDbLoaded]);
+    if (!isDbLoaded || currentUser?.role !== "Administrador") return;
+    saveSuiterConfigInCloud(suiterConfig).catch((err) =>
+      console.error("Failed to sync suiter config:", err)
+    );
+  }, [suiterConfig, isDbLoaded, currentUser?.role]);
 
   useEffect(() => {
-    if (!isDbLoaded) return;
-    saveSuiterLogsInCloud(suiterLogs);
-    localStorage.setItem("plaud_suiter_logs", JSON.stringify(suiterLogs));
-  }, [suiterLogs, isDbLoaded]);
+    if (!isDbLoaded || currentUser?.role !== "Administrador") return;
+    saveSuiterLogsInCloud(suiterLogs).catch((err) =>
+      console.error("Failed to sync suiter logs:", err)
+    );
+  }, [suiterLogs, isDbLoaded, currentUser?.role]);
 
   useEffect(() => {
     if (selectedMeetingId) {
@@ -1205,7 +1150,7 @@ export default function App() {
     }
   }, [selectedMeetingId]);
 
-  // Audio waveform animation when recording
+    // Audio waveform animation when recording
   useEffect(() => {
     if (isRecording && !isRecordingPaused) {
       drawWaveform();
@@ -2395,6 +2340,39 @@ Reunião vinculada ao Google Agenda:
   });
 
   // Render landing / login if not authenticated
+  if (passwordRecoveryMode) {
+    return (
+      <LoginPage
+        logoSrc={triforceLogo}
+        mode="login"
+        passwordRecoveryMode
+        loginName={loginName}
+        loginEmail={loginEmail}
+        loginPassword={loginPassword}
+        loginPasswordConfirm={loginPasswordConfirm}
+        recoveryPassword={recoveryPassword}
+        recoveryPasswordConfirm={recoveryPasswordConfirm}
+        loginError={loginError}
+        loginSuccess={loginSuccess}
+        isReady={isSupabaseConfigured}
+        isSubmitting={isLoginSubmitting}
+        onModeChange={setAuthMode}
+        onNameChange={setLoginName}
+        onEmailChange={setLoginEmail}
+        onPasswordChange={setLoginPassword}
+        onPasswordConfirmChange={setLoginPasswordConfirm}
+        onRecoveryPasswordChange={setRecoveryPassword}
+        onRecoveryPasswordConfirmChange={setRecoveryPasswordConfirm}
+        onSubmit={handleLogin}
+        onRecoverySubmit={handleRecoveryPasswordSubmit}
+        onBackToLanding={() => {
+          setPasswordRecoveryMode(false);
+          setAuthScreen("landing");
+        }}
+      />
+    );
+  }
+
   if (!isAuthenticated) {
     if (authScreen === "landing") {
       return (
@@ -2409,13 +2387,16 @@ Reunião vinculada ao Google Agenda:
       <LoginPage
         logoSrc={triforceLogo}
         mode={authMode}
+        passwordRecoveryMode={false}
         loginName={loginName}
         loginEmail={loginEmail}
         loginPassword={loginPassword}
         loginPasswordConfirm={loginPasswordConfirm}
+        recoveryPassword={recoveryPassword}
+        recoveryPasswordConfirm={recoveryPasswordConfirm}
         loginError={loginError}
         loginSuccess={loginSuccess}
-        isReady={isDbLoaded}
+        isReady={isSupabaseConfigured}
         isSubmitting={isLoginSubmitting}
         onModeChange={(mode) => {
           setAuthMode(mode);
@@ -2426,14 +2407,27 @@ Reunião vinculada ao Google Agenda:
         onEmailChange={setLoginEmail}
         onPasswordChange={setLoginPassword}
         onPasswordConfirmChange={setLoginPasswordConfirm}
+        onRecoveryPasswordChange={setRecoveryPassword}
+        onRecoveryPasswordConfirmChange={setRecoveryPasswordConfirm}
         onSubmit={handleLogin}
+        onRecoverySubmit={handleRecoveryPasswordSubmit}
+        onForgotPassword={handleForgotPassword}
         onBackToLanding={() => {
           setLoginError("");
           setLoginSuccess("");
           setAuthMode("login");
+          setPasswordRecoveryMode(false);
           setAuthScreen("landing");
         }}
       />
+    );
+  }
+
+  if (!isDbLoaded) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-zinc-950 text-zinc-400 text-sm">
+        Carregando seu painel...
+      </div>
     );
   }
 
@@ -4353,13 +4347,17 @@ Reunião vinculada ao Google Agenda:
                           onSubmit={(e) => {
                             e.preventDefault();
                             const form = e.target as HTMLFormElement;
-                            const name = (form.elements.namedItem("name") as HTMLInputElement).value;
-                            const email = (form.elements.namedItem("email") as HTMLInputElement).value;
+                            const name = (form.elements.namedItem("name") as HTMLInputElement).value.trim();
+                            const email = (form.elements.namedItem("email") as HTMLInputElement).value.trim().toLowerCase();
                             const role = (form.elements.namedItem("role") as HTMLInputElement).value;
-                            const password = (form.elements.namedItem("password") as HTMLInputElement).value;
                             
-                            if (!name || !email || !password) {
-                              alert("Por favor, preencha nome, e-mail e senha!");
+                            if (!name || !email) {
+                              setCustomAlertMessage("Preencha nome e e-mail.");
+                              return;
+                            }
+
+                            if (permittedUsers.some((u) => u.email.toLowerCase() === email)) {
+                              setCustomAlertMessage("Este e-mail já está cadastrado no perfil.");
                               return;
                             }
 
@@ -4367,8 +4365,7 @@ Reunião vinculada ao Google Agenda:
                               id: email,
                               name,
                               email,
-                              role: role || "Consultor",
-                              password,
+                              role: role || "user",
                               photoUrl: `https://images.unsplash.com/photo-${[
                                 "1534528741775-53994a69daeb",
                                 "1506794778202-cad84cf45f1d",
@@ -4380,6 +4377,7 @@ Reunião vinculada ao Google Agenda:
 
                             setPermittedUsers(prev => [...prev, newUser]);
                             form.reset();
+                            setCustomAlertMessage("Perfil autorizado. O colaborador deve criar/entrar com esse e-mail na tela de login (Auth).");
                           }}
                           className="space-y-4"
                         >
@@ -4417,16 +4415,9 @@ Reunião vinculada ao Google Agenda:
                             </select>
                           </div>
 
-                          <div className="space-y-1">
-                            <label className="text-[9px] uppercase font-mono text-zinc-500 font-bold block">Senha de Acesso</label>
-                            <input
-                              name="password"
-                              type="password"
-                              required
-                              placeholder="Senha corporativa segura"
-                              className="w-full bg-zinc-950 border border-zinc-850 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-emerald-500"
-                            />
-                          </div>
+                          <p className="text-[10px] text-zinc-500 leading-relaxed">
+                            A senha fica só no Supabase Auth. O usuário cria a conta na tela de login; aqui você só define nome/cargo.
+                          </p>
 
                           <button
                             type="submit"
@@ -4471,63 +4462,25 @@ Reunião vinculada ao Google Agenda:
 
                               <div className="flex items-center gap-4">
                                 <div className="text-right">
-                                  <span className="text-[9px] text-zinc-600 uppercase font-mono block">Senha Registrada</span>
-                                  {editingPasswordUserEmail === user.email ? (
-                                    <div className="flex items-center gap-1 mt-1">
-                                      <input
-                                        type="text"
-                                        value={newPasswordInput}
-                                        onChange={(e) => setNewPasswordInput(e.target.value)}
-                                        className="w-24 bg-zinc-900 border border-zinc-700 rounded px-1.5 py-0.5 text-[10px] text-white focus:outline-none focus:border-emerald-500 font-mono"
-                                        placeholder="Nova senha"
-                                        autoFocus
-                                      />
-                                      <button
-                                        onClick={() => {
-                                          if (!newPasswordInput.trim()) {
-                                            setCustomAlertMessage("A senha não pode ser vazia.");
-                                            return;
-                                          }
-                                          const strength = validatePasswordStrength(newPasswordInput.trim());
-                                          if (!strength.isValid) {
-                                            setCustomAlertMessage(`Senha Inválida: ${strength.message}`);
-                                            return;
-                                          }
-                                          setPermittedUsers(prev => prev.map(u => 
-                                            u.email.toLowerCase() === user.email.toLowerCase() ? { ...u, password: newPasswordInput.trim() } : u
-                                          ));
-                                          setEditingPasswordUserEmail(null);
-                                          setNewPasswordInput("");
-                                        }}
-                                        className="p-1 hover:bg-zinc-800 rounded text-emerald-400 cursor-pointer flex items-center justify-center shrink-0"
-                                        title="Salvar"
-                                      >
-                                        <Check size={11} />
-                                      </button>
-                                      <button
-                                        onClick={() => {
-                                          setEditingPasswordUserEmail(null);
-                                          setNewPasswordInput("");
-                                        }}
-                                        className="p-1 hover:bg-zinc-800 rounded text-zinc-500 cursor-pointer flex items-center justify-center shrink-0"
-                                        title="Cancelar"
-                                      >
-                                        <X size={11} />
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <div 
-                                      onClick={() => {
-                                        setEditingPasswordUserEmail(user.email);
-                                        setNewPasswordInput(user.password);
-                                      }}
-                                      className="text-[10px] text-zinc-400 font-mono bg-zinc-900 hover:bg-zinc-850 py-0.5 px-1.5 rounded border border-zinc-850 flex items-center gap-1 cursor-pointer transition-colors mt-0.5"
-                                      title="Clique para alterar a senha deste usuário"
-                                    >
-                                      <span>{"*".repeat(user.password?.length || 8)}</span>
-                                      <Lock size={9} className="text-zinc-500" />
-                                    </div>
-                                  )}
+                                  <span className="text-[9px] text-zinc-600 uppercase font-mono block">Senha (Auth)</span>
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      try {
+                                        await requestPasswordReset(user.email);
+                                        setCustomAlertMessage(`E-mail de redefinição enviado para ${user.email}.`);
+                                      } catch (err) {
+                                        setCustomAlertMessage(
+                                          err instanceof Error ? err.message : "Falha ao enviar e-mail de senha."
+                                        );
+                                      }
+                                    }}
+                                    className="text-[10px] text-emerald-400 font-mono bg-zinc-900 hover:bg-zinc-850 py-0.5 px-1.5 rounded border border-zinc-850 flex items-center gap-1 cursor-pointer transition-colors mt-0.5"
+                                    title="Envia e-mail para o usuário confirmar e trocar a senha"
+                                  >
+                                    <Lock size={9} className="text-emerald-500" />
+                                    <span>Enviar link</span>
+                                  </button>
                                 </div>
 
                                 <button

@@ -89,7 +89,8 @@ function userFromRow(row: Record<string, unknown>): PermittedUser {
     photo: row.photo ? String(row.photo) : undefined,
     photoUrl: row.photo_url ? String(row.photo_url) : undefined,
     role: String(row.role ?? "user"),
-    password: row.password ? String(row.password) : undefined,
+    // Senhas nunca vêm do banco para o client — Auth gerencia credenciais
+    password: undefined,
     googleCalendarLinked: Boolean(row.google_calendar_linked),
   };
 }
@@ -102,7 +103,6 @@ function userToRow(user: PermittedUser) {
     photo: user.photo ?? null,
     photo_url: user.photoUrl ?? null,
     role: user.role,
-    password: user.password ?? user.pass ?? null,
     google_calendar_linked: user.googleCalendarLinked ?? false,
   };
 }
@@ -180,7 +180,10 @@ export const deletePermittedUserFromCloud = async (userId: string) => {
 };
 
 export const loadPermittedUsersFromCloud = async (): Promise<PermittedUser[]> => {
-  const { data, error } = await supabase.from("permitted_users").select("*");
+  // Não seleciona password — credenciais ficam só no Auth
+  const { data, error } = await supabase
+    .from("permitted_users")
+    .select("id, name, email, photo, photo_url, role, google_calendar_linked, created_at, updated_at");
   if (error) {
     handleDbError(error, "list", "permitted_users");
     return [];
@@ -353,11 +356,18 @@ export const signUpWithEmail = async (params: {
   }
 
   const profile = await ensurePermittedUserProfile({ email, name, role: "user" });
-  const needsEmailConfirmation = !data.session;
+
+  // Sem confirmação de e-mail no cadastro: se não houver session, o projeto
+  // ainda exige Confirm email no painel do Supabase.
+  if (!data.session) {
+    throw new Error(
+      "Conta criada, mas o login automático falhou. No Supabase: Authentication → Providers → Email → desative \"Confirm email\", depois entre com seu e-mail e senha."
+    );
+  }
 
   return {
-    profile: data.session ? profile : null,
-    needsEmailConfirmation,
+    profile,
+    needsEmailConfirmation: false,
   };
 };
 
@@ -415,4 +425,42 @@ export const getAuthSessionProfile = async (): Promise<AuthProfile | null> => {
     email.split("@")[0];
 
   return ensurePermittedUserProfile({ email, name: metaName });
+};
+
+/** Envia e-mail de confirmação para redefinir senha (único fluxo que exige e-mail). */
+export const requestPasswordReset = async (email: string): Promise<void> => {
+  if (!isSupabaseConfigured) {
+    throw new Error("Supabase não configurado.");
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+    redirectTo: window.location.origin,
+  });
+
+  if (error) {
+    throw new Error(mapAuthErrorMessage(error.message));
+  }
+};
+
+/** Define nova senha após o usuário abrir o link do e-mail (PASSWORD_RECOVERY). */
+export const updatePasswordAfterRecovery = async (newPassword: string): Promise<void> => {
+  if (!isSupabaseConfigured) {
+    throw new Error("Supabase não configurado.");
+  }
+
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) {
+    throw new Error(mapAuthErrorMessage(error.message));
+  }
+};
+
+export const onAuthStateChange = (
+  callback: (event: string, session: unknown) => void
+) => {
+  if (!isSupabaseConfigured) {
+    return { data: { subscription: { unsubscribe: () => undefined } } };
+  }
+  return supabase.auth.onAuthStateChange((event, session) => {
+    callback(event, session);
+  });
 };

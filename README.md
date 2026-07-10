@@ -37,8 +37,25 @@ No Google Cloud Console → OAuth Client (Web):
 - **Origens JavaScript:** `https://suiterecord-web.onrender.com`
 - **Redirect URIs:** `https://suiterecord-api.onrender.com/api/google/oauth/callback`
 
-### Observações
+## Segurança (multi-tenant)
 
-- Vars `VITE_*` entram no bundle no **build** do static — se mudar, redeploy do web
-- Plano Free: a API pode “dormir”; o 1º request demora ~30–50s
-- Não commite o `.env`
+- Login obrigatório via **Supabase Auth**
+- **RLS** no Postgres: cada usuário só lê/grava as próprias reuniões e o próprio perfil
+- Admin (`role = Administrador`) gerencia usuários, config Suiter e logs
+- Senhas **não** ficam no client nem são listadas no painel
+- Confirmação por e-mail **somente** na troca de senha (“Esqueci a senha”)
+
+### Aplicar RLS no Supabase (obrigatório)
+
+No SQL Editor do projeto, rode o arquivo:
+
+`supabase/migrations/20260710150000_rls_tenant_isolation.sql`
+
+### Auth sem confirmação no cadastro
+
+Supabase → **Authentication → Providers → Email** → desative **Confirm email**.
+
+Mantenha o e-mail ativo para **Reset password**.
+
+Site URL / Redirect URLs = URL do Static Site (Render).
+
