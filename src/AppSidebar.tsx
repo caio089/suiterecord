@@ -114,6 +114,11 @@ export default function AppSidebar({
 
   const primaryNav = [
     {
+      id: "dashboard" as const,
+      label: "Dashboard",
+      icon: BarChart2,
+    },
+    {
       id: "new_meeting" as const,
       label: "Nova reunião",
       icon: Mic,
@@ -124,11 +129,6 @@ export default function AppSidebar({
       label: "Reuniões",
       icon: FileText,
       badge: meetingsCount,
-    },
-    {
-      id: "dashboard" as const,
-      label: "Dashboard",
-      icon: BarChart2,
     },
     {
       id: "backups" as const,
