@@ -4068,7 +4068,11 @@ Reunião vinculada ao Google Agenda:
                 )}
 
                 {activeView === "dashboard" && (
-                  <DashboardView meetings={meetings} />
+                  <DashboardView
+                    meetings={meetings}
+                    currentUserEmail={currentUser?.email || ""}
+                    isAdmin={currentUser?.role === "Administrador"}
+                  />
                 )}
 
                 {activeView === "backups" && (

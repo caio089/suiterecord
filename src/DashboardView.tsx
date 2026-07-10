@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import {
   Activity,
   BarChart2,
@@ -30,6 +30,9 @@ import type { Meeting } from "./types";
 
 type DashboardViewProps = {
   meetings: Meeting[];
+  currentUserEmail: string;
+  /** Se true, pode ver visão da equipe; métricas padrão continuam pessoais. */
+  isAdmin?: boolean;
 };
 
 const MONTH_NAMES = [
@@ -90,7 +93,27 @@ function parseMeetingDate(dateStr: string): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-export default function DashboardView({ meetings }: DashboardViewProps) {
+export default function DashboardView({
+  meetings,
+  currentUserEmail,
+  isAdmin = false,
+}: DashboardViewProps) {
+  const [scope, setScope] = useState<"mine" | "team">(isAdmin ? "mine" : "mine");
+
+  const scopedMeetings = useMemo(() => {
+    const email = currentUserEmail.trim().toLowerCase();
+    if (!email) return [];
+
+    // Sempre isola por dono; admin só amplia se escolher "Equipe"
+    if (isAdmin && scope === "team") {
+      return meetings;
+    }
+
+    return meetings.filter(
+      (m) => (m.createdBy || "").trim().toLowerCase() === email
+    );
+  }, [meetings, currentUserEmail, isAdmin, scope]);
+
   const stats = useMemo(() => {
     const now = new Date();
     const thisMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -129,7 +152,7 @@ export default function DashboardView({ meetings }: DashboardViewProps) {
       minutes: 0,
     }));
 
-    for (const m of meetings) {
+    for (const m of scopedMeetings) {
       totalDuration += m.duration || 0;
       decisions += m.decisions?.length || 0;
       if (m.hasAudio || m.audioRecordingId) withAudio += 1;
@@ -226,16 +249,16 @@ export default function DashboardView({ meetings }: DashboardViewProps) {
     const completionRate =
       totalActions > 0 ? Math.round((completedActions / totalActions) * 100) : 0;
     const avgDurationMin =
-      meetings.length > 0
-        ? Math.round(totalDuration / meetings.length / 60)
+      scopedMeetings.length > 0
+        ? Math.round(totalDuration / scopedMeetings.length / 60)
         : 0;
 
-    const recent = [...meetings]
+    const recent = [...scopedMeetings]
       .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
       .slice(0, 5);
 
     return {
-      totalMeetings: meetings.length,
+      totalMeetings: scopedMeetings.length,
       totalDuration,
       avgDurationMin,
       totalActions,
@@ -269,15 +292,15 @@ export default function DashboardView({ meetings }: DashboardViewProps) {
       weekdayCount,
       recent,
       audioPct:
-        meetings.length > 0
-          ? Math.round((withAudio / meetings.length) * 100)
+        scopedMeetings.length > 0
+          ? Math.round((withAudio / scopedMeetings.length) * 100)
           : 0,
       calendarPct:
-        meetings.length > 0
-          ? Math.round((withCalendar / meetings.length) * 100)
+        scopedMeetings.length > 0
+          ? Math.round((withCalendar / scopedMeetings.length) * 100)
           : 0,
     };
-  }, [meetings]);
+  }, [scopedMeetings]);
 
   const kpis = [
     {
@@ -342,12 +365,42 @@ export default function DashboardView({ meetings }: DashboardViewProps) {
             Dashboard
           </h2>
           <p className="mt-1 text-sm text-zinc-400">
-            Métricas do seu workspace — reuniões, tempo, tarefas e engajamento.
+            {scope === "team"
+              ? "Visão da equipe — todas as reuniões acessíveis."
+              : `Métricas da sua conta · ${currentUserEmail}`}
           </p>
         </div>
-        <div className="inline-flex items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-[11px] text-zinc-400">
-          <TrendingUp size={13} className="text-emerald-400" />
-          {stats.last30Meetings} reuniões · últimos 30 dias
+        <div className="flex flex-wrap items-center gap-2">
+          {isAdmin && (
+            <div className="inline-flex rounded-xl border border-white/[0.06] bg-black/30 p-1">
+              <button
+                type="button"
+                onClick={() => setScope("mine")}
+                className={`rounded-lg px-3 py-1.5 text-[11px] font-semibold transition-colors ${
+                  scope === "mine"
+                    ? "bg-emerald-500 text-black"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                Meus dados
+              </button>
+              <button
+                type="button"
+                onClick={() => setScope("team")}
+                className={`rounded-lg px-3 py-1.5 text-[11px] font-semibold transition-colors ${
+                  scope === "team"
+                    ? "bg-emerald-500 text-black"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                Equipe
+              </button>
+            </div>
+          )}
+          <div className="inline-flex items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-[11px] text-zinc-400">
+            <TrendingUp size={13} className="text-emerald-400" />
+            {stats.last30Meetings} reuniões · últimos 30 dias
+          </div>
         </div>
       </div>
 
