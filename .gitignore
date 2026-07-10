@@ -1,8 +1,34 @@
+# Dependencies
 node_modules/
-build/
+
+# Build / output
 dist/
+build/
 coverage/
-.DS_Store
-*.log
-.env*
+*.tsbuildinfo
+server.js
+
+# Env & secrets (keep example)
+.env
+.env.*
 !.env.example
+
+# Runtime temp (áudio / uploads do server)
+tmp/
+*.webm
+*.wav
+*.ogg
+
+# Logs & OS / IDE
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+.cache/
+.turbo/
+
+# Misc
+*.local

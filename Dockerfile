@@ -1,23 +1,31 @@
-# Suiter Record — container para Fly.io / Cloud Run / qualquer PaaS de container.
-# App stateful (fila de jobs em memória + processamento longo), então roda como
-# servidor persistente, não serverless.
+# Suiter Record — container monolítico (API + static no mesmo processo).
+# No Render preferimos 2 serviços (ver render.yaml). Este Dockerfile serve
+# para Cloud Run / Fly / um único Web Service Docker.
 
 FROM node:22-slim
 
 WORKDIR /app
 
-# Instala dependências primeiro (melhor cache de camadas)
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+ARG VITE_SUPABASE_PUBLISHABLE_KEY
+ARG VITE_GOOGLE_CLIENT_ID
+ARG VITE_API_URL
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
+    VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY \
+    VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY \
+    VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID \
+    VITE_API_URL=$VITE_API_URL \
+    NODE_ENV=production
+
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --include=dev
 
-# Copia o restante do código e gera o build (client Vite + server esbuild)
 COPY . .
-RUN npm run build
+RUN npm run build \
+  && npm prune --omit=dev
 
-# Produção: o server serve os estáticos de dist/ e expõe as rotas /api/*
-ENV NODE_ENV=production
-
-# O PORT é injetado pela plataforma; localmente cai em 3000.
 EXPOSE 3000
 
+# Monolítico: serve dist/ + API (sem API_ONLY)
 CMD ["node", "dist/server.cjs"]

@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef } from "react";
 import { 
   Mic, Square, Pause, Play, Upload, Search, FileText, Sparkles, 
   Plus, Trash2, Settings, Send, Database, Download, CheckSquare, 
-  Tag, ChevronRight, ChevronLeft, Info, X, Activity, FileCode, Check, RefreshCw, AlertCircle,
-  Menu, Lock, Mail, User, LogOut, Calendar, Users, Shield, Edit2, Clock, MapPin, 
-  UserPlus, ExternalLink, ArrowRight, Camera, BarChart2, Eye, EyeOff, Bell, BellRing
+  Tag, ChevronRight, ChevronLeft, Info, X, Activity, Check, RefreshCw, AlertCircle,
+  Menu, Lock, User, LogOut, Calendar, Users, Shield, Edit2, Clock,
+  BarChart2, Eye, EyeOff, Bell, BellRing
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { jsPDF } from "jspdf";
@@ -17,17 +17,12 @@ import {
   Tooltip as ChartTooltip,
   Legend as ChartLegend,
   ResponsiveContainer,
-  AreaChart,
-  Area,
-  PieChart,
-  Pie,
-  Cell
 } from "recharts";
 import triforceLogo from "./assets/images/suiter_record_logo_1783097489467.jpg";
 import { Meeting, SuiterConfig, SuiterLog, PermittedUser, GoogleCalendarEvent } from "./types";
-import { signInAnonymously } from "firebase/auth";
+import LandingPage from "./LandingPage";
+import LoginPage from "./LoginPage";
 import {
-  auth,
   saveMeetingInCloud,
   deleteMeetingInCloud,
   loadMeetingsFromCloud,
@@ -38,9 +33,19 @@ import {
   loadSuiterConfigFromCloud,
   saveSuiterLogsInCloud,
   loadSuiterLogsFromCloud,
-  checkAppInitialized,
-  setAppInitialized
-} from "./firebase";
+} from "./supabase";
+import {
+  connectGoogleCalendar,
+  disconnectGoogleCalendar,
+  getStoredGoogleAccessToken,
+  clearStoredGoogleAccessToken,
+  storeGoogleAccessToken,
+  listGoogleCalendarEvents,
+  createGoogleCalendarEvent,
+  updateGoogleCalendarEvent,
+  buildEventDateTimes,
+} from "./googleCalendar";
+import { apiUrl } from "./api";
 import {
   saveLocalRecording,
   getLocalRecordings,
@@ -48,6 +53,7 @@ import {
   updateLocalRecordingStatus,
   LocalRecording
 } from "./indexedDb";
+import { prepareAudioForStorage, validateAudioFile } from "./audioProcessing";
 
 // Timezone-safe local date helper function
 const getLocalDateString = (dateObj: Date | string) => {
@@ -75,149 +81,6 @@ const validatePasswordStrength = (password: string): { isValid: boolean; message
   }
   return { isValid: true, message: "" };
 };
-
-// PRESET SAMPLE MEETINGS (Provides rich immediate data on load)
-const INITIAL_MEETINGS: Meeting[] = [
-  {
-    id: "mtg_1",
-    title: "Alinhamento de Integração - Base de Dados Suiter",
-    date: "2026-07-02",
-    duration: 312,
-    tags: ["Suiter", "Integração", "Engenharia"],
-    transcript: `Palestrante 1: Bom dia a todos. Vamos dar início à nossa reunião de alinhamento para integrar o novo Plaud Note AI com o sistema interno Suiter. O objetivo principal hoje é definir como os relatórios gerados pela inteligência artificial serão inseridos automaticamente na base de dados central.
-
-Palestrante 2: Perfeito. No lado do Suiter, nós já temos uma API REST pronta que recebe o payload da reunião. Precisamos garantir que os tópicos discutidos e o fluxo de tarefas (as ações definidas) sejam mapeados corretamente.
-
-Palestrante 1: Excelente. Os campos fundamentais da API do Suiter são o título da reunião, visão geral, lista de tópicos em array e o task flow com prioridades. No fluxo de tarefas, cada item precisa ter uma ação, um responsável e uma prioridade (Alta, Média ou Baixa).
-
-Palestrante 2: Maravilha. Eu posso configurar os webhooks de recebimento na porta padrão. O Luiz vai ficar responsável por mapear o token de autenticação Bearer para garantir a segurança no tráfego da rede corporativa.
-
-Palestrante 1: Excelente. Então, como ações imediatas: o Luiz configura o token de autenticação nas variáveis de ambiente do app até amanhã, e a Sofia valida o script de importação da tabela de banco de dados do Suiter para evitar duplicatas. Próxima reunião na sexta-feira. Obrigado a todos.`,
-    overview: "Reunião estratégica para alinhar o mapeamento de APIs entre as transcrições do Plaud Note AI e a base de dados centralizada do sistema interno Suiter, garantindo segurança e fluxo de tarefas automatizado.",
-    topics: [
-      {
-        topic: "Objetivo de Integração da API",
-        details: "Definição do escopo de integração automática de relatórios de IA e tarefas diretamente na base central do Suiter para eliminar retrabalho manual."
-      },
-      {
-        topic: "Estrutura do Payload e Banco de Dados",
-        details: "Mapeamento dos campos obrigatórios da API: título, resumo (overview), lista de tópicos discutidos e fluxo de tarefas detalhado com responsáveis e prioridades."
-      },
-      {
-        topic: "Segurança e Autenticação",
-        details: "Definido o uso de autenticação via Bearer Token nas requisições HTTP para proteger o tráfego de dados na rede corporativa."
-      }
-    ],
-    actions: [
-      {
-        action: "Configurar Token de Autenticação Bearer no Suiter",
-        assignee: "Luiz Silva",
-        priority: "Alta",
-        status: "completed"
-      },
-      {
-        action: "Validar script de importação da tabela de banco de dados",
-        assignee: "Sofia Almeida",
-        priority: "Média",
-        status: "pending"
-      },
-      {
-        action: "Testar envio de payload completo com áudio simulado",
-        assignee: "Luiz Silva",
-        priority: "Alta",
-        status: "pending"
-      }
-    ],
-    participants: {
-      membersTriforce: ["Luiz Silva", "Sofia Almeida", "Renata Souza"],
-      membersClient: ["Carlos Eduardo", "Mariana Dias"]
-    }
-  },
-  {
-    id: "mtg_2",
-    title: "Briefing de Produto: Dispositivo de Gravação de Voz",
-    date: "2026-06-28",
-    duration: 185,
-    tags: ["Produto", "Design", "Planejamento"],
-    transcript: `Palestrante 1: Olá equipe, este é o briefing rápido para alinhar as melhorias na usabilidade física do gravador. O Plaud Note original é ultrafino, se fixa atrás do celular e tem um botão físico para alternar entre gravação de notas de voz gerais ou gravação de chamadas telefônicas. 
-
-Palestrante 2: Exato. Na nossa cópia digital, precisamos focar exclusivamente em gravações físicas locais com microfone. A interface precisa transmitir essa elegância metálica. Vamos criar um visual de ondas magnéticas circulares na tela durante a gravação para reforçar o feedback ao usuário.
-
-Palestrante 1: Perfeito. Além disso, as tags personalizadas e a busca inteligente são prioridades absolutas solicitadas pelos usuários. Eles querem pesquisar termos como 'Suiter' ou 'metas' e ver o que foi falado instantaneamente.
-
-Palestrante 2: Eu vou desenhar o layout do painel lateral e a animação do gravador até o final desta semana. O time de desenvolvimento pode começar a estruturar os prompts do Gemini para transcrição de áudio e extração de tópicos logo em seguida.`,
-    overview: "Alinhamento das diretrizes de design e funcionalidades principais do app de transcrição. Foco na experiência de gravação física por voz, tags de organização e arquitetura do prompt do Gemini.",
-    topics: [
-      {
-        topic: "Conceito Físico & Estética",
-        details: "Modelagem da interface do app inspirada no dispositivo ultrafino Plaud Note, utilizando paleta escura metálica de alta fidelidade e visualização de ondas sonoras."
-      },
-      {
-        topic: "Busca Inteligente & Filtros por Tags",
-        details: "Estruturação de um banco local de reuniões pesquisável através de IA para permitir consultas semânticas avançadas e classificação por tags customizadas."
-      }
-    ],
-    actions: [
-      {
-        action: "Desenhar protótipo de alta fidelidade do visualizador de áudio",
-        assignee: "Design Team",
-        priority: "Média",
-        status: "completed"
-      },
-      {
-        action: "Estruturar prompt do Gemini para extração precisa de tarefas",
-        assignee: "Engenharia de Prompt",
-        priority: "Alta",
-        status: "completed"
-      }
-    ],
-    participants: {
-      membersTriforce: ["Luiz Silva", "Sofia Almeida"],
-      membersClient: ["Carlos Eduardo", "Mariana Dias"]
-    }
-  }
-];
-
-// HELPER TO GENERATE FRESH CALENDAR EVENTS FOR ACTIVE USER WITH REAL DATES
-const getFreshCalendarEvents = (currentUserEmail?: string, currentUserName?: string): GoogleCalendarEvent[] => {
-  const baseEmail = currentUserEmail || "atendimento@triforceconsultoria.com";
-  const baseName = currentUserName ? `${currentUserName} (Triforce)` : "Rodolfo (Triforce)";
-  
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = (today.getMonth() + 1).toString().padStart(2, '0');
-  const day = today.getDate().toString().padStart(2, '0');
-  const dateStr = `${year}-${month}-${day}`;
-
-  return [
-    {
-      id: "cal_recicle",
-      summary: "Workshop Recicle",
-      description: "Workshop de Reciclagem, Economia Circular e Desenvolvimento Sustentável corporativo estruturado pela Triforce.",
-      location: "Google Meet / Presencial",
-      start: { dateTime: `${dateStr}T08:00:00-03:00` },
-      end: { dateTime: `${dateStr}T12:00:00-03:00` },
-      attendees: [
-        { email: baseEmail, displayName: baseName },
-        { email: "contato@reciclealfa.com.br", displayName: "Gestor Recicle" }
-      ]
-    },
-    {
-      id: "cal_3",
-      summary: "Planejamento Estratégico - Assessoria de TI",
-      description: "Discussão de arquitetura de banco de dados do Suiter Record, governança e alocação de squads de engenharia.",
-      location: "Google Meet",
-      start: { dateTime: new Date(Date.now() + 24 * 3600 * 1000).toISOString() }, // Amanhã
-      end: { dateTime: new Date(Date.now() + 25 * 3600 * 1000).toISOString() },
-      attendees: [
-        { email: baseEmail, displayName: baseName },
-        { email: "andre.diretoria@clientealfa.com", displayName: "André Diretor" }
-      ]
-    }
-  ];
-};
-
-const INITIAL_CALENDAR_EVENTS: GoogleCalendarEvent[] = getFreshCalendarEvents();
 
 // Helper function to format Google Calendar events for rendering and resolve rendering issue
 const getEventFormatted = (ev: GoogleCalendarEvent, currentUser?: { name: string; email: string } | null) => {
@@ -433,27 +296,12 @@ export default function App() {
   });
 
   // Login Form States
+  const [authScreen, setAuthScreen] = useState<"landing" | "login">("landing");
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
-  const [showDemoAccountsDropdown, setShowDemoAccountsDropdown] = useState(false);
 
-  // Password Reset & Gmail Login states
-  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
-  const [resetEmail, setResetEmail] = useState("");
-  const [resetNewPassword, setResetNewPassword] = useState("");
-  const [resetConfirmPassword, setResetConfirmPassword] = useState("");
-  const [resetSuccessMessage, setResetSuccessMessage] = useState("");
-  const [resetErrorMessage, setResetErrorMessage] = useState("");
-  const [showGmailPopup, setShowGmailPopup] = useState(false);
-  const [gmailEmailInput, setGmailEmailInput] = useState("");
-  const [gmailError, setGmailError] = useState("");
-  const [isGmailLoading, setIsGmailLoading] = useState(false);
-  const [gmailStep, setGmailStep] = useState<"choose" | "input">("choose");
-  const [gmailMatchedUser, setGmailMatchedUser] = useState<any>(null);
-  const [gmailPasswordInput, setGmailPasswordInput] = useState("");
-
-  // GOOGLE SSO ACCESS TOKEN STATE
+  // GOOGLE CALENDAR ACCESS TOKEN
   const [googleAccessToken, setGoogleAccessToken] = useState<string | null>(null);
 
   // SIDEBAR COLLAPSE STATE
@@ -463,8 +311,7 @@ export default function App() {
   const [newMeetingSubView, setNewMeetingSubView] = useState<"choose" | "agenda" | "custom">("choose");
   const [calendarSelectedDate, setCalendarSelectedDate] = useState(() => getLocalDateString(new Date()));
   const [recordingFormat, setRecordingFormat] = useState<"record" | "import">("record");
-  const [historySubTab, setHistorySubTab] = useState<"activities" | "dashboard">("activities");
-  
+
   // Date and Time confirmation state
   const [meetingConfirmedDate, setMeetingConfirmedDate] = useState("");
   const [meetingConfirmedTime, setMeetingConfirmedTime] = useState("");
@@ -484,210 +331,57 @@ export default function App() {
   const [editingPasswordUserEmail, setEditingPasswordUserEmail] = useState<string | null>(null);
   const [newPasswordInput, setNewPasswordInput] = useState("");
 
-  // AUTHENTICATION HANDLERS
-  const getAuthClient = async () => {
-    try {
-      const { initializeApp } = await import("firebase/app");
-      const { getAuth, GoogleAuthProvider } = await import("firebase/auth");
-      let config: any = null;
-      try {
-        const res = await fetch("/api/firebase-config");
-        if (res.ok) {
-          config = await res.json();
-        }
-      } catch (e) {
-        config = null;
-      }
-      
-      if (config && config.apiKey) {
-        const app = initializeApp(config);
-        const auth = getAuth(app);
-        const provider = new GoogleAuthProvider();
-        provider.addScope("https://www.googleapis.com/auth/calendar");
-        provider.addScope("https://www.googleapis.com/auth/calendar.events");
-        provider.addScope("https://www.googleapis.com/auth/calendar.readonly");
-        provider.addScope("https://www.googleapis.com/auth/calendar.events.readonly");
-        return { auth, provider, GoogleAuthProvider };
-      }
-    } catch (err) {
-      console.warn("Firebase config not available or incomplete:", err);
-    }
-    return { auth: null, provider: null, GoogleAuthProvider: null };
-  };
+  const [isLoginSubmitting, setIsLoginSubmitting] = useState(false);
 
+  // AUTHENTICATION HANDLERS — e-mail + senha, sem etapas extras
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError("");
-    
+
+    if (!isDbLoaded) {
+      setLoginError("Aguarde um instante — ainda estamos preparando o acesso.");
+      return;
+    }
+
+    setIsLoginSubmitting(true);
+
+    const email = loginEmail.trim().toLowerCase();
+    const password = loginPassword;
+
     const user = permittedUsers.find(
-      u => u.email.toLowerCase() === loginEmail.trim().toLowerCase() && u.password === loginPassword
+      (u) =>
+        u.email.toLowerCase() === email &&
+        String(u.password ?? "") === password
     );
-    
+
     if (user) {
-      setIsAuthenticated(true);
-      const userPayload = { name: user.name, email: user.email, role: user.role, photoUrl: user.photoUrl };
+      const userPayload = {
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        photoUrl: user.photoUrl,
+      };
       setCurrentUser(userPayload);
       localStorage.setItem("plaud_authenticated", "true");
       localStorage.setItem("plaud_current_user", JSON.stringify(userPayload));
       setLoginEmail("");
       setLoginPassword("");
+      setIsAuthenticated(true);
     } else {
-      setLoginError("E-mail ou senha inválidos. Por favor, utilize uma das contas corporativas permitidas pelo Administrador.");
+      setLoginError("E-mail ou senha inválidos.");
     }
+
+    setIsLoginSubmitting(false);
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
     setCurrentUser(null);
     setGoogleAccessToken(null);
+    clearStoredGoogleAccessToken();
+    setAuthScreen("landing");
     localStorage.removeItem("plaud_authenticated");
     localStorage.removeItem("plaud_current_user");
-  };
-
-  // PASSWORD RESET HANDLER
-  const handleResetPassword = (e: React.FormEvent) => {
-    e.preventDefault();
-    setResetErrorMessage("");
-    setResetSuccessMessage("");
-
-    if (resetNewPassword !== resetConfirmPassword) {
-      setResetErrorMessage("As senhas não coincidem!");
-      return;
-    }
-
-    const passwordStrength = validatePasswordStrength(resetNewPassword);
-    if (!passwordStrength.isValid) {
-      setResetErrorMessage(`Senha Inválida: ${passwordStrength.message}`);
-      return;
-    }
-
-    const userIdx = permittedUsers.findIndex(u => u.email.toLowerCase() === resetEmail.trim().toLowerCase());
-    if (userIdx === -1) {
-      setResetErrorMessage("E-mail corporativo não cadastrado ou não validado internamente!");
-      return;
-    }
-
-    const updated = [...permittedUsers];
-    updated[userIdx] = { ...updated[userIdx], password: resetNewPassword };
-    setPermittedUsers(updated);
-    localStorage.setItem("suiter_permitted_users", JSON.stringify(updated));
-    setResetSuccessMessage("Senha redefinida com sucesso! Você já pode realizar o acesso.");
-    
-    // Clear fields
-    setResetEmail("");
-    setResetNewPassword("");
-    setResetConfirmPassword("");
-  };
-
-  // GOOGLE SSO CLICK HANDLERS
-  const handleGoogleSignInClick = async () => {
-    setIsGmailLoading(true);
-    setGmailError("");
-    try {
-      const { auth, provider, GoogleAuthProvider } = await getAuthClient();
-      if (auth && provider) {
-        // Real Google SSO Flow using Firebase Pop-up
-        const { signInWithPopup } = await import("firebase/auth");
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
-        const credential = GoogleAuthProvider.credentialFromResult(result);
-        const token = credential?.accessToken || null;
-        
-        if (user && user.email) {
-          const matched = permittedUsers.find(u => u.email.toLowerCase() === user.email!.toLowerCase());
-          if (matched) {
-            if (token) setGoogleAccessToken(token);
-            setIsAuthenticated(true);
-            const userPayload = { 
-              name: matched.name, 
-              email: matched.email, 
-              role: matched.role, 
-              photoUrl: matched.photoUrl || user.photoURL || undefined 
-            };
-            setCurrentUser(userPayload);
-            localStorage.setItem("plaud_authenticated", "true");
-            localStorage.setItem("plaud_current_user", JSON.stringify(userPayload));
-            setShowGmailPopup(false);
-          } else {
-            // Log out from Firebase since they are not authorized in our list
-            await auth.signOut();
-            setGmailError("Esta conta do Google não possui autorização prévia da Triforce Consultoria. Solicite permissão ao administrador.");
-          }
-        }
-      } else {
-        // Fall back to our stunning, user-approved simulated Google Account Chooser
-        setGmailEmailInput("");
-        setGmailError("");
-        setGmailStep("choose");
-        setShowGmailPopup(true);
-      }
-    } catch (err: any) {
-      console.error("Error in Google Sign-In:", err);
-      setGmailError(err.message || "Erro de conexão ao autenticar com o Google.");
-    } finally {
-      setIsGmailLoading(false);
-    }
-  };
-
-  const handleSelectSimulatedAccount = async (user: any) => {
-    setIsGmailLoading(true);
-    setGmailError("");
-    await new Promise((resolve) => setTimeout(resolve, 800)); // smooth realistic sso delay
-    setIsAuthenticated(true);
-    const userPayload = { name: user.name, email: user.email, role: user.role, photoUrl: user.photoUrl };
-    setCurrentUser(userPayload);
-    localStorage.setItem("plaud_authenticated", "true");
-    localStorage.setItem("plaud_current_user", JSON.stringify(userPayload));
-    setShowGmailPopup(false);
-    setIsGmailLoading(false);
-  };
-
-  const handleManualSimulatedEmailSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!gmailEmailInput.trim()) return;
-    setIsGmailLoading(true);
-    setGmailError("");
-    
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    
-    const matched = permittedUsers.find(u => u.email.toLowerCase() === gmailEmailInput.trim().toLowerCase());
-    if (matched) {
-      setIsAuthenticated(true);
-      const userPayload = { name: matched.name, email: matched.email, role: matched.role, photoUrl: matched.photoUrl };
-      setCurrentUser(userPayload);
-      localStorage.setItem("plaud_authenticated", "true");
-      localStorage.setItem("plaud_current_user", JSON.stringify(userPayload));
-      setShowGmailPopup(false);
-    } else {
-      setGmailError("Esta conta do Google não possui autorização prévia da Triforce Consultoria. Solicite permissão ao administrador.");
-    }
-    setIsGmailLoading(false);
-  };
-
-  // PROFILE PHOTO UPLOAD HANDLER
-  const handleProfilePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result as string;
-      if (base64 && currentUser) {
-        const updatedUser = { ...currentUser, photoUrl: base64 };
-        setCurrentUser(updatedUser);
-        localStorage.setItem("plaud_current_user", JSON.stringify(updatedUser));
-
-        const updatedPermitted = permittedUsers.map(user => {
-          if (user.email.toLowerCase() === currentUser.email.toLowerCase()) {
-            return { ...user, photoUrl: base64 };
-          }
-          return user;
-        });
-        setPermittedUsers(updatedPermitted);
-        localStorage.setItem("suiter_permitted_users", JSON.stringify(updatedPermitted));
-      }
-    };
-    reader.readAsDataURL(file);
   };
 
   // MULTI-VIEW NAVIGATION STATE
@@ -718,107 +412,57 @@ export default function App() {
   const [calendarSyncSuccess, setCalendarSyncSuccess] = useState<string | null>(null);
   const [selectedCalendarEvent, setSelectedCalendarEvent] = useState<GoogleCalendarEvent | null>(null);
 
-  // Dynamic Google Calendar Syncing for the logged-in user
+  // Restaura token Google salvo (se ainda válido) ou captura retorno OAuth via redirect
   useEffect(() => {
-    // Clear the previous user's synced events on account change.
-    // Real events are loaded on demand via handleLinkGoogleCalendar / handleRefreshCalendar.
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("google_oauth") === "1" && params.get("access_token")) {
+      const token = params.get("access_token")!;
+      const expiresIn = Number(params.get("expires_in") || 3600);
+      storeGoogleAccessToken(token, expiresIn);
+      setGoogleAccessToken(token);
+      setCalendarSyncSuccess("Agenda Google vinculada com sucesso.");
+      // Limpa a URL sem recarregar
+      const clean = window.location.pathname + window.location.hash;
+      window.history.replaceState({}, "", clean);
+      return;
+    }
+
+    const stored = getStoredGoogleAccessToken();
+    if (stored) setGoogleAccessToken(stored);
+  }, []);
+
+  // Limpa eventos ao trocar de usuário
+  useEffect(() => {
     setGoogleEvents([]);
-  }, [currentUser]);
+    setSelectedCalendarEvent(null);
+  }, [currentUser?.email]);
 
   // REAL GOOGLE CALENDAR SYNC FUNCTIONS
   const fetchRealEvents = async (token: string, dateStr: string) => {
-    try {
-      const startOfDay = new Date(`${dateStr}T00:00:00`);
-      const endOfDay = new Date(`${dateStr}T23:59:59`);
-      
-      const timeMin = startOfDay.toISOString();
-      const timeMax = endOfDay.toISOString();
-      
-      const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime`;
-      
-      const res = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      
-      if (!res.ok) {
-        throw new Error(`Google Calendar API retornou status ${res.status}`);
-      }
-      
-      const data = await res.json();
-      const items = data.items || [];
-      
-      const parsedEvents: GoogleCalendarEvent[] = items.map((item: any) => ({
-        id: item.id,
-        summary: item.summary || "Sem Título",
-        description: item.description || "",
-        location: item.location || "",
-        start: {
-          dateTime: item.start?.dateTime || item.start?.date,
-          date: item.start?.date,
-        },
-        end: {
-          dateTime: item.end?.dateTime || item.end?.date,
-          date: item.end?.date,
-        },
-        attendees: item.attendees?.map((att: any) => ({
-          email: att.email,
-          displayName: att.displayName || att.email.split("@")[0],
-          responseStatus: att.responseStatus,
-        })) || [],
-      }));
-      
-      setGoogleEvents(prev => {
-        const filteredPrev = prev.filter(ev => {
-          const evDate = ev.start?.dateTime || ev.start?.date || "";
-          if (!evDate) return false;
-          const evDateStr = getLocalDateString(evDate);
-          return evDateStr !== dateStr;
-        });
-        return [...filteredPrev, ...parsedEvents];
-      });
-    } catch (err: any) {
-      console.error("Erro ao carregar eventos da agenda real:", err);
-      throw err;
-    }
+    const parsedEvents = await listGoogleCalendarEvents(token, dateStr);
+    setGoogleEvents(parsedEvents);
+    return parsedEvents;
   };
 
   const handleLinkGoogleCalendar = async () => {
     setIsSyncingCalendar(true);
     setCalendarSyncSuccess(null);
     try {
-      const { auth, provider, GoogleAuthProvider } = await getAuthClient();
-      if (auth && provider) {
-        const { signInWithPopup } = await import("firebase/auth");
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
-        const credential = GoogleAuthProvider.credentialFromResult(result);
-        const token = credential?.accessToken || null;
-        
-        if (token) {
-          setGoogleAccessToken(token);
-          if (currentUser) {
-            const updatedUser = { ...currentUser, googleCalendarLinked: true };
-            setCurrentUser(updatedUser);
-            localStorage.setItem("plaud_current_user", JSON.stringify(updatedUser));
-            
-            const updatedPermitted = permittedUsers.map(u => {
-              if (u.email.toLowerCase() === currentUser.email.toLowerCase()) {
-                return { ...u, googleCalendarLinked: true };
-              }
-              return u;
-            });
-            setPermittedUsers(updatedPermitted);
+      const token = await connectGoogleCalendar(true);
+      setGoogleAccessToken(token);
+
+      if (currentUser) {
+        const updatedPermitted = permittedUsers.map((u) => {
+          if (u.email.toLowerCase() === currentUser.email.toLowerCase()) {
+            return { ...u, googleCalendarLinked: true };
           }
-          await fetchRealEvents(token, calendarSelectedDate);
-          setCalendarSyncSuccess("Agenda Google vinculada e sincronizada com sucesso!");
-        } else {
-          throw new Error("Não foi possível obter o token de acesso do Google.");
-        }
-      } else {
-        throw new Error("Erro na configuração do cliente do Google Auth.");
+          return u;
+        });
+        setPermittedUsers(updatedPermitted);
       }
+
+      await fetchRealEvents(token, calendarSelectedDate);
+      setCalendarSyncSuccess("Agenda Google vinculada. Exibindo seus compromissos reais.");
     } catch (err: any) {
       console.error("Erro ao vincular Google Agenda:", err);
       setCalendarSyncSuccess(`Erro ao vincular: ${err.message || err}`);
@@ -827,12 +471,20 @@ export default function App() {
     }
   };
 
+  const handleDisconnectGoogleCalendar = async () => {
+    await disconnectGoogleCalendar(googleAccessToken);
+    setGoogleAccessToken(null);
+    setGoogleEvents([]);
+    setSelectedCalendarEvent(null);
+    setCalendarSyncSuccess("Agenda Google desconectada.");
+  };
+
   const handleRefreshCalendar = async () => {
     if (!googleAccessToken) {
       await handleLinkGoogleCalendar();
       return;
     }
-    
+
     setIsSyncingCalendar(true);
     setCalendarSyncSuccess(null);
     try {
@@ -840,10 +492,108 @@ export default function App() {
       setCalendarSyncSuccess("Agenda atualizada com sucesso!");
     } catch (err: any) {
       console.error("Erro ao atualizar agenda:", err);
-      setCalendarSyncSuccess("Sessão expirou. Re-autenticando...");
+      setCalendarSyncSuccess("Sessão expirou. Reconectando...");
       await handleLinkGoogleCalendar();
     } finally {
       setIsSyncingCalendar(false);
+    }
+  };
+
+  // Recarrega eventos ao mudar a data, se já conectado
+  useEffect(() => {
+    if (!googleAccessToken || newMeetingSubView !== "agenda") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const events = await listGoogleCalendarEvents(googleAccessToken, calendarSelectedDate);
+        if (!cancelled) setGoogleEvents(events);
+      } catch (err) {
+        console.warn("Falha ao recarregar agenda na troca de data:", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [calendarSelectedDate, googleAccessToken, newMeetingSubView]);
+
+  const [isInsertingToCalendar, setIsInsertingToCalendar] = useState(false);
+  const [playingBackupId, setPlayingBackupId] = useState<string | null>(null);
+  const backupAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  /** Envia/atualiza o compromisso na conta Google Calendar do usuário conectado. */
+  const syncMeetingToGoogleCalendar = async (opts: {
+    title: string;
+    date: string;
+    time: string;
+    description?: string;
+    durationMinutes?: number;
+    existingEventId?: string;
+  }) => {
+    let token = googleAccessToken || getStoredGoogleAccessToken();
+    if (!token) {
+      token = await connectGoogleCalendar(true);
+      setGoogleAccessToken(token);
+    }
+
+    const { startDateTime, endDateTime } = buildEventDateTimes(
+      opts.date,
+      opts.time,
+      opts.durationMinutes || 60
+    );
+
+    const payload = {
+      summary: opts.title,
+      description: opts.description || "Criado pelo Suiter Record",
+      startDateTime,
+      endDateTime,
+      attendees: currentUser?.email
+        ? [{ email: currentUser.email, displayName: currentUser.name }]
+        : [],
+    };
+
+    if (opts.existingEventId && !opts.existingEventId.startsWith("cal_")) {
+      return updateGoogleCalendarEvent(token, opts.existingEventId, payload);
+    }
+    return createGoogleCalendarEvent(token, payload);
+  };
+
+  /** Ação explícita: inserir reunião finalizada na Google Agenda do usuário. */
+  const handleInsertMeetingToCalendar = async (meeting: Meeting) => {
+    setIsInsertingToCalendar(true);
+    setCalendarSyncSuccess(null);
+    try {
+      const time =
+        meetingConfirmedTime ||
+        (selectedCalendarEvent?.start?.dateTime
+          ? `${new Date(selectedCalendarEvent.start.dateTime).getHours().toString().padStart(2, "0")}:${new Date(selectedCalendarEvent.start.dateTime).getMinutes().toString().padStart(2, "0")}`
+          : "09:00");
+
+      const synced = await syncMeetingToGoogleCalendar({
+        title: meeting.title,
+        date: meetingConfirmedDate || meeting.date,
+        time,
+        description: `${meeting.overview}\n\n— Inserido pelo Suiter Record`,
+        durationMinutes: Math.max(30, Math.round((meeting.duration || 3600) / 60) || 60),
+        existingEventId: meeting.googleCalendarEventId || selectedCalendarEvent?.id,
+      });
+
+      if (synced) {
+        const updated: Meeting = {
+          ...meeting,
+          googleCalendarEventId: synced.id,
+          tags: meeting.tags?.includes("Google Agenda")
+            ? meeting.tags
+            : [...(meeting.tags || []), "Google Agenda"],
+        };
+        setMeetings((prev) => prev.map((m) => (m.id === meeting.id ? updated : m)));
+        setCalendarSyncSuccess(`Inserido na sua Google Agenda: ${synced.summary}`);
+        setCustomAlertMessage(`Reunião "${meeting.title}" inserida na sua Google Agenda com sucesso.`);
+      }
+    } catch (err: any) {
+      console.error("Falha ao inserir na agenda:", err);
+      setCustomAlertMessage(`Não foi possível inserir na agenda: ${err.message || err}`);
+    } finally {
+      setIsInsertingToCalendar(false);
     }
   };
 
@@ -957,10 +707,6 @@ export default function App() {
   const [isParticipantsModalOpen, setIsParticipantsModalOpen] = useState(false);
   const [editTriforceMembers, setEditTriforceMembers] = useState("");
   const [editClientMembers, setEditClientMembers] = useState("");
-  const [triforceList, setTriforceList] = useState<string[]>([]);
-  const [clientList, setClientList] = useState<string[]>([]);
-  const [newTriforceInput, setNewTriforceInput] = useState("");
-  const [newClientInput, setNewClientInput] = useState("");
 
   // Task edit / add modal state
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
@@ -1012,6 +758,16 @@ export default function App() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Evita timer/stream vazando se o usuário sair da tela gravando
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+    };
+  }, []);
   const recordingSecondsRef = useRef<number>(0);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -1101,18 +857,10 @@ export default function App() {
     }
   };
 
-  // CLOUD PERSISTENCE AND DATA INITIALIZATION FROM FIRESTORE
+  // CLOUD PERSISTENCE — inicialização via Supabase
   useEffect(() => {
     const loadAllData = async () => {
       try {
-        // Ensure user is authenticated anonymously to satisfy security rules before database queries
-        try {
-          if (!auth.currentUser) {
-            await signInAnonymously(auth);
-          }
-        } catch (authError) {
-          console.warn("Autenticação anônima restrita/desativada. Continuando com acesso direto ao Firestore:", authError);
-        }
         // 1. Load Permitted Users
         let pUsers = await loadPermittedUsersFromCloud();
         if (pUsers.length === 0) {
@@ -1141,7 +889,19 @@ export default function App() {
           }
           pUsers = defaultUsers;
         }
-        setPermittedUsers(pUsers);
+        // Garante senha padrão em contas seed sem password no banco (login direto)
+        const withPasswords = pUsers.map((u) => {
+          if (u.password) return u;
+          const email = u.email.toLowerCase();
+          if (email === "atendimento@triforceconsultoria.com") {
+            return { ...u, password: "admin" };
+          }
+          if (email === "consultor@triforceconsultoria.com") {
+            return { ...u, password: "user" };
+          }
+          return u;
+        });
+        setPermittedUsers(withPasswords);
 
         // 2. Load Suiter Config
         const loadedConfig = await loadSuiterConfigFromCloud();
@@ -1164,8 +924,7 @@ export default function App() {
 
         setIsDbLoaded(true);
       } catch (err) {
-        console.error("Error loading initial data from Firestore:", err);
-        // Fallback to local storage or defaults on extreme errors to ensure app works
+        console.error("Error loading initial data from Supabase:", err);
         const savedUsers = localStorage.getItem("suiter_permitted_users");
         if (savedUsers) setPermittedUsers(JSON.parse(savedUsers));
         setIsDbLoaded(true);
@@ -1189,8 +948,7 @@ export default function App() {
       try {
         const loadedMeetings = await loadMeetingsFromCloud();
 
-        // NOTE: mock seeding removed. Sample meetings are never written to the
-        // real Firestore. A fresh database simply starts empty.
+        // Sample meetings are never written to Supabase. A fresh database starts empty.
 
         if (!active) return;
 
@@ -1245,24 +1003,20 @@ export default function App() {
     };
   }, [currentUser?.email, isAuthenticated, isDbLoaded]);
 
-  // SYNC CHANGES TO CLOUD FIRESTORE Safely without overriding or deleting other people's meetings
+  // SYNC CHANGES TO SUPABASE — só upsert; deletes são explícitos no handler de exclusão
   useEffect(() => {
     if (!isDbLoaded || !isMeetingsLoaded) return;
     
     const syncMeetings = async () => {
       try {
-        // NON-DESTRUCTIVE SYNC: Only save/update local meetings. Deletions are made explicitly on button click handlers!
-        // This is 100% immune to race conditions, loading state wipes or database cleanups during logins.
         for (const m of meetings) {
-          // Double check: standard users should never write a meeting without createdBy,
-          // or with someone else's createdBy
           if (currentUser?.role !== "Administrador" && m.createdBy !== currentUser?.email) {
-            continue; // Safety skip
+            continue;
           }
           await saveMeetingInCloud(m);
         }
       } catch (err) {
-        console.error("Failed to sync meetings to cloud safely:", err);
+        console.error("Failed to sync meetings to Supabase:", err);
       }
     };
     
@@ -1483,41 +1237,51 @@ export default function App() {
     draw();
   };
 
-  // Convert blob to base64 and hit Gemini API server transcriber
+  // Convert blob to base64 and hit Groq API server transcriber
   const processRecordedAudio = async (mimeType: string, customBlob?: Blob, customDuration?: number, customTitle?: string) => {
     setIsProcessingAudio(true);
     setProcessingStatus("Agrupando áudio gravado...");
+    setProcessingProgress(5);
 
-    const audioBlob = customBlob || new Blob(audioChunksRef.current, { type: mimeType });
-    const duration = customDuration || recordingSecondsRef.current || 5; // fallback
-
-    // Generate a unique ID for local IndexedDB tracking
-    const localRecordingId = "rec_" + Date.now();
+    const rawBlob = customBlob || new Blob(audioChunksRef.current, { type: mimeType });
     const titleInput = (document.getElementById("custom-meeting-title") as HTMLInputElement)?.value;
     const meetingTitle = customTitle || titleInput || (selectedCalendarEvent ? selectedCalendarEvent.summary : `Reunião Gravada #${meetings.length + 1}`);
+    const localRecordingId = "rec_" + Date.now();
 
     try {
-      // Save locally to IndexedDB IMMEDIATELY to prevent data loss (Crucial Fix for "Perda Total")
-      setProcessingStatus("Salvando backup de segurança no navegador...");
+      setProcessingStatus("Validando e comprimindo áudio para reduzir o peso no armazenamento...");
+      setProcessingProgress(15);
+      const prepared = await prepareAudioForStorage(rawBlob, undefined, (msg) => {
+        setProcessingStatus(msg);
+      });
+
+      const duration = customDuration || prepared.durationSeconds || recordingSecondsRef.current || 5;
+
+      setProcessingStatus(
+        `Salvando backup otimizado (${(prepared.compressedBytes / (1024 * 1024)).toFixed(2)} MB)...`
+      );
+      setProcessingProgress(25);
       const offlineRecording: LocalRecording = {
         id: localRecordingId,
         title: meetingTitle,
         date: getLocalDateString(new Date()),
-        duration: duration,
-        mimeType: mimeType,
-        audioBlob: audioBlob,
+        duration,
+        mimeType: prepared.mimeType,
+        audioBlob: prepared.blob,
         status: "pending",
-        createdBy: currentUser?.email || "atendimento@triforceconsultoria.com"
+        createdBy: currentUser?.email || "atendimento@triforceconsultoria.com",
+        originalBytes: prepared.originalBytes,
+        compressedBytes: prepared.compressedBytes,
       };
       await saveLocalRecording(offlineRecording);
-      await loadBackups(); // Refresh backup list
+      await loadBackups();
 
       setProcessingStatus("Codificando áudio para processamento seguro...");
-      const base64 = await convertBlobToBase64(audioBlob);
+      setProcessingProgress(35);
+      const base64 = await convertBlobToBase64(prepared.blob);
 
       setProcessingStatus("Iniciando Transcrição por Inteligência Artificial...");
       
-      // Build real-world contextual details to feed into Gemini prompt
       const contextText = `
 Usuário que gravou a reunião (Triforce): ${currentUser?.name} (${currentUser?.email})
 Título definido pelo usuário: ${meetingTitle}
@@ -1530,7 +1294,7 @@ Reunião vinculada ao Google Agenda:
 ` : "Gravação direta de áudio (sem evento do Google Agenda vinculado)."}
       `.trim();
 
-      const response = await fetch("/api/transcribe", {
+      const response = await fetch(apiUrl("/api/transcribe"), {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -1538,7 +1302,7 @@ Reunião vinculada ao Google Agenda:
         },
         body: JSON.stringify({
           audioBase64: base64,
-          mimeType,
+          mimeType: prepared.mimeType,
           filename: `gravacao_${Date.now()}`,
           context: contextText
         })
@@ -1565,16 +1329,14 @@ Reunião vinculada ao Google Agenda:
         throw new Error("O servidor não retornou um ID de tarefa de transcrição válido.");
       }
 
-      // Poll the job status asynchronously with real-time progress updates
       const aiResult = await pollTranscriptionJob(startResult.jobId, (msg) => {
         setProcessingStatus(msg);
       });
 
-      // Create new meeting entry
       const newMtg: Meeting = {
         id: `mtg_${Date.now()}`,
         title: meetingTitle,
-        date: getLocalDateString(new Date()),
+        date: meetingConfirmedDate || getLocalDateString(new Date()),
         duration: duration,
         tags: aiResult.suggestedTags || (selectedCalendarEvent ? ["Google Agenda"] : ["Geral"]),
         transcript: aiResult.transcript,
@@ -1592,7 +1354,10 @@ Reunião vinculada ao Google Agenda:
               ? (selectedCalendarEvent.attendees?.map(a => a.displayName || a.email.split("@")[0]).filter(name => name && !name.toLowerCase().includes("suiter") && !name.toLowerCase().includes("atendimento@triforce")) || [])
               : []
         },
-        createdBy: currentUser?.email || "atendimento@triforceconsultoria.com"
+        createdBy: currentUser?.email || "atendimento@triforceconsultoria.com",
+        hasAudio: true,
+        audioRecordingId: localRecordingId,
+        audioSizeBytes: prepared.compressedBytes,
       };
 
       setMeetings(prev => [newMtg, ...prev]);
@@ -1600,13 +1365,16 @@ Reunião vinculada ao Google Agenda:
       setActiveTab("summary");
       setIsMobileSidebarOpen(false);
       setActiveView("history");
+      setProcessingProgress(100);
 
-      // Update backup status to completed
-      await updateLocalRecordingStatus(localRecordingId, "completed");
+      await updateLocalRecordingStatus(localRecordingId, "completed", {
+        meetingId: newMtg.id,
+        overview: newMtg.overview,
+        title: newMtg.title,
+      });
       await loadBackups();
     } catch (err: any) {
       console.error("Falha ao transcrever gravação:", err);
-      // Mark as failed in IndexedDB so they can retry later
       await updateLocalRecordingStatus(localRecordingId, "failed");
       await loadBackups();
       alert(`Falha ao transcrever: ${err.message || err}.\n\nO áudio foi salvo em segurança localmente no menu "Backup de Áudios" (no menu lateral). Você pode tentar reprocessar a transcrição ou fazer o download do arquivo de áudio original lá para garantir que nenhum dado seja perdido.`);
@@ -1705,26 +1473,65 @@ Reunião vinculada ao Google Agenda:
     }
   };
 
-  // FILE UPLOAD HANDLER
+  // FILE UPLOAD HANDLER — valida, comprime e processa áudio pronto
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    // Permite reanexar o mesmo arquivo depois
+    event.target.value = "";
 
-    const reader = new FileReader();
-    setIsProcessingAudio(true);
-    setProcessingStatus(`Carregando arquivo ${file.name}...`);
+    const validation = validateAudioFile(file);
+    if (validation.ok === false) {
+      setCustomAlertMessage(validation.error);
+      return;
+    }
 
-    reader.onload = async () => {
+    (async () => {
+      const localRecordingId = "rec_" + Date.now();
+      setIsProcessingAudio(true);
+      setProcessingProgress(5);
+      setProcessingStatus(`Validando arquivo ${file.name}...`);
+
       try {
-        const base64 = reader.result?.toString().split(",")[1];
-        if (!base64) throw new Error("Falha ao ler o arquivo.");
+        setProcessingStatus("Comprimindo áudio para reduzir o peso no armazenamento...");
+        setProcessingProgress(15);
+        const prepared = await prepareAudioForStorage(file, file.name, (msg) => {
+          setProcessingStatus(msg);
+        });
 
-        setProcessingStatus("Transmitindo áudio para análise do Gemini...");
+        if (prepared.compressedBytes > 12 * 1024 * 1024) {
+          throw new Error(
+            `Mesmo após compressão o áudio ficou com ${(prepared.compressedBytes / (1024 * 1024)).toFixed(1)} MB. Tente um arquivo menor ou em trechos.`
+          );
+        }
 
         const titleInput = (document.getElementById("custom-meeting-title") as HTMLInputElement)?.value;
-        const finalTitle = titleInput || (selectedCalendarEvent ? selectedCalendarEvent.summary : file.name.replace(/\.[^/.]+$/, ""));
+        const finalTitle =
+          titleInput ||
+          (selectedCalendarEvent ? selectedCalendarEvent.summary : file.name.replace(/\.[^/.]+$/, ""));
 
-        // Build real-world context for file uploads
+        setProcessingStatus(
+          `Salvando backup otimizado (${(prepared.compressedBytes / (1024 * 1024)).toFixed(2)} MB, ${prepared.compressionRatio}x menor)...`
+        );
+        setProcessingProgress(25);
+        await saveLocalRecording({
+          id: localRecordingId,
+          title: finalTitle,
+          date: getLocalDateString(new Date()),
+          duration: prepared.durationSeconds,
+          mimeType: prepared.mimeType,
+          audioBlob: prepared.blob,
+          status: "pending",
+          createdBy: currentUser?.email || "atendimento@triforceconsultoria.com",
+          originalBytes: prepared.originalBytes,
+          compressedBytes: prepared.compressedBytes,
+        });
+        await loadBackups();
+
+        setProcessingStatus("Transmitindo áudio comprimido para análise da IA...");
+        setProcessingProgress(40);
+        const base64 = await convertBlobToBase64(prepared.blob);
+
         const contextText = `
 Usuário que fez o upload do arquivo (Triforce): ${currentUser?.name} (${currentUser?.email})
 Título definido ou nome do arquivo: ${finalTitle}
@@ -1737,22 +1544,22 @@ Reunião vinculada ao Google Agenda:
 ` : "Gravação direta via upload (sem evento do Google Agenda vinculado)."}
         `.trim();
 
-        const response = await fetch("/api/transcribe", {
+        const response = await fetch(apiUrl("/api/transcribe"), {
           method: "POST",
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
-            "X-User-Email": currentUser?.email || ""
+            "X-User-Email": currentUser?.email || "",
           },
           body: JSON.stringify({
             audioBase64: base64,
-            mimeType: file.type || "audio/mpeg",
+            mimeType: prepared.mimeType,
             filename: file.name,
-            context: contextText
-          })
+            context: contextText,
+          }),
         });
 
         if (!response.ok) {
-          const errData = await response.json();
+          const errData = await response.json().catch(() => ({}));
           throw new Error(errData.error || "Erro ao processar o arquivo de áudio");
         }
 
@@ -1761,7 +1568,6 @@ Reunião vinculada ao Google Agenda:
           throw new Error("O servidor não retornou um ID de tarefa válido para processamento de áudio.");
         }
 
-        // Poll the job status asynchronously with real-time progress updates
         const aiResult = await pollTranscriptionJob(startResult.jobId, (msg) => {
           setProcessingStatus(msg);
         });
@@ -1769,8 +1575,8 @@ Reunião vinculada ao Google Agenda:
         const newMtg: Meeting = {
           id: `mtg_${Date.now()}`,
           title: finalTitle,
-          date: getLocalDateString(new Date()),
-          duration: 120, // generic estimate
+          date: meetingConfirmedDate || getLocalDateString(new Date()),
+          duration: prepared.durationSeconds,
           tags: aiResult.suggestedTags || ["Upload"],
           transcript: aiResult.transcript,
           overview: aiResult.overview,
@@ -1778,33 +1584,53 @@ Reunião vinculada ao Google Agenda:
           actions: aiResult.actions || [],
           decisions: aiResult.decisions || [],
           participants: {
-            membersTriforce: (aiResult.participants?.membersTriforce && aiResult.participants.membersTriforce.length > 0)
-              ? aiResult.participants.membersTriforce
-              : [currentUser?.name || "Consultor Triforce"],
-            membersClient: (aiResult.participants?.membersClient && aiResult.participants.membersClient.length > 0)
-              ? aiResult.participants.membersClient
-              : selectedCalendarEvent 
-                ? (selectedCalendarEvent.attendees?.map(a => a.displayName || a.email.split("@")[0]).filter(name => name && !name.toLowerCase().includes("suiter") && !name.toLowerCase().includes("atendimento@triforce")) || [])
-                : []
+            membersTriforce:
+              aiResult.participants?.membersTriforce?.length > 0
+                ? aiResult.participants.membersTriforce
+                : [currentUser?.name || "Consultor Triforce"],
+            membersClient:
+              aiResult.participants?.membersClient?.length > 0
+                ? aiResult.participants.membersClient
+                : selectedCalendarEvent
+                  ? selectedCalendarEvent.attendees
+                      ?.map((a) => a.displayName || a.email.split("@")[0])
+                      .filter(
+                        (name) =>
+                          name &&
+                          !name.toLowerCase().includes("suiter") &&
+                          !name.toLowerCase().includes("atendimento@triforce")
+                      ) || []
+                  : [],
           },
-          createdBy: currentUser?.email || "atendimento@triforceconsultoria.com"
+          createdBy: currentUser?.email || "atendimento@triforceconsultoria.com",
+          hasAudio: true,
+          audioRecordingId: localRecordingId,
+          audioSizeBytes: prepared.compressedBytes,
         };
 
-        setMeetings(prev => [newMtg, ...prev]);
+        setMeetings((prev) => [newMtg, ...prev]);
         setSelectedMeetingId(newMtg.id);
         setActiveTab("summary");
         setIsMobileSidebarOpen(false);
         setActiveView("history");
+        setProcessingProgress(100);
+
+        await updateLocalRecordingStatus(localRecordingId, "completed", {
+          meetingId: newMtg.id,
+          overview: newMtg.overview,
+          title: newMtg.title,
+        });
+        await loadBackups();
       } catch (err: any) {
         console.error("Erro no upload do arquivo:", err);
+        await updateLocalRecordingStatus(localRecordingId, "failed").catch(() => undefined);
+        await loadBackups();
         alert(`Erro ao processar o arquivo de áudio: ${err.message || err}`);
       } finally {
         setIsProcessingAudio(false);
         setProcessingStatus("");
       }
-    };
-
-    reader.readAsDataURL(file);
+    })();
   };
 
   // Helper to read blob data to base64
@@ -1827,7 +1653,7 @@ Reunião vinculada ao Google Agenda:
     const maxPolls = 180; // Up to 15 minutes of max processing for extremely long recordings
     
     for (let i = 0; i < maxPolls; i++) {
-      const response = await fetch(`/api/transcribe/status/${jobId}`, {
+      const response = await fetch(apiUrl(`/api/transcribe/status/${jobId}`), {
         headers: {
           "X-User-Email": currentUser?.email || ""
         }
@@ -2280,6 +2106,7 @@ Reunião vinculada ao Google Agenda:
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   // EXPORT TO SUITER SYSTEM API
@@ -2288,7 +2115,7 @@ Reunião vinculada ao Google Agenda:
     setLatestExportLog(null);
 
     try {
-      const response = await fetch("/api/export-suiter", {
+      const response = await fetch(apiUrl("/api/export-suiter"), {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -2344,7 +2171,7 @@ Reunião vinculada ao Google Agenda:
     setSmartAnswer(null);
 
     try {
-      const response = await fetch("/api/smart-search", {
+      const response = await fetch(apiUrl("/api/smart-search"), {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -2432,131 +2259,33 @@ Reunião vinculada ao Google Agenda:
     return matchesSearch && matchesTag;
   });
 
-  // Render Login view if not authenticated
+  // Render landing / login if not authenticated
   if (!isAuthenticated) {
+    if (authScreen === "landing") {
+      return (
+        <LandingPage
+          logoSrc={triforceLogo}
+          onEnter={() => setAuthScreen("login")}
+        />
+      );
+    }
+
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-zinc-950 p-4 relative overflow-hidden font-sans text-white select-none">
-        
-        {/* Futuristic glowing ambient background */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-emerald-500/5 blur-3xl pointer-events-none"></div>
-        
-        <div className="w-full max-w-md bg-zinc-900/80 border border-zinc-800 rounded-2xl p-6 sm:p-8 shadow-2xl relative z-10 backdrop-blur-md">
-          
-          {/* Logo & Brand Header */}
-          <div className="flex flex-col items-center text-center mb-6">
-            <img 
-              src={triforceLogo} 
-              alt="Suiter Record Logo" 
-              className="w-16 h-16 rounded-2xl object-cover border border-zinc-800 shadow-[0_0_25px_rgba(16,185,129,0.35)] mb-3"
-            />
-            <h1 className="font-semibold text-2xl tracking-tight text-white">
-              Suiter <span className="text-emerald-500">Record</span>
-            </h1>
-            <p className="text-xs text-zinc-400 mt-1">
-              Plataforma Corporativa de Transcrição e Notas de IA
-            </p>
-          </div>
-
-          {/* Error Message */}
-          {loginError && (
-            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-2 text-xs text-red-400">
-              <AlertCircle size={14} className="shrink-0 mt-0.5" />
-              <span>{loginError}</span>
-            </div>
-          )}
-
-          {/* Form */}
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-zinc-400 mb-1.5 uppercase tracking-wider">
-                E-mail Corporativo
-              </label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-zinc-500">
-                  <Mail size={16} />
-                </span>
-                <input
-                  type="email"
-                  required
-                  placeholder="ex: atendimento@triforceconsultoria.com"
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-zinc-400 mb-1.5 uppercase tracking-wider">
-                Senha de Acesso
-              </label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-zinc-500">
-                  <Lock size={16} />
-                </span>
-                <input
-                  type="password"
-                  required
-                  placeholder="••••••••••••"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500 transition-colors"
-                />
-              </div>
-              <div className="flex justify-end mt-1.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setResetErrorMessage("");
-                    setResetSuccessMessage("");
-                    setShowResetPasswordModal(true);
-                  }}
-                  className="text-[10px] text-zinc-500 hover:text-emerald-400 font-medium transition-colors cursor-pointer"
-                >
-                  Esqueci minha senha
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-black font-bold rounded-xl text-sm shadow-lg shadow-emerald-950/20 active:scale-[0.99] transition-all cursor-pointer mt-2"
-            >
-              Acessar Painel
-            </button>
-          </form>
-
-          {/* Social Login Divider & Button */}
-          <div className="relative my-4 flex items-center justify-center">
-            <span className="absolute w-full border-t border-zinc-800"></span>
-            <span className="relative bg-[#18181b] px-3 text-[9px] text-zinc-500 uppercase font-mono tracking-wider">ou</span>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleGoogleSignInClick}
-            className="w-full py-2.5 bg-zinc-950 border border-zinc-800 hover:bg-zinc-900 text-zinc-300 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md mb-2"
-          >
-            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05" />
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335" />
-            </svg>
-            Entrar com Google (Gmail)
-          </button>
-
-          {/* Security Banner / Restriction info */}
-          <div className="mt-6 pt-6 border-t border-zinc-800/60 text-center">
-            <div className="text-[10px] text-zinc-500 bg-zinc-950/40 p-2.5 rounded-lg border border-zinc-800/40 leading-relaxed mb-4">
-              🛡️ <b>Sistema Corporativo Restrito:</b> Criação de contas desabilitada por política de segurança institucional da Suiter. Apenas usuários cadastrados têm permissão.
-            </div>
-
-          </div>
-
-        </div>
-      </div>
+      <LoginPage
+        logoSrc={triforceLogo}
+        loginEmail={loginEmail}
+        loginPassword={loginPassword}
+        loginError={loginError}
+        isReady={isDbLoaded}
+        isSubmitting={isLoginSubmitting}
+        onEmailChange={setLoginEmail}
+        onPasswordChange={setLoginPassword}
+        onSubmit={handleLogin}
+        onBackToLanding={() => {
+          setLoginError("");
+          setAuthScreen("landing");
+        }}
+      />
     );
   }
 
@@ -2675,7 +2404,7 @@ Reunião vinculada ao Google Agenda:
           >
             <div className="flex items-center gap-3">
               <Clock size={15} />
-              <span>Backup de Áudios</span>
+              <span>Histórico de Áudios</span>
             </div>
             {localBackups.length > 0 && (
               <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold border ${
@@ -2933,9 +2662,9 @@ Reunião vinculada ao Google Agenda:
                 <Clock size={20} />
               </div>
               <div>
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-1">Backup de Áudios</h3>
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-1">Histórico de Áudios</h3>
                 <p className="text-[11px] text-zinc-400 leading-relaxed">
-                  Gerencie gravações salvas em cache local para reprocessamento ou download, garantindo resiliência offline absoluta.
+                  Resumo das reuniões com áudio no seu armazenamento. Escuta opcional.
                 </p>
               </div>
             </div>
@@ -3129,6 +2858,14 @@ Reunião vinculada ao Google Agenda:
                           PDF
                         </button>
                         <button
+                          onClick={() => handleInsertMeetingToCalendar(selectedMeeting)}
+                          disabled={isInsertingToCalendar}
+                          className="px-2 py-1 rounded bg-blue-950/50 hover:bg-blue-900/60 border border-blue-500/30 text-[10px] text-blue-300 font-mono transition-colors disabled:opacity-50"
+                          title="Inserir na Google Agenda"
+                        >
+                          {selectedMeeting.googleCalendarEventId ? "Agenda ✓" : "Inserir Agenda"}
+                        </button>
+                        <button
                           onClick={() => triggerDocxExport(selectedMeeting)}
                           className="px-2 py-1 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-850 text-[10px] text-zinc-400 font-mono transition-colors"
                           title="DOCX"
@@ -3202,6 +2939,19 @@ Reunião vinculada ao Google Agenda:
                           >
                             <Download size={12} className="text-red-400" />
                             PDF
+                          </button>
+                          <button
+                            onClick={() => handleInsertMeetingToCalendar(selectedMeeting)}
+                            disabled={isInsertingToCalendar}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-950/40 hover:bg-blue-900/50 border border-blue-500/30 text-xs font-medium text-blue-300 transition-colors cursor-pointer disabled:opacity-50"
+                            title="Inserir esta reunião na sua Google Agenda"
+                          >
+                            <Calendar size={12} />
+                            {isInsertingToCalendar
+                              ? "Inserindo..."
+                              : selectedMeeting.googleCalendarEventId
+                                ? "Já na Agenda"
+                                : "Inserir na Agenda"}
                           </button>
                           <button
                             onClick={() => triggerDocxExport(selectedMeeting)}
@@ -4055,23 +3805,46 @@ Reunião vinculada ao Google Agenda:
                               />
                             </div>
 
-                            {/* Sincronizar Button */}
-                            <button
-                              onClick={handleRefreshCalendar}
-                              disabled={isSyncingCalendar}
-                              className="w-full py-2 px-3 rounded-xl border border-zinc-800 hover:border-blue-500/30 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                            >
-                              {isSyncingCalendar ? (
-                                <span className="w-3 h-3 rounded-full border border-zinc-500 border-t-white animate-spin"></span>
-                              ) : (
-                                <RefreshCw size={12} className="text-blue-400" />
-                              )}
-                              {googleAccessToken ? "Atualizar Agenda Real" : "Conectar Google Agenda"}
-                            </button>
+                            {googleAccessToken ? (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={handleRefreshCalendar}
+                                  disabled={isSyncingCalendar}
+                                  className="flex-1 py-2 px-3 rounded-xl border border-zinc-800 hover:border-blue-500/30 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                                >
+                                  {isSyncingCalendar ? (
+                                    <span className="w-3 h-3 rounded-full border border-zinc-500 border-t-white animate-spin"></span>
+                                  ) : (
+                                    <RefreshCw size={12} className="text-blue-400" />
+                                  )}
+                                  Atualizar Agenda
+                                </button>
+                                <button
+                                  onClick={handleDisconnectGoogleCalendar}
+                                  className="px-3 py-2 rounded-xl border border-zinc-800 hover:border-red-500/40 text-zinc-400 hover:text-red-300 text-xs cursor-pointer"
+                                  title="Desconectar Google Agenda"
+                                >
+                                  <LogOut size={12} />
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={handleLinkGoogleCalendar}
+                                disabled={isSyncingCalendar}
+                                className="w-full py-2 px-3 rounded-xl border border-blue-500/40 hover:border-blue-400 bg-blue-950/40 hover:bg-blue-900/40 text-blue-100 font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                              >
+                                {isSyncingCalendar ? (
+                                  <span className="w-3 h-3 rounded-full border border-zinc-500 border-t-white animate-spin"></span>
+                                ) : (
+                                  <Calendar size={12} className="text-blue-300" />
+                                )}
+                                Conectar Google Agenda
+                              </button>
+                            )}
 
                             {!googleAccessToken && (
                               <p className="text-[9px] text-zinc-500 text-center leading-relaxed">
-                                Clique acima para autenticar com seu Google Workspace e buscar compromissos reais de forma segura.
+                                Autorize o acesso à sua conta Google para ver e criar compromissos na sua própria agenda.
                               </p>
                             )}
 
@@ -4352,7 +4125,7 @@ Reunião vinculada ao Google Agenda:
                                   Anexar Gravação de Áudio Pronta
                                 </h4>
                                 <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">
-                                  Se você já possui o arquivo da gravação (de um gravador físico Plaud ou outra plataforma), anexe-o aqui para transcrição e análise automática.
+                                  Anexe um áudio pronto (Plaud, celular, etc.). O sistema valida o formato e comprime antes de salvar, para não pesar no armazenamento.
                                 </p>
 
                                 <div className="mt-4">
@@ -4365,13 +4138,13 @@ Reunião vinculada ao Google Agenda:
                                       Clique para selecionar ou arraste o arquivo aqui
                                     </span>
                                     <span className="text-[9px] text-zinc-500 font-mono">
-                                      Formatos aceitos: MP3, WAV, M4A, WEBM, AAC (até 25MB)
+                                      MP3, WAV, M4A, WEBM, OGG, AAC · até 100 MB (comprimido automaticamente)
                                     </span>
                                   </label>
                                   <input
                                     id="file-upload-input-custom"
                                     type="file"
-                                    accept="audio/*"
+                                    accept="audio/*,.mp3,.wav,.m4a,.webm,.ogg,.aac,.flac,.mp4"
                                     onChange={handleFileUpload}
                                     className="hidden"
                                   />
@@ -4978,15 +4751,14 @@ Reunião vinculada ao Google Agenda:
 
                 {activeView === "backups" && (
                   <div className="max-w-4xl mx-auto space-y-6 py-4 px-4 sm:px-6">
-                    {/* Header */}
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-800 pb-4">
                       <div>
                         <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
                           <span className="p-1 rounded bg-zinc-800 text-emerald-400"><Clock size={14} /></span>
-                          Backup Local de Áudios Gravados
+                          Histórico de Áudios / Reuniões
                         </h2>
                         <p className="text-xs text-zinc-400 mt-1">
-                          Gravações de segurança em cache local (IndexedDB) para garantir proteção contra falhas de conexão ou timeouts.
+                          Resumo das reuniões com áudio no seu armazenamento local. Escuta opcional — o foco é o histórico.
                         </p>
                       </div>
                       <button
@@ -4994,116 +4766,194 @@ Reunião vinculada ao Google Agenda:
                         className="py-1.5 px-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white text-xs font-medium border border-zinc-800 hover:border-zinc-750 transition-all flex items-center gap-1.5 cursor-pointer"
                       >
                         <RefreshCw size={12} />
-                        Sincronizar Lista
+                        Atualizar
                       </button>
                     </div>
 
-                    {localBackups.length === 0 ? (
-                      <div className="p-12 text-center border border-dashed border-zinc-800 rounded-2xl bg-zinc-900/10">
-                        <AlertCircle className="mx-auto text-zinc-600 mb-3" size={32} />
-                        <h3 className="text-sm font-bold text-zinc-300">Nenhum backup local encontrado</h3>
-                        <p className="text-xs text-zinc-500 max-w-md mx-auto mt-1">
-                          Gravações iniciadas a partir deste navegador serão salvas automaticamente como backups de segurança aqui.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 p-4 rounded-xl flex items-start gap-3">
-                          <Info size={16} className="shrink-0 mt-0.5 text-amber-400" />
-                          <div className="text-xs leading-relaxed">
-                            <span className="font-bold">Proteção Ativa contra Perda de Dados:</span> Se uma gravação longa (ex: mais de 1 hora) falhar devido a limites de rede ou timeout do Gemini, ela fica guardada aqui. Você pode <span className="font-bold">reprocessar a transcrição</span> diretamente ou fazer o <span className="font-bold">download do arquivo de áudio original</span>.
-                          </div>
-                        </div>
+                    {(() => {
+                      // Une reuniões do banco + backups locais em um resumo único
+                      const byMeetingId = new Map<string, LocalRecording>();
+                      for (const b of localBackups) {
+                        if (b.meetingId) byMeetingId.set(b.meetingId, b);
+                        byMeetingId.set(b.id, b);
+                      }
 
-                        <div className="grid grid-cols-1 gap-3">
-                          {localBackups.map((backup) => {
-                            const sizeInMb = (backup.audioBlob.size / (1024 * 1024)).toFixed(2);
+                      const summaries = [
+                        ...meetings
+                          .filter((m) => m.hasAudio || m.audioRecordingId || byMeetingId.has(m.id) || byMeetingId.has(m.audioRecordingId || ""))
+                          .map((m) => {
+                            const backup =
+                              (m.audioRecordingId && localBackups.find((b) => b.id === m.audioRecordingId)) ||
+                              localBackups.find((b) => b.meetingId === m.id);
+                            return {
+                              key: m.id,
+                              title: m.title,
+                              date: m.date,
+                              duration: m.duration,
+                              overview: m.overview,
+                              status: backup?.status || (m.hasAudio ? "completed" : "pending"),
+                              sizeBytes: m.audioSizeBytes || backup?.compressedBytes || backup?.audioBlob?.size || 0,
+                              backup,
+                              meeting: m,
+                            };
+                          }),
+                        ...localBackups
+                          .filter((b) => !meetings.some((m) => m.id === b.meetingId || m.audioRecordingId === b.id))
+                          .map((b) => ({
+                            key: b.id,
+                            title: b.title,
+                            date: b.date,
+                            duration: b.duration,
+                            overview: b.overview || "Áudio salvo localmente — aguardando ou sem ata vinculada.",
+                            status: b.status,
+                            sizeBytes: b.compressedBytes || b.audioBlob.size,
+                            backup: b,
+                            meeting: null as Meeting | null,
+                          })),
+                      ].sort((a, b) => b.date.localeCompare(a.date) || b.key.localeCompare(a.key));
+
+                      if (summaries.length === 0) {
+                        return (
+                          <div className="p-12 text-center border border-dashed border-zinc-800 rounded-2xl bg-zinc-900/10">
+                            <AlertCircle className="mx-auto text-zinc-600 mb-3" size={32} />
+                            <h3 className="text-sm font-bold text-zinc-300">Nenhuma reunião com áudio ainda</h3>
+                            <p className="text-xs text-zinc-500 max-w-md mx-auto mt-1">
+                              Grave ou anexe um áudio em Nova Reunião. Os resumos aparecerão aqui automaticamente.
+                            </p>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-3">
+                          <div className="bg-zinc-900/40 border border-zinc-800 text-zinc-400 p-3 rounded-xl text-xs leading-relaxed flex gap-2">
+                            <Info size={14} className="shrink-0 mt-0.5 text-emerald-400" />
+                            Áudios são validados e comprimidos antes de salvar (mono 16 kHz / Opus) para não pesar no armazenamento do cliente.
+                          </div>
+
+                          {summaries.map((item) => {
+                            const sizeMb = (item.sizeBytes / (1024 * 1024)).toFixed(2);
                             return (
-                              <div 
-                                key={backup.id} 
-                                className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 hover:bg-zinc-900/40 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
+                              <div
+                                key={item.key}
+                                className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 hover:bg-zinc-900/50 transition-all space-y-3"
                               >
-                                <div className="space-y-1.5">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <h3 className="text-sm font-bold text-white tracking-tight">{backup.title}</h3>
-                                    <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded uppercase border ${
-                                      backup.status === "completed"
-                                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                                        : backup.status === "failed"
-                                        ? "bg-red-500/10 text-red-400 border-red-500/20"
-                                        : "bg-amber-500/10 text-amber-400 border-amber-500/20 animate-pulse"
-                                    }`}>
-                                      {backup.status === "completed" 
-                                        ? "Transcrito" 
-                                        : backup.status === "failed" 
-                                        ? "Erro de Envio" 
-                                        : "Processando"}
-                                    </span>
+                                <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
+                                  <div className="min-w-0 space-y-1.5">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <h3 className="text-sm font-bold text-white tracking-tight truncate">{item.title}</h3>
+                                      <span
+                                        className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded uppercase border ${
+                                          item.status === "completed"
+                                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                            : item.status === "failed"
+                                              ? "bg-red-500/10 text-red-400 border-red-500/20"
+                                              : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                                        }`}
+                                      >
+                                        {item.status === "completed"
+                                          ? "Transcrito"
+                                          : item.status === "failed"
+                                            ? "Falhou"
+                                            : "Pendente"}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-zinc-400 leading-relaxed line-clamp-2">
+                                      {item.overview || "Sem resumo disponível."}
+                                    </p>
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-500">
+                                      <span className="flex items-center gap-1">
+                                        <Clock size={11} />
+                                        {Math.floor(item.duration / 60)}m {item.duration % 60}s
+                                      </span>
+                                      <span>•</span>
+                                      <span>{sizeMb} MB</span>
+                                      <span>•</span>
+                                      <span>{item.date}</span>
+                                    </div>
                                   </div>
-                                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-500">
-                                    <span className="flex items-center gap-1"><Clock size={11} />{Math.floor(backup.duration / 60)}m {backup.duration % 60}s</span>
-                                    <span>•</span>
-                                    <span>{sizeInMb} MB</span>
-                                    <span>•</span>
-                                    <span>{backup.date}</span>
-                                    {backup.createdBy && (
-                                      <>
-                                        <span>•</span>
-                                        <span className="text-zinc-600 font-mono text-[10px]">{backup.createdBy}</span>
-                                      </>
+
+                                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                                    {item.meeting && (
+                                      <button
+                                        onClick={() => {
+                                          setSelectedMeetingId(item.meeting!.id);
+                                          setActiveView("history");
+                                          setActiveTab("summary");
+                                        }}
+                                        className="py-1.5 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold border border-zinc-700 cursor-pointer"
+                                      >
+                                        Ver ata
+                                      </button>
+                                    )}
+
+                                    {item.backup && (item.backup.status === "failed" || item.backup.status === "pending") && (
+                                      <button
+                                        onClick={async () => {
+                                          await processRecordedAudio(
+                                            item.backup!.mimeType,
+                                            item.backup!.audioBlob,
+                                            item.backup!.duration,
+                                            item.backup!.title
+                                          );
+                                        }}
+                                        className="py-1.5 px-3 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-black text-xs font-bold cursor-pointer flex items-center gap-1.5"
+                                      >
+                                        <RefreshCw size={12} />
+                                        Reprocessar IA
+                                      </button>
+                                    )}
+
+                                    {item.backup?.audioBlob && (
+                                      <button
+                                        onClick={() => {
+                                          if (playingBackupId === item.backup!.id) {
+                                            backupAudioRef.current?.pause();
+                                            setPlayingBackupId(null);
+                                            return;
+                                          }
+                                          if (backupAudioRef.current) {
+                                            backupAudioRef.current.pause();
+                                          }
+                                          const url = URL.createObjectURL(item.backup!.audioBlob);
+                                          const audio = new Audio(url);
+                                          backupAudioRef.current = audio;
+                                          setPlayingBackupId(item.backup!.id);
+                                          audio.onended = () => {
+                                            setPlayingBackupId(null);
+                                            URL.revokeObjectURL(url);
+                                          };
+                                          audio.play().catch(() => setPlayingBackupId(null));
+                                        }}
+                                        className="py-1.5 px-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-xs font-medium border border-zinc-800 cursor-pointer flex items-center gap-1.5"
+                                      >
+                                        {playingBackupId === item.backup.id ? <Pause size={12} /> : <Play size={12} />}
+                                        {playingBackupId === item.backup.id ? "Pausar" : "Ouvir"}
+                                      </button>
+                                    )}
+
+                                    {item.backup && (
+                                      <button
+                                        onClick={async () => {
+                                          if (confirm("Excluir este áudio do armazenamento local?")) {
+                                            await deleteLocalRecording(item.backup!.id);
+                                            await loadBackups();
+                                          }
+                                        }}
+                                        className="p-2 rounded-lg bg-zinc-900 hover:bg-red-950/30 text-zinc-500 hover:text-red-400 border border-zinc-800 cursor-pointer"
+                                        title="Apagar áudio local"
+                                      >
+                                        <Trash2 size={12} />
+                                      </button>
                                     )}
                                   </div>
-                                </div>
-
-                                <div className="flex flex-wrap items-center gap-2">
-                                  {(backup.status === "failed" || backup.status === "pending") && (
-                                    <button
-                                      onClick={async () => {
-                                        // Trigger reprocessing
-                                        await processRecordedAudio(backup.mimeType, backup.audioBlob, backup.duration, backup.title);
-                                      }}
-                                      className="py-1.5 px-3 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-black text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-[0_0_10px_rgba(16,185,129,0.15)]"
-                                    >
-                                      <RefreshCw size={12} />
-                                      Reprocessar IA
-                                    </button>
-                                  )}
-
-                                  <button
-                                    onClick={() => {
-                                      // Trigger file download
-                                      const url = URL.createObjectURL(backup.audioBlob);
-                                      const a = document.createElement("a");
-                                      a.href = url;
-                                      a.download = `${backup.title.replace(/\s+/g, "_")}_audio.${backup.mimeType.split("/")[1] || "webm"}`;
-                                      a.click();
-                                      URL.revokeObjectURL(url);
-                                    }}
-                                    className="py-1.5 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold border border-zinc-700 hover:border-zinc-600 transition-all cursor-pointer flex items-center gap-1.5"
-                                  >
-                                    <Download size={12} />
-                                    Baixar Áudio
-                                  </button>
-
-                                  <button
-                                    onClick={async () => {
-                                      if (confirm("Deseja realmente excluir este backup local do seu navegador?")) {
-                                        await deleteLocalRecording(backup.id);
-                                        await loadBackups();
-                                      }
-                                    }}
-                                    className="p-2 rounded-lg bg-zinc-900 hover:bg-red-950/30 text-zinc-500 hover:text-red-400 border border-zinc-800 hover:border-red-900/20 transition-all cursor-pointer"
-                                    title="Apagar Backup"
-                                  >
-                                    <Trash2 size={12} />
-                                  </button>
                                 </div>
                               </div>
                             );
                           })}
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 )}
               </div>
@@ -5388,227 +5238,6 @@ Reunião vinculada ao Google Agenda:
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
               <span>Análise Espectral de Voz</span>
             </div>
-          </div>
-        )}
-
-        {/* MODAL: RESET PASSWORD */}
-        {showResetPasswordModal && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-zinc-900 border border-zinc-800 w-full max-w-sm rounded-2xl p-6 relative"
-            >
-              <button 
-                onClick={() => setShowResetPasswordModal(false)}
-                className="absolute top-4 right-4 text-zinc-400 hover:text-white cursor-pointer"
-              >
-                <X size={16} />
-              </button>
-              
-              <div className="mb-4 text-center">
-                <Lock size={20} className="mx-auto text-emerald-400 mb-2" />
-                <h3 className="font-bold text-white text-base">Redefinir Senha de Acesso</h3>
-                <p className="text-[10px] text-zinc-400 mt-1">Valide seu e-mail corporativo para definir uma nova senha local.</p>
-              </div>
-
-              {resetErrorMessage && (
-                <div className="mb-3 p-2 bg-rose-500/15 border border-rose-500/20 text-rose-400 rounded-lg text-xs">
-                  {resetErrorMessage}
-                </div>
-              )}
-
-              {resetSuccessMessage && (
-                <div className="mb-3 p-2 bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 rounded-lg text-xs">
-                  {resetSuccessMessage}
-                </div>
-              )}
-
-              <form onSubmit={handleResetPassword} className="space-y-3">
-                <div>
-                  <label className="block text-[9px] uppercase font-mono text-zinc-500 font-bold mb-1">E-mail Corporativo Cadastrado</label>
-                  <input 
-                    type="email"
-                    required
-                    placeholder="atendimento@triforceconsultoria.com"
-                    value={resetEmail}
-                    onChange={(e) => setResetEmail(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-850 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[9px] uppercase font-mono text-zinc-500 font-bold mb-1">Nova Senha</label>
-                  <input 
-                    type="password"
-                    required
-                    placeholder="Digite a nova senha segura"
-                    value={resetNewPassword}
-                    onChange={(e) => setResetNewPassword(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-850 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[9px] uppercase font-mono text-zinc-500 font-bold mb-1">Confirmar Nova Senha</label>
-                  <input 
-                    type="password"
-                    required
-                    placeholder="Confirme a nova senha"
-                    value={resetConfirmPassword}
-                    onChange={(e) => setResetConfirmPassword(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-850 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-
-                <button 
-                  type="submit"
-                  className="w-full mt-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-black font-bold text-xs rounded-xl transition-all cursor-pointer"
-                >
-                  Confirmar Redefinição
-                </button>
-              </form>
-            </motion.div>
-          </div>
-        )}
-
-        {/* POPUP: GMAIL SOCIAL LOGIN (Internally validated accounts only) */}
-        {/* POPUP: GMAIL SOCIAL LOGIN (Fully operational multi-step Google SSO simulation) */}
-        {showGmailPopup && (
-          <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <motion.div 
-              initial={{ opacity: 0, y: 15, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              className="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-2xl p-7 relative shadow-2xl"
-            >
-              {/* Close Button */}
-              <button 
-                onClick={() => setShowGmailPopup(false)}
-                className="absolute top-4 right-4 text-zinc-400 hover:text-white cursor-pointer transition-colors p-1 hover:bg-zinc-800 rounded"
-              >
-                <X size={16} />
-              </button>
-              
-              {/* Google Brand Header */}
-              <div className="text-center mb-6">
-                <svg className="w-8 h-8 mx-auto mb-3" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05" />
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335" />
-                </svg>
-                <h3 className="font-bold text-white text-lg tracking-tight">Escolha uma conta</h3>
-                <p className="text-xs text-zinc-400 mt-1">para continuar no Suiter Record</p>
-              </div>
-
-              {gmailError && (
-                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400 leading-relaxed font-medium">
-                  ❌ {gmailError}
-                </div>
-              )}
-
-              {isGmailLoading ? (
-                <div className="py-12 flex flex-col items-center justify-center gap-3">
-                  <div className="w-8 h-8 rounded-full border-2 border-blue-500/20 border-t-blue-500 animate-spin"></div>
-                  <span className="text-xs text-zinc-400 font-mono">Autenticando via Google SSO...</span>
-                </div>
-              ) : (
-                <>
-                  {/* STEP 1: Account List Chooser (Simulated SSO) */}
-                  {gmailStep === "choose" && (
-                    <div className="space-y-2">
-                      <div className="max-h-60 overflow-y-auto pr-1 custom-scrollbar space-y-1.5">
-                        {permittedUsers.map((user) => (
-                          <button
-                            key={user.email}
-                            onClick={() => handleSelectSimulatedAccount(user)}
-                            className="w-full text-left p-3 rounded-xl border border-zinc-800 bg-zinc-950/40 hover:bg-zinc-850/80 hover:border-zinc-700 transition-all cursor-pointer flex items-center justify-between gap-3 group"
-                          >
-                            <div className="flex items-center gap-3">
-                              <img
-                                src={user.photoUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80"}
-                                alt={user.name}
-                                className="w-8 h-8 rounded-full object-cover border border-zinc-800"
-                              />
-                              <div>
-                                <h4 className="text-xs font-bold text-white group-hover:text-blue-400 transition-colors">{user.name}</h4>
-                                <p className="text-[10px] text-zinc-500 font-mono mt-0.5">{user.email}</p>
-                              </div>
-                            </div>
-                            <span className="text-[8px] bg-zinc-900 border border-zinc-850 text-zinc-400 py-0.5 px-1.5 rounded uppercase font-mono tracking-wider">
-                              {user.role === "Administrador" ? "Admin" : "User"}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-
-                      <div className="border-t border-zinc-800/80 pt-3 mt-3">
-                        <button
-                          onClick={() => {
-                            setGmailEmailInput("");
-                            setGmailStep("input");
-                            setGmailError("");
-                          }}
-                          className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-850 transition-colors cursor-pointer text-left group"
-                        >
-                          <div className="w-8 h-8 rounded-full bg-zinc-950 border border-zinc-800 flex items-center justify-center text-zinc-500 group-hover:text-white group-hover:bg-zinc-900 transition-all">
-                            <User size={14} />
-                          </div>
-                          <div>
-                            <span className="text-xs font-semibold text-zinc-300 group-hover:text-white transition-colors">Usar outra conta</span>
-                            <span className="text-[9px] text-zinc-500 block mt-0.5">Entrar com um e-mail corporativo diferente</span>
-                          </div>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* STEP 2: Manual Gmail Input */}
-                  {gmailStep === "input" && (
-                    <form onSubmit={handleManualSimulatedEmailSubmit} className="space-y-4">
-                      <div className="space-y-1.5">
-                        <label className="block text-[10px] uppercase font-mono text-zinc-400 font-bold">Endereço de E-mail do Google</label>
-                        <input 
-                          type="email"
-                          required
-                          placeholder="ex: atendimento@triforceconsultoria.com"
-                          value={gmailEmailInput}
-                          onChange={(e) => {
-                            setGmailEmailInput(e.target.value);
-                            setGmailError("");
-                          }}
-                          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-2.5 px-3.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500 transition-all focus:ring-1 focus:ring-blue-500/20"
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between pt-2">
-                        <button 
-                          type="button"
-                          onClick={() => {
-                            setGmailStep("choose");
-                            setGmailError("");
-                          }}
-                          className="text-[10px] text-zinc-400 hover:text-white transition-colors cursor-pointer flex items-center gap-1"
-                        >
-                          <ChevronLeft size={12} /> Voltar para lista
-                        </button>
-
-                        <button 
-                          type="submit"
-                          className="py-2 px-5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
-                        >
-                          Próximo <ArrowRight size={12} />
-                        </button>
-                      </div>
-                    </form>
-                  )}
-                </>
-              )}
-
-              <div className="text-[9px] text-center text-zinc-500 mt-6 pt-4 border-t border-zinc-800/50 leading-relaxed">
-                ⚠️ Por questões de segurança corporativa da Triforce, apenas contas previamente autorizadas podem realizar login via Google SSO.
-              </div>
-            </motion.div>
           </div>
         )}
 

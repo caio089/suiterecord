@@ -26,6 +26,14 @@ export interface Meeting {
     membersClient: string[];
   };
   createdBy?: string; // email of the user who recorded/uploaded the meeting
+  /** ID do evento no Google Calendar (após "Inserir na Agenda") */
+  googleCalendarEventId?: string;
+  /** Há áudio associado (backup local / storage) */
+  hasAudio?: boolean;
+  /** Referência ao backup local IndexedDB */
+  audioRecordingId?: string;
+  /** Tamanho do áudio comprimido em bytes */
+  audioSizeBytes?: number;
 }
 
 export interface PermittedUser {

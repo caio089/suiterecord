@@ -5,8 +5,13 @@ coverage
 tmp
 .git
 .claude
+.idea
+.vscode
 *.log
 .env
 .env.*
 !.env.example
 REVISAO-SUITER-RECORD.md
+*.webm
+*.wav
+*.tsbuildinfo

@@ -1,0 +1,73 @@
+# Suiter Record — 2 serviços no Render
+# 1) suiterecord-web  → Static Site (frontend Vite)
+# 2) suiterecord-api  → Web Service (Express / Groq / OAuth)
+#
+# Ordem sugerida:
+# 1. Deploy da API primeiro
+# 2. Anote a URL (ex: https://suiterecord-api.onrender.com)
+# 3. Deploy do Static com VITE_API_URL apontando para a API
+# 4. Na API, defina FRONTEND_URL / APP_URL / CORS_ORIGINS com a URL do static
+# 5. Google OAuth:
+#    - Origem JS: URL do static
+#    - Redirect URI: https://SEU-API.onrender.com/api/google/oauth/callback
+
+services:
+  # ---------- BACKEND ----------
+  - type: web
+    name: suiterecord-api
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm ci --include=dev && npm run build:api
+    startCommand: npm run start:api
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: API_ONLY
+        value: "true"
+      - key: GROQ_API_KEY
+        sync: false
+      # URL do frontend static (CORS + postMessage OAuth)
+      - key: FRONTEND_URL
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      # Opcional: se RENDER_EXTERNAL_URL não bastar
+      - key: API_PUBLIC_URL
+        sync: false
+      - key: VITE_GOOGLE_CLIENT_ID
+        sync: false
+      - key: API_GOOGLE_CALENDAR_TOKEN
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: SECRET_GOOGLE_CLIENT_ID
+        sync: false
+
+  # ---------- FRONTEND ----------
+  - type: web
+    name: suiterecord-web
+    runtime: static
+    plan: free
+    region: oregon
+    buildCommand: npm ci --include=dev && npm run build:web
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+      - key: VITE_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: VITE_GOOGLE_CLIENT_ID
+        sync: false
+      # URL pública da API (obrigatório no build do static)
+      - key: VITE_API_URL
+        sync: false

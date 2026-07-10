@@ -7,6 +7,11 @@ export interface LocalRecording {
   audioBlob: Blob;
   status: "pending" | "completed" | "failed";
   createdBy: string;
+  /** Reunião associada após a transcrição */
+  meetingId?: string;
+  overview?: string;
+  originalBytes?: number;
+  compressedBytes?: number;
 }
 
 const DB_NAME = "SuiterRecorderOfflineDB";
@@ -26,7 +31,7 @@ function openDB(): Promise<IDBDatabase> {
       resolve(request.result);
     };
 
-    request.onupgradeneeded = (event) => {
+    request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: "id" });
@@ -101,11 +106,18 @@ export async function deleteLocalRecording(id: string): Promise<void> {
   }
 }
 
-export async function updateLocalRecordingStatus(id: string, status: "pending" | "completed" | "failed"): Promise<void> {
+export async function updateLocalRecordingStatus(
+  id: string,
+  status: "pending" | "completed" | "failed",
+  extras?: Partial<Pick<LocalRecording, "meetingId" | "overview" | "title">>
+): Promise<void> {
   try {
     const recording = await getLocalRecording(id);
     if (recording) {
       recording.status = status;
+      if (extras?.meetingId) recording.meetingId = extras.meetingId;
+      if (extras?.overview) recording.overview = extras.overview;
+      if (extras?.title) recording.title = extras.title;
       await saveLocalRecording(recording);
     }
   } catch (error) {
