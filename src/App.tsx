@@ -8,20 +8,13 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { jsPDF } from "jspdf";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as ChartTooltip,
-  Legend as ChartLegend,
-  ResponsiveContainer,
-} from "recharts";
 import triforceLogo from "./assets/images/suiter_record_logo_1783097489467.jpg";
 import { Meeting, SuiterConfig, SuiterLog, PermittedUser, GoogleCalendarEvent } from "./types";
 import LandingPage from "./LandingPage";
 import LoginPage, { type AuthMode } from "./LoginPage";
+import AppSidebar from "./AppSidebar";
+import AppTopBar from "./AppTopBar";
+import DashboardView from "./DashboardView";
 import {
   saveMeetingInCloud,
   deleteMeetingInCloud,
@@ -62,8 +55,6 @@ import {
   updateLocalRecordingStatus,
 } from "./indexedDb";
 import { prepareAudioForStorage, validateAudioFile } from "./audioProcessing";
-import AppSidebar from "./AppSidebar";
-import AppTopBar from "./AppTopBar";
 
 // Timezone-safe local date helper function
 const getLocalDateString = (dateObj: Date | string) => {
@@ -706,54 +697,6 @@ export default function App() {
 
   // Active meeting context
   const selectedMeeting = meetings.find(m => m.id === selectedMeetingId) || null;
-
-  // Aggregated data for Recharts Dashboard
-  const getMonthlyChartData = () => {
-    const monthDataMap: { [key: string]: { month: string; rawMonth: string; totalDuration: number; completedTasks: number; totalTasks: number } } = {};
-    const sortedMeetings = [...meetings].sort((a, b) => a.date.localeCompare(b.date));
-    
-    sortedMeetings.forEach(m => {
-      if (!m.date) return;
-      const parts = m.date.split("-");
-      if (parts.length < 2) return;
-      
-      const yearMonth = `${parts[0]}-${parts[1]}`;
-      const monthNames = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-      const monthIndex = parseInt(parts[1], 10) - 1;
-      const prettyMonth = (monthIndex >= 0 && monthIndex < 12) 
-        ? `${monthNames[monthIndex]}/${parts[0].substring(2)}` 
-        : yearMonth;
-        
-      if (!monthDataMap[yearMonth]) {
-        monthDataMap[yearMonth] = {
-          month: prettyMonth,
-          rawMonth: yearMonth,
-          totalDuration: 0,
-          completedTasks: 0,
-          totalTasks: 0
-        };
-      }
-      
-      monthDataMap[yearMonth].totalDuration += Math.round(m.duration / 60);
-      
-      if (m.actions && Array.isArray(m.actions)) {
-        m.actions.forEach(a => {
-          monthDataMap[yearMonth].totalTasks += 1;
-          if (a.status === "completed") {
-            monthDataMap[yearMonth].completedTasks += 1;
-          }
-        });
-      }
-    });
-    
-    const dataArray = Object.values(monthDataMap).sort((a, b) => a.rawMonth.localeCompare(b.rawMonth));
-    if (dataArray.length === 0) {
-      return [
-        { month: "Sem dados", totalDuration: 0, completedTasks: 0, totalTasks: 0 }
-      ];
-    }
-    return dataArray;
-  };
 
   // Triforce logo loading state
   const [logoBase64, setLogoBase64] = useState<string>("");
@@ -4275,167 +4218,7 @@ Reunião vinculada ao Google Agenda:
                 )}
 
                 {activeView === "dashboard" && (
-                  <div className="max-w-4xl mx-auto space-y-6 py-4 px-4 sm:px-6">
-                    {/* Header */}
-                    <div>
-                      <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-                        <span className="p-1 rounded bg-zinc-800 text-emerald-400"><BarChart2 size={14} /></span>
-                        Painel de Desempenho & Dashboard
-                      </h2>
-                      <p className="text-xs text-zinc-400 mt-1">
-                        Gráficos analíticos consolidados de duração das reuniões e status de execução das tarefas do plano de ação.
-                      </p>
-                    </div>
-
-                    {/* Summary numbers inside Dashboard */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/20">
-                        <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider">Média de Duração</span>
-                        <div className="text-xl font-bold text-white font-mono mt-1">
-                          {meetings.length > 0 
-                            ? Math.round(meetings.reduce((acc, m) => acc + m.duration, 0) / meetings.length / 60)
-                            : 0} min / reunião
-                        </div>
-                        <p className="text-[9px] text-zinc-500 mt-1">Média aritmética simples</p>
-                      </div>
-                      
-                      <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/20">
-                        <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider">Total de Tarefas Extraídas</span>
-                        <div className="text-xl font-bold text-white font-mono mt-1">
-                          {meetings.reduce((acc, m) => acc + (m.actions?.length || 0), 0)}
-                        </div>
-                        <p className="text-[9px] text-zinc-500 mt-1">Identificadas por Inteligência Artificial</p>
-                      </div>
-
-                      <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/20">
-                        <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider">Taxa de Conclusão</span>
-                        <div className="text-xl font-bold text-emerald-400 font-mono mt-1">
-                          {(() => {
-                            const total = meetings.reduce((acc, m) => acc + (m.actions?.length || 0), 0);
-                            const completed = meetings.reduce((acc, m) => acc + (m.actions?.filter(a => a.status === "completed").length || 0), 0);
-                            return total > 0 ? `${Math.round((completed / total) * 100)}%` : "0%";
-                          })()}
-                        </div>
-                        <p className="text-[9px] text-zinc-500 mt-1">Das tarefas designadas</p>
-                      </div>
-                    </div>
-
-                    {/* Charts Grid */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {/* Chart 1: Meeting Duration */}
-                      <div className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 space-y-4">
-                        <div>
-                          <h4 className="text-xs font-bold text-white uppercase tracking-wider">Duração Mensal Total</h4>
-                          <p className="text-[10px] text-zinc-400 mt-0.5">Soma total de minutos de reuniões por mês</p>
-                        </div>
-                        <div className="h-64 w-full">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart
-                              data={getMonthlyChartData()}
-                              margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                            >
-                              <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                              <XAxis 
-                                dataKey="month" 
-                                stroke="#71717a" 
-                                fontSize={10} 
-                                tickLine={false} 
-                              />
-                              <YAxis 
-                                stroke="#71717a" 
-                                fontSize={10} 
-                                tickLine={false} 
-                                unit=" min"
-                              />
-                              <ChartTooltip
-                                contentStyle={{
-                                  backgroundColor: "#090b0e",
-                                  borderColor: "#27272a",
-                                  borderRadius: "8px",
-                                  fontSize: "11px",
-                                  color: "#fff"
-                                }}
-                              />
-                              <Bar 
-                                dataKey="totalDuration" 
-                                name="Duração (Minutos)" 
-                                fill="#10b981" 
-                                radius={[4, 4, 0, 0]} 
-                              />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </div>
-
-                      {/* Chart 2: Completed Tasks */}
-                      <div className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/40 space-y-4">
-                        <div>
-                          <h4 className="text-xs font-bold text-white uppercase tracking-wider">Tarefas Concluídas</h4>
-                          <p className="text-[10px] text-zinc-400 mt-0.5">Contagem de tarefas concluídas vs pendentes por mês</p>
-                        </div>
-                        <div className="h-64 w-full">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart
-                              data={getMonthlyChartData()}
-                              margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                            >
-                              <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                              <XAxis 
-                                dataKey="month" 
-                                stroke="#71717a" 
-                                fontSize={10} 
-                                tickLine={false} 
-                              />
-                              <YAxis 
-                                stroke="#71717a" 
-                                fontSize={10} 
-                                tickLine={false} 
-                              />
-                              <ChartTooltip
-                                contentStyle={{
-                                  backgroundColor: "#090b0e",
-                                  borderColor: "#27272a",
-                                  borderRadius: "8px",
-                                  fontSize: "11px",
-                                  color: "#fff"
-                                }}
-                              />
-                              <ChartLegend 
-                                wrapperStyle={{ fontSize: "10px", marginTop: "10px" }}
-                              />
-                              <Bar 
-                                dataKey="completedTasks" 
-                                name="Concluídas" 
-                                fill="#10b981" 
-                                stackId="tasks"
-                                radius={[0, 0, 0, 0]} 
-                              />
-                              <Bar 
-                                dataKey="totalTasks" 
-                                name="Total de Tarefas" 
-                                fill="#27272a" 
-                                stroke="#71717a"
-                                strokeWidth={0.5}
-                                stackId="total"
-                                radius={[4, 4, 0, 0]} 
-                              />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Logo Watermark Footer */}
-                    <div className="flex flex-col items-center justify-center pt-8 border-t border-zinc-850 opacity-40 hover:opacity-70 transition-opacity">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-zinc-500 font-mono text-[9px] tracking-wider uppercase">SUPORTADO POR</span>
-                        <span className="text-white font-bold text-xs">TRIFORCE CONSULTORIA</span>
-                      </div>
-                      <p className="text-[9px] text-zinc-600 font-mono italic">
-                        "Desenvolvida pela Triforce Consultoria, para uso exclusivo interno"
-                      </p>
-                    </div>
-                  </div>
+                  <DashboardView meetings={meetings} />
                 )}
 
                 {activeView === "backups" && (
