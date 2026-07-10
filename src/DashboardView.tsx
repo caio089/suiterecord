@@ -357,7 +357,7 @@ export default function DashboardView({
   ];
 
   return (
-    <div className="custom-scrollbar mx-auto h-full max-w-6xl space-y-6 overflow-y-auto px-4 py-5 sm:px-6">
+    <div className="custom-scrollbar mx-auto h-full max-w-6xl space-y-5 overflow-y-auto px-3 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:space-y-6 sm:px-6 sm:py-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="font-display flex items-center gap-2 text-xl font-bold tracking-tight text-white">

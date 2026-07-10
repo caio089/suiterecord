@@ -2742,7 +2742,7 @@ Reunião vinculada ao Google Agenda:
                 </div>
 
                 {/* TAB WINDOW CONTENT */}
-                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar sm:p-6">
                   
                   {/* TRANSCRIPT TAB */}
                   {activeTab === "transcript" && (
@@ -3242,7 +3242,7 @@ Reunião vinculada ao Google Agenda:
                 transition={{ duration: 0.2, ease: "easeInOut" }}
                 className="flex-1 flex flex-col h-full overflow-hidden"
               >
-                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar bg-zinc-950">
+                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-zinc-950 sm:p-6">
                 {activeView === "history" && (
                   <div className="max-w-5xl mx-auto space-y-8 py-4">
                     {/* Welcome Banner */}

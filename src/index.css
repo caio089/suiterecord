@@ -163,3 +163,34 @@ body {
   background: rgba(255, 255, 255, 0.08);
   border-radius: 10px;
 }
+
+/* Mobile / touch */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+.landing-page {
+  -webkit-overflow-scrolling: touch;
+}
+
+.landing-page ::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .app-shell {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .app-sidebar {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@media (pointer: coarse) {
+  .nav-item {
+    min-height: 2.75rem;
+  }
+}

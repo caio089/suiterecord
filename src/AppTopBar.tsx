@@ -43,12 +43,12 @@ export default function AppTopBar({
   onLogout,
 }: AppTopBarProps) {
   return (
-    <header className="app-topbar flex h-14 shrink-0 items-center justify-between gap-3 px-3 sm:h-16 sm:px-5">
-      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+    <header className="app-topbar flex h-14 shrink-0 items-center justify-between gap-2 px-3 pt-[env(safe-area-inset-top)] sm:h-16 sm:gap-3 sm:px-5">
+      <div className="flex min-w-0 items-center gap-1.5 sm:gap-3">
         <button
           type="button"
           onClick={onToggleMobileSidebar}
-          className="rounded-xl p-2 text-zinc-400 transition-colors hover:bg-white/[0.05] hover:text-white md:hidden"
+          className="rounded-xl p-2.5 text-zinc-400 transition-colors hover:bg-white/[0.05] hover:text-white md:hidden"
           title="Abrir menu"
         >
           <Menu size={18} />
@@ -82,11 +82,11 @@ export default function AppTopBar({
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
         <button
           type="button"
           onClick={onToggleSmartSearch}
-          className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
+          className={`inline-flex min-h-10 items-center gap-1.5 rounded-xl px-2.5 py-2 text-xs font-semibold transition-all sm:px-3 ${
             showSmartSearch
               ? "bg-emerald-500 text-black shadow-[0_8px_20px_-10px_rgba(16,185,129,0.7)]"
               : "border border-white/[0.06] bg-white/[0.03] text-emerald-300 hover:bg-white/[0.06] hover:text-emerald-200"
@@ -97,22 +97,24 @@ export default function AppTopBar({
         </button>
 
         {userName && (
-          <div className="hidden items-center gap-2 border-l border-white/[0.06] pl-3 sm:flex">
-            <div className="hidden text-right lg:block">
-              <p className="text-xs leading-none font-semibold text-white">
-                {userName}
-              </p>
-              <p className="mt-1 text-[10px] text-zinc-500">{userRole}</p>
+          <>
+            <div className="hidden items-center gap-2 border-l border-white/[0.06] pl-3 sm:flex">
+              <div className="hidden text-right lg:block">
+                <p className="text-xs leading-none font-semibold text-white">
+                  {userName}
+                </p>
+                <p className="mt-1 text-[10px] text-zinc-500">{userRole}</p>
+              </div>
             </div>
             <button
               type="button"
               onClick={onLogout}
-              className="rounded-xl p-2 text-zinc-400 transition-colors hover:bg-red-500/10 hover:text-red-300"
+              className="rounded-xl p-2.5 text-zinc-400 transition-colors hover:bg-red-500/10 hover:text-red-300"
               title="Sair"
             >
               <LogOut size={15} />
             </button>
-          </div>
+          </>
         )}
       </div>
     </header>
