@@ -179,7 +179,7 @@ export default function AppSidebar({
 
   return (
     <aside
-      className={`app-sidebar relative z-20 flex h-full shrink-0 flex-col overflow-hidden transition-[width,opacity] duration-300 ease-out ${
+      className={`app-sidebar relative z-20 hidden h-full shrink-0 flex-col overflow-hidden transition-[width,opacity] duration-300 ease-out md:flex ${
         hidden
           ? "w-0 border-0 opacity-0 pointer-events-none"
           : compact

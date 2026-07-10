@@ -15,6 +15,8 @@ import LoginPage, { type AuthMode } from "./LoginPage";
 import AppSidebar from "./AppSidebar";
 import AppTopBar from "./AppTopBar";
 import DashboardView from "./DashboardView";
+import MobileBottomNav from "./MobileBottomNav";
+import MobileMoreSheet from "./MobileMoreSheet";
 import {
   saveMeetingInCloud,
   deleteMeetingInCloud,
@@ -308,6 +310,7 @@ export default function App() {
 
   // MOBILE RESPONSIVENESS STATES
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isMobileMoreOpen, setIsMobileMoreOpen] = useState(false);
 
   // CUSTOM IN-APP CONFIRMATION AND DIALOG STATES
   const [meetingToDeleteId, setMeetingToDeleteId] = useState<string | null>(null);
@@ -2408,7 +2411,7 @@ Reunião vinculada ao Google Agenda:
       />
 
       {/* CENTER: CORE WORKSPACE */}
-      <div className="flex min-w-0 flex-1 flex-col bg-transparent">
+      <div className="app-main-mobile flex min-w-0 flex-1 flex-col bg-transparent">
         
         <AppTopBar
           sidebarCollapsed={isSidebarCollapsed}
@@ -4874,7 +4877,7 @@ Reunião vinculada ao Google Agenda:
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              className="fixed bottom-6 right-6 z-[10000] max-w-sm w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-4 shadow-2xl flex gap-3 items-start"
+            className="fixed bottom-24 right-4 z-[10000] max-w-sm w-[calc(100%-2rem)] bg-zinc-900 border border-zinc-800 rounded-2xl p-4 shadow-2xl flex gap-3 items-start md:bottom-6 md:right-6 md:w-full"
             >
               <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shrink-0">
                 <BellRing size={16} className="animate-pulse" />
@@ -4895,6 +4898,33 @@ Reunião vinculada ao Google Agenda:
         </AnimatePresence>
 
       </div>
+
+      <MobileBottomNav
+        activeView={activeView}
+        backupsHaveFailed={localBackups.some((b) => b.status === "failed")}
+        isRecording={isRecording}
+        onNavigate={(view) => {
+          setActiveView(view);
+          if (view !== "history") setSelectedMeetingId(null);
+          setIsMobileMoreOpen(false);
+        }}
+        onOpenMore={() => setIsMobileMoreOpen(true)}
+      />
+
+      <MobileMoreSheet
+        open={isMobileMoreOpen}
+        isAdmin={currentUser?.role === "Administrador"}
+        userName={currentUser?.name || "Usuário"}
+        userRole={currentUser?.role || "user"}
+        userPhotoUrl={currentUser?.photoUrl}
+        onClose={() => setIsMobileMoreOpen(false)}
+        onNavigate={(view) => {
+          setActiveView(view);
+          if (view !== "history") setSelectedMeetingId(null);
+        }}
+        onOpenSmartSearch={() => setShowSmartSearch(true)}
+        onLogout={handleLogout}
+      />
 
     </div>
   );
