@@ -137,11 +137,15 @@ export default function AppSidebar({
       badge: backupsCount > 0 ? backupsCount : undefined,
       badgeDanger: backupsHaveFailed,
     },
+    {
+      id: "suiter" as const,
+      label: "Integração Suiter",
+      icon: Database,
+    },
   ];
 
   const adminNav = [
     { id: "admin" as const, label: "Equipe", icon: Shield },
-    { id: "suiter" as const, label: "Integração", icon: Database },
   ];
 
   return (
@@ -520,7 +524,7 @@ export default function AppSidebar({
                 {activeView === "admin" &&
                   "Gerencie perfis e permissões da equipe."}
                 {activeView === "suiter" &&
-                  "Configure a exportação para o ecossistema Suiter."}
+                  "Em breve: sincronização com o ecossistema Suiter."}
                 {activeView === "history" &&
                   "Recolha o menu para ver a lista de reuniões."}
               </p>

@@ -4048,171 +4048,21 @@ Reunião vinculada ao Google Agenda:
                 )}
 
                 {activeView === "suiter" && (
-                  <div className="max-w-4xl mx-auto space-y-6 py-4">
-                    {/* Header */}
-                    <div>
-                      <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-                        <span className="p-1 rounded bg-zinc-800 text-emerald-400"><Database size={14} /></span>
-                        Configuração de Integração da API Suiter
-                      </h2>
-                      <p className="text-xs text-zinc-400 mt-1">
-                        Configure o endpoint webhook da Triforce para onde os registros transcorridos devem ser reportados fisicamente. Veja os logs em tempo real das transmissões de carga.
-                      </p>
+                  <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center px-6 py-16 text-center">
+                    <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-500/25 bg-emerald-500/10 text-emerald-400">
+                      <Database size={24} />
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      
-                      {/* Left Side Column with Settings & Notifications */}
-                      <div className="md:col-span-1 space-y-6">
-                        {/* Configuration Panel */}
-                        <div className="p-5 rounded-2xl border border-zinc-800 bg-zinc-900/30 space-y-4">
-                          <h3 className="text-xs font-bold uppercase tracking-wider text-white border-b border-zinc-800 pb-2">
-                            Parâmetros de Conexão
-                          </h3>
-
-                          <div className="space-y-3">
-                            <div className="space-y-1">
-                              <label className="text-[9px] uppercase font-mono text-zinc-500 font-bold block">Webhook URL</label>
-                              <input
-                                type="text"
-                                value={suiterConfig.apiUrl}
-                                onChange={(e) => setSuiterConfig(prev => ({...prev, apiUrl: e.target.value}))}
-                                className="w-full bg-zinc-950 border border-zinc-850 rounded-lg py-1.5 px-3 text-xs text-white font-mono focus:outline-none focus:border-emerald-500"
-                              />
-                            </div>
-
-                            <div className="space-y-1">
-                              <label className="text-[9px] uppercase font-mono text-zinc-500 font-bold block">Bearer Token</label>
-                              <input
-                                type="password"
-                                value={suiterConfig.token}
-                                onChange={(e) => setSuiterConfig(prev => ({...prev, token: e.target.value}))}
-                                className="w-full bg-zinc-950 border border-zinc-850 rounded-lg py-1.5 px-3 text-xs text-white font-mono focus:outline-none focus:border-emerald-500"
-                              />
-                            </div>
-
-                            <div className="flex items-center justify-between p-2.5 bg-zinc-950/60 border border-zinc-850 rounded-xl">
-                              <div>
-                                <span className="text-[10px] font-bold text-white block">Modo Simulação</span>
-                                <span className="text-[8px] text-zinc-500 block">Simular repostas da Triforce</span>
-                              </div>
-                              <input
-                                type="checkbox"
-                                checked={suiterConfig.isMock}
-                                onChange={(e) => setSuiterConfig(prev => ({...prev, isMock: e.target.checked}))}
-                                className="w-4 h-4 rounded border-zinc-800 bg-zinc-900 text-emerald-500 focus:ring-emerald-500 cursor-pointer"
-                              />
-                            </div>
-
-                            <button
-                              onClick={() => {
-                                localStorage.setItem("plaud_suiter_config", JSON.stringify(suiterConfig));
-                                alert("Configurações salvas com sucesso localmente!");
-                              }}
-                              className="w-full py-2 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-black font-bold text-xs transition-all cursor-pointer shadow-lg"
-                            >
-                              Salvar Configuração
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Notification Preferences Card */}
-                        <div className="p-5 rounded-2xl border border-zinc-800 bg-zinc-900/30 space-y-4">
-                          <div className="flex items-center gap-2 border-b border-zinc-800 pb-2">
-                            <span className="p-1 rounded bg-zinc-850 text-emerald-400">
-                              <Bell size={13} />
-                            </span>
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-white">
-                              Notificações do Sistema
-                            </h3>
-                          </div>
-
-                          <p className="text-[11px] text-zinc-400 leading-relaxed">
-                            Ative as notificações nativas do sistema para receber alertas em tempo real sempre que novas transcrições e resumos automáticos estiverem concluídos.
-                          </p>
-
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between p-2.5 bg-zinc-950/60 border border-zinc-850 rounded-xl">
-                              <div>
-                                <span className="text-[10px] font-bold text-white block">Status dos Alertas</span>
-                                <span className="text-[8px] text-zinc-500 block">Status no navegador atual</span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <span className={`w-2 h-2 rounded-full ${notificationsEnabled ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`}></span>
-                                <span className="text-[10px] font-mono font-bold uppercase text-zinc-300">
-                                  {notificationsEnabled ? "Ativo" : "Inativo"}
-                                </span>
-                              </div>
-                            </div>
-
-                            {!notificationsEnabled ? (
-                              <button
-                                onClick={requestNotificationPermission}
-                                className="w-full py-2 px-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold border border-zinc-700 hover:border-zinc-600 transition-all cursor-pointer flex items-center justify-center gap-2"
-                              >
-                                <BellRing size={13} className="text-emerald-400" />
-                                Permitir Notificações
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => triggerNotification("Notificação de Teste", "As notificações do Suiter Record estão prontas e ativas!")}
-                                className="w-full py-2 px-3 rounded-xl bg-zinc-850 hover:bg-zinc-800 text-zinc-300 hover:text-white text-xs font-bold border border-zinc-750 hover:border-zinc-700 transition-all cursor-pointer flex items-center justify-center gap-2"
-                              >
-                                <Sparkles size={13} className="text-emerald-400 animate-pulse" />
-                                Testar Notificação
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Connection Log Stream */}
-                      <div className="md:col-span-2 p-5 rounded-2xl border border-zinc-800 bg-zinc-900/30 flex flex-col">
-                        <div className="flex justify-between items-center border-b border-zinc-800 pb-2 mb-4">
-                          <h3 className="text-xs font-bold uppercase tracking-wider text-white">
-                            Fluxo de Sincronizações & Logs de API ({suiterLogs.length})
-                          </h3>
-                          <button
-                            onClick={() => {
-                              setSuiterLogs([]);
-                              localStorage.removeItem("plaud_suiter_logs");
-                            }}
-                            className="text-[9px] text-zinc-500 hover:text-white underline cursor-pointer"
-                          >
-                            Limpar Histórico
-                          </button>
-                        </div>
-
-                        <div className="space-y-2 max-h-80 overflow-y-auto pr-1 custom-scrollbar flex-1">
-                          {suiterLogs.length === 0 ? (
-                            <div className="h-full flex flex-col items-center justify-center text-center p-6 text-zinc-500">
-                              <Info size={16} className="text-zinc-600 mb-1.5" />
-                              <p className="text-xs">Nenhum log de exportação registrado.</p>
-                              <p className="text-[10px] text-zinc-600 mt-1">Carregue uma reunião e clique em 'Sincronizar com Suiter' para testar!</p>
-                            </div>
-                          ) : (
-                            suiterLogs.map((log) => (
-                              <div key={log.id} className="p-3 bg-zinc-950 border border-zinc-850 rounded-xl space-y-2">
-                                <div className="flex justify-between items-center">
-                                  <span className="text-[9px] text-zinc-500 font-mono">{log.timestamp}</span>
-                                  <span className={`text-[8px] font-mono font-bold px-1.5 py-0.5 rounded uppercase ${
-                                    log.status === "success" 
-                                      ? "bg-emerald-500/10 text-emerald-400 border border-emerald-900/20" 
-                                      : "bg-red-500/10 text-red-400 border border-red-900/20"
-                                  }`}>
-                                    {log.status === "success" ? "201 OK" : "500 ERROR"}
-                                  </span>
-                                </div>
-                                <h4 className="text-xs font-bold text-white truncate">Reunião: {log.meetingTitle}</h4>
-                                <div className="bg-zinc-900 rounded p-2 text-[9px] text-zinc-400 font-mono border border-zinc-850 overflow-x-auto">
-                                  {log.details}
-                                </div>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      </div>
-
+                    <p className="mb-2 font-mono text-[10px] font-bold tracking-[0.2em] text-emerald-400/90 uppercase">
+                      Integração Suiter
+                    </p>
+                    <h2 className="font-display text-2xl font-bold tracking-tight text-white sm:text-3xl">
+                      Implementação futura
+                    </h2>
+                    <p className="mt-4 max-w-md text-sm leading-relaxed text-zinc-400">
+                      O módulo de integração com o ecossistema Suiter (webhook, exportação automática e logs de sincronização) será disponibilizado em uma próxima versão. Por enquanto, nenhuma ação está habilitada nesta tela.
+                    </p>
+                    <div className="mt-8 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-[11px] text-zinc-500">
+                      Em breve: conexão com API Suiter · exportação corporativa · auditoria de sync
                     </div>
                   </div>
                 )}
