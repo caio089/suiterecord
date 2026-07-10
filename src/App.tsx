@@ -54,14 +54,16 @@ import {
   buildEventDateTimes,
 } from "./googleCalendar";
 import { apiUrl } from "./api";
+import type { LocalRecording } from "./indexedDb";
 import {
   saveLocalRecording,
   getLocalRecordings,
   deleteLocalRecording,
   updateLocalRecordingStatus,
-  LocalRecording
 } from "./indexedDb";
 import { prepareAudioForStorage, validateAudioFile } from "./audioProcessing";
+import AppSidebar from "./AppSidebar";
+import AppTopBar from "./AppTopBar";
 
 // Timezone-safe local date helper function
 const getLocalDateString = (dateObj: Date | string) => {
@@ -2327,7 +2329,9 @@ Reunião vinculada ao Google Agenda:
   };
 
   // Collect all unique tags for filter panel
-  const allUniqueTags = Array.from(new Set(meetings.flatMap(m => m.tags || [])));
+  const allUniqueTags: string[] = Array.from(
+    new Set(meetings.flatMap((m) => m.tags || []))
+  );
 
   // Filtered Meetings List
   const filteredMeetings = meetings.filter(m => {
@@ -2423,14 +2427,15 @@ Reunião vinculada ao Google Agenda:
 
   if (!isDbLoaded) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-zinc-950 text-zinc-400 text-sm">
-        Carregando seu painel...
+      <div className="app-shell flex h-screen w-screen flex-col items-center justify-center gap-3 text-sm text-zinc-400">
+        <div className="h-9 w-9 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-400" />
+        <p className="font-medium tracking-tight text-zinc-300">Carregando seu workspace...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen w-screen bg-zinc-950 text-white font-sans antialiased overflow-hidden relative">
+    <div className="app-shell flex h-screen w-screen text-white font-sans antialiased overflow-hidden relative">
       
       {/* Mobile Sidebar Backdrop Overlay */}
       <AnimatePresence>
@@ -2445,478 +2450,63 @@ Reunião vinculada ao Google Agenda:
         )}
       </AnimatePresence>
 
-      {/* SIDEBAR: NAVIGATION, HISTORY & FILTER PANEL */}
-      <div className={`flex flex-col border-zinc-800 bg-zinc-900/20 shrink-0 h-full transition-all duration-300 ease-in-out fixed inset-y-0 left-0 z-50 md:relative md:translate-x-0 
-        ${isSidebarCollapsed ? "md:w-0 md:opacity-0 md:pointer-events-none md:overflow-hidden md:border-r-0" : "w-72 border-r"} 
-        ${isMobileSidebarOpen ? "translate-x-0 bg-zinc-950 shadow-2xl w-72 border-r" : "-translate-x-full md:translate-x-0"}`}
-      >
-        
-        {/* Brand / Title & Elegant Logo */}
-        <div className="p-5 border-b border-zinc-800 bg-zinc-900/40 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-3 min-w-0">
-            <img 
-              src={triforceLogo} 
-              alt="Suiter Record Logo" 
-              className="w-10 h-10 rounded-xl object-cover border border-zinc-800 shadow-[0_0_15px_rgba(16,185,129,0.2)] shrink-0"
-            />
-            <div className="truncate">
-              <h1 className="font-semibold text-sm tracking-tight text-white flex items-center gap-1">
-                Suiter <span className="text-emerald-500 font-bold">Record</span>
-              </h1>
-              <span className="text-[9px] text-zinc-500 font-medium block truncate">Extensão do Ecossistema Suiter</span>
-            </div>
-          </div>
-          {/* Direct collapse button inside sidebar */}
-          <button
-            onClick={() => setIsSidebarCollapsed(true)}
-            className="hidden md:flex p-1 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded transition-colors cursor-pointer"
-            title="Ocultar Menu Lateral"
-          >
-            <ChevronLeft size={16} />
-          </button>
-        </div>
-
-        {/* CORE APP VIEWS MENU */}
-        <div className="p-3 border-b border-zinc-800/60 bg-zinc-950/20 space-y-1 shrink-0">
-          <button
-            onClick={() => {
-              setActiveView("new_meeting");
-              setSelectedMeetingId(null);
-              setIsMobileSidebarOpen(false);
-            }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-              activeView === "new_meeting" && !selectedMeetingId
-                ? "bg-emerald-500 text-black shadow-lg shadow-emerald-950/25"
-                : "text-zinc-400 hover:text-white hover:bg-zinc-900"
-            }`}
-          >
-            <Calendar size={15} />
-            <span>Iniciar Reunião</span>
-          </button>
-
-          <button
-            onClick={() => {
-              setActiveView("history");
-              setIsMobileSidebarOpen(false);
-            }}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-              activeView === "history"
-                ? "bg-zinc-800 text-emerald-400 border border-zinc-750"
-                : "text-zinc-400 hover:text-white hover:bg-zinc-900"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <FileText size={15} />
-              <span>Minhas Reuniões</span>
-            </div>
-            <span className="text-[10px] bg-zinc-950/80 text-zinc-400 font-mono px-1.5 py-0.5 rounded border border-zinc-800">
-              {meetings.length}
-            </span>
-          </button>
-
-          <button
-            onClick={() => {
-              setActiveView("dashboard");
-              setSelectedMeetingId(null);
-              setIsMobileSidebarOpen(false);
-            }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-              activeView === "dashboard"
-                ? "bg-zinc-800 text-emerald-400 border border-zinc-750"
-                : "text-zinc-400 hover:text-white hover:bg-zinc-900"
-            }`}
-          >
-            <BarChart2 size={15} />
-            <span>Painel / Dashboard</span>
-          </button>
-
-          <button
-            onClick={() => {
-              setActiveView("backups");
-              setSelectedMeetingId(null);
-              setIsMobileSidebarOpen(false);
-            }}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-              activeView === "backups"
-                ? "bg-zinc-800 text-emerald-400 border border-zinc-750"
-                : "text-zinc-400 hover:text-white hover:bg-zinc-900"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <Clock size={15} />
-              <span>Histórico de Áudios</span>
-            </div>
-            {localBackups.length > 0 && (
-              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold border ${
-                localBackups.some(b => b.status === "failed") 
-                  ? "bg-red-500/20 text-red-400 border-red-500/30" 
-                  : "bg-zinc-950/80 text-zinc-400 border-zinc-800"
-              }`}>
-                {localBackups.length}
-              </span>
-            )}
-          </button>
-
-          {currentUser?.role === "Administrador" && (
-            <>
-              <button
-                onClick={() => {
-                  setActiveView("admin");
-                  setSelectedMeetingId(null);
-                  setIsMobileSidebarOpen(false);
-                }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                  activeView === "admin"
-                    ? "bg-zinc-800 text-emerald-400 border border-zinc-750"
-                    : "text-zinc-400 hover:text-white hover:bg-zinc-900"
-                }`}
-              >
-                <Shield size={15} />
-                <span>Administração</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setActiveView("suiter");
-                  setSelectedMeetingId(null);
-                  setIsMobileSidebarOpen(false);
-                }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                  activeView === "suiter"
-                    ? "bg-zinc-800 text-emerald-400 border border-zinc-750"
-                    : "text-zinc-400 hover:text-white hover:bg-zinc-900"
-                }`}
-              >
-                <Database size={15} />
-                <span>Integração Suiter</span>
-              </button>
-            </>
-          )}
-        </div>
-
-        {/* Always Visible Recording Indicator (when recording) */}
-        {isRecording && (
-          <div className="p-4 bg-zinc-900/60 border-b border-zinc-800 flex flex-col gap-2 shrink-0">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
-                <span className="text-[11px] font-bold text-red-400 uppercase tracking-wider font-mono">
-                  Gravando...
-                </span>
-              </div>
-              <span className="text-xs font-mono text-white font-bold bg-zinc-950 py-0.5 px-2 rounded border border-zinc-800">
-                {Math.floor(recordingSeconds / 60).toString().padStart(2, '0')}:
-                {(recordingSeconds % 60).toString().padStart(2, '0')}
-              </span>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={pauseRecording}
-                className="flex-1 flex items-center justify-center gap-1 py-1 px-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-[11px] font-semibold text-zinc-300 transition-colors cursor-pointer"
-              >
-                {isRecordingPaused ? <Play size={10} /> : <Pause size={10} />}
-                {isRecordingPaused ? "Retomar" : "Pausar"}
-              </button>
-              <button
-                onClick={stopRecording}
-                className="flex-1 flex items-center justify-center gap-1 py-1 px-2 rounded-lg bg-red-500 hover:bg-red-600 text-[11px] font-bold text-white transition-colors cursor-pointer"
-              >
-                <Square size={10} fill="currentColor" />
-                Salvar
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* SIDEBAR VIEWS SWITCH CONTENT */}
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          {activeView === "history" ? (
-            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-              {/* History Search & Tag Filtering */}
-              <div className="p-4 pb-3 flex flex-col gap-2 shrink-0">
-                {/* Key Filter search bar */}
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-zinc-500">
-                    <Search size={14} />
-                  </span>
-                  <input
-                    type="text"
-                    placeholder="Buscar transcrições..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-xs bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-colors"
-                  />
-                  {searchQuery && (
-                    <button 
-                      onClick={() => setSearchQuery("")}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-zinc-500 hover:text-white"
-                    >
-                      <X size={12} />
-                    </button>
-                  )}
-                </div>
-
-                {/* Tag Filter selection pills */}
-                <div className="flex flex-wrap gap-1 mt-1 max-h-16 overflow-y-auto custom-scrollbar">
-                  <button
-                    onClick={() => setSelectedTagFilter(null)}
-                    className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
-                      selectedTagFilter === null 
-                        ? "bg-zinc-800 text-emerald-400 border border-emerald-500/30" 
-                        : "bg-zinc-900 text-zinc-400 hover:text-white border border-transparent"
-                    }`}
-                  >
-                    Todos
-                  </button>
-                  {allUniqueTags.map(tag => (
-                    <button
-                      key={tag}
-                      onClick={() => setSelectedTagFilter(selectedTagFilter === tag ? null : tag)}
-                      className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors flex items-center gap-1 ${
-                        selectedTagFilter === tag 
-                          ? "bg-zinc-800 text-emerald-400 border border-emerald-500/30" 
-                          : "bg-zinc-900 text-zinc-400 hover:text-white border border-transparent"
-                      }`}
-                    >
-                      <Tag size={8} />
-                      {tag}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* List of Meetings (History feed) */}
-              <div className="flex-1 overflow-y-auto px-2 space-y-1.5 pb-4 custom-scrollbar">
-                <div className="px-2 py-2 flex items-center justify-between text-[11px] text-zinc-500 font-bold uppercase tracking-wider">
-                  <span>Arquivos ({filteredMeetings.length})</span>
-                  <button 
-                    onClick={() => { setShowSmartSearch(true); }}
-                    className="text-emerald-500 hover:text-emerald-400 flex items-center gap-0.5 cursor-pointer font-sans"
-                  >
-                    <Sparkles size={11} />
-                    Busca IA
-                  </button>
-                </div>
-
-                {filteredMeetings.length === 0 ? (
-                  <div className="py-8 text-center text-xs text-zinc-500">
-                    Nenhuma reunião encontrada.
-                  </div>
-                ) : (
-                  filteredMeetings.map((mtg) => {
-                    const active = mtg.id === selectedMeetingId;
-                    const pendingActionsCount = mtg.actions.filter(a => a.status !== "completed").length;
-                    return (
-                      <div
-                        key={mtg.id}
-                        onClick={() => {
-                          setSelectedMeetingId(mtg.id);
-                          setActiveView("history");
-                          setShowSmartSearch(false);
-                          setIsMobileSidebarOpen(false);
-                        }}
-                        className={`group relative p-3 rounded-lg border transition-colors cursor-pointer ${
-                          active 
-                            ? "bg-zinc-800/50 border-emerald-500/30 hover:border-emerald-500/50" 
-                            : "bg-zinc-900 border border-transparent hover:border-zinc-850"
-                        }`}
-                      >
-                        <div className="flex justify-between items-start mb-1 pr-6">
-                          <h3 className={`font-medium text-xs leading-snug line-clamp-1 ${active ? "text-white font-bold" : "text-zinc-300"}`}>
-                            {mtg.title}
-                          </h3>
-                        </div>
-
-                        <div className="flex items-center gap-2 text-[10px] text-zinc-500 font-mono mt-1">
-                          <span>{mtg.date}</span>
-                          <span>•</span>
-                          <span>{Math.floor(mtg.duration / 60)}m {mtg.duration % 60}s</span>
-                        </div>
-
-                        {/* Tag preview */}
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {mtg.tags.slice(0, 2).map((t, idx) => (
-                            <span key={idx} className="bg-zinc-850 text-zinc-400 text-[9px] px-1.5 py-0.5 rounded border border-zinc-750">
-                              {t}
-                            </span>
-                          ))}
-                          {mtg.tags.length > 2 && (
-                            <span className="text-[9px] text-zinc-500 self-center">+{mtg.tags.length - 2}</span>
-                          )}
-                        </div>
-
-                        {/* Pending actions indicator */}
-                        {pendingActionsCount > 0 && (
-                          <div className="absolute bottom-3 right-3 flex items-center gap-1 text-[9px] bg-emerald-950/40 border border-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded">
-                            <CheckSquare size={8} />
-                            {pendingActionsCount}
-                          </div>
-                        )}
-
-                        {/* Inline Delete Button */}
-                        {currentUser?.role === "Administrador" && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteMeeting(mtg.id);
-                            }}
-                            className="absolute top-2.5 right-2 opacity-0 group-hover:opacity-100 p-1 text-zinc-500 hover:text-red-400 hover:bg-red-950/20 rounded transition-all"
-                            title="Apagar Reunião"
-                          >
-                            <Trash2 size={11} />
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          ) : activeView === "dashboard" ? (
-            <div className="p-5 flex-1 flex flex-col justify-center text-center space-y-4">
-              <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400">
-                <BarChart2 size={20} />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-1">Métricas de Desempenho</h3>
-                <p className="text-[11px] text-zinc-400 leading-relaxed">
-                  Gráficos analíticos e indicadores de desempenho das reuniões e status de conclusão do plano de ação.
-                </p>
-              </div>
-            </div>
-          ) : activeView === "new_meeting" ? (
-            <div className="p-5 flex-1 flex flex-col justify-center text-center space-y-4">
-              <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400">
-                <Calendar size={20} />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-1">Painel de Gravação</h3>
-                <p className="text-[11px] text-zinc-400 leading-relaxed">
-                  Sincronize com os eventos do Google Agenda e preencha participantes de maneira totalmente automatizada.
-                </p>
-              </div>
-            </div>
-          ) : activeView === "backups" ? (
-            <div className="p-5 flex-1 flex flex-col justify-center text-center space-y-4">
-              <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400">
-                <Clock size={20} />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-1">Histórico de Áudios</h3>
-                <p className="text-[11px] text-zinc-400 leading-relaxed">
-                  Resumo das reuniões com áudio no seu armazenamento. Escuta opcional.
-                </p>
-              </div>
-            </div>
-          ) : activeView === "admin" ? (
-            <div className="p-5 flex-1 flex flex-col justify-center text-center space-y-4">
-              <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400">
-                <Shield size={20} />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-1">Módulo Administrativo</h3>
-                <p className="text-[11px] text-zinc-400 leading-relaxed">
-                  Gestão integrada de usuários corporativos cadastrados com acesso de login e Google Agenda.
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="p-5 flex-1 flex flex-col justify-center text-center space-y-4">
-              <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400">
-                <Database size={20} />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-1">Banco Suiter</h3>
-                <p className="text-[11px] text-zinc-400 leading-relaxed">
-                  Configuração de endpoint de banco de dados corporativo do Suiter para sincronização automática.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Discreet Corporate Brand footer */}
-        <div className="p-4 border-t border-zinc-800 bg-zinc-950/80 text-center shrink-0">
-          <p className="text-[10px] text-zinc-500 font-mono leading-relaxed">
-            Desenvolvido pela <span className="text-zinc-300 font-bold">Triforce Consultoria</span><br/>
-            <span className="text-[9px] text-zinc-600 italic">Uso Exclusivo Interno</span>
-          </p>
-        </div>
-
-      </div>
+      <AppSidebar
+        logoSrc={triforceLogo}
+        collapsed={isSidebarCollapsed}
+        mobileOpen={isMobileSidebarOpen}
+        activeView={activeView}
+        selectedMeetingId={selectedMeetingId}
+        isAdmin={currentUser?.role === "Administrador"}
+        userName={currentUser?.name || "Usuário"}
+        userRole={currentUser?.role || "user"}
+        userPhotoUrl={currentUser?.photoUrl}
+        meetingsCount={meetings.length}
+        backupsCount={localBackups.length}
+        backupsHaveFailed={localBackups.some((b) => b.status === "failed")}
+        searchQuery={searchQuery}
+        selectedTagFilter={selectedTagFilter}
+        allUniqueTags={allUniqueTags}
+        filteredMeetings={filteredMeetings}
+        isRecording={isRecording}
+        isRecordingPaused={isRecordingPaused}
+        recordingSeconds={recordingSeconds}
+        onCollapse={() => setIsSidebarCollapsed(true)}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
+        onNavigate={(view) => {
+          setActiveView(view);
+          if (view !== "history") setSelectedMeetingId(null);
+        }}
+        onSelectMeeting={(id) => {
+          setSelectedMeetingId(id);
+          setActiveView("history");
+          setShowSmartSearch(false);
+        }}
+        onDeleteMeeting={
+          currentUser?.role === "Administrador" ? deleteMeeting : undefined
+        }
+        onSearchChange={setSearchQuery}
+        onTagFilterChange={setSelectedTagFilter}
+        onOpenSmartSearch={() => setShowSmartSearch(true)}
+        onPauseRecording={pauseRecording}
+        onStopRecording={stopRecording}
+        onLogout={handleLogout}
+      />
 
       {/* CENTER: CORE WORKSPACE */}
-      <div className="flex-1 flex flex-col min-w-0 bg-zinc-950">
+      <div className="flex min-w-0 flex-1 flex-col bg-transparent">
         
-        {/* TOP STATUS NAVIGATION BAR */}
-        <div className="h-16 border-b border-zinc-800 flex items-center justify-between px-4 sm:px-6 shrink-0 bg-zinc-900/50">
-          
-          <div className="flex items-center gap-3">
-            {/* Hamburger Menu on Mobile */}
-            <button
-              onClick={() => setIsMobileSidebarOpen(true)}
-              className="p-1.5 -ml-1 text-zinc-400 hover:text-white hover:bg-zinc-800/80 rounded-lg md:hidden transition-colors cursor-pointer"
-              title="Menu Lateral"
-            >
-              <Menu size={18} />
-            </button>
-
-            {/* Desktop Collapse/Expand Sidebar Toggle */}
-            <button
-              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              className="hidden md:flex p-1.5 -ml-1 text-zinc-400 hover:text-white hover:bg-zinc-800/80 rounded-lg transition-colors cursor-pointer"
-              title={isSidebarCollapsed ? "Expandir Menu Lateral" : "Ocultar Menu Lateral"}
-            >
-              {isSidebarCollapsed ? (
-                <ChevronRight size={18} />
-              ) : (
-                <ChevronLeft size={18} />
-              )}
-            </button>
-
-            {selectedMeeting ? (
-              <div className="flex items-center gap-2 sm:gap-4">
-                <span className="text-[10px] sm:text-xs bg-zinc-800 text-zinc-300 font-mono py-1 px-2 sm:px-2.5 rounded-md border border-zinc-700 truncate max-w-28 sm:max-w-none">
-                  {selectedMeeting.id}
-                </span>
-                <div className="hidden sm:flex items-center gap-2">
-                  <div className="status-dot"></div>
-                  <span className="text-[11px] text-zinc-400 font-medium">Reunião Carregada</span>
-                </div>
-              </div>
-            ) : (
-              <div className="text-[11px] sm:text-xs text-zinc-500">Aguardando Gravação</div>
-            )}
-          </div>
-
-          {/* Quick Info, Smart Assistant toggler & User Info / Logout */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowSmartSearch(!showSmartSearch)}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 hover:border-emerald-500/40 text-emerald-400 hover:text-white text-xs font-semibold cursor-pointer transition-all"
-            >
-              <Sparkles size={12} />
-              <span className="hidden sm:inline">Busca Inteligente (IA)</span>
-              <span className="inline sm:hidden">IA</span>
-            </button>
-            
-            {currentUser && (
-              <div className="flex items-center gap-2 border-l border-zinc-850 pl-3">
-                <div className="hidden lg:flex flex-col text-right">
-                  <span className="text-xs font-bold text-white leading-none">{currentUser.name}</span>
-                  <span className="text-[9px] text-zinc-500 font-medium mt-0.5">{currentUser.role}</span>
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="p-1.5 hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-red-400 transition-colors cursor-pointer"
-                  title="Sair da Conta (Logout)"
-                >
-                  <LogOut size={15} />
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+        <AppTopBar
+          sidebarCollapsed={isSidebarCollapsed}
+          activeView={activeView}
+          selectedMeeting={selectedMeeting}
+          userName={currentUser?.name}
+          userRole={currentUser?.role}
+          showSmartSearch={showSmartSearch}
+          onToggleMobileSidebar={() => setIsMobileSidebarOpen(true)}
+          onToggleSidebarCollapsed={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          onToggleSmartSearch={() => setShowSmartSearch(!showSmartSearch)}
+          onLogout={handleLogout}
+        />
 
         {/* PROCESSING & TRANSCRIPTION LOADER OVERLAY */}
         {isProcessingAudio && (
