@@ -483,40 +483,44 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
 
           <div className="mt-16 grid gap-4 sm:grid-cols-3">
             {FLOW.map((item, i) => (
-              <Reveal key={item.step} delay={i * 0.08}>
-                <div className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 transition-colors hover:border-emerald-500/25 hover:bg-emerald-500/[0.04]">
-                  <motion.span
-                    className="font-display block text-5xl font-bold text-emerald-500/15 transition-colors group-hover:text-emerald-500/30"
-                    whileInView={{ x: [12, 0], opacity: [0, 1] }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: i * 0.08 }}
-                  >
-                    {item.step}
-                  </motion.span>
-                  <h3 className="mt-2 text-lg font-semibold text-white">
-                    {item.title}
-                  </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                    {item.text}
-                  </p>
-                </div>
-              </Reveal>
+              <div key={item.step}>
+                <Reveal delay={i * 0.08}>
+                  <div className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 transition-colors hover:border-emerald-500/25 hover:bg-emerald-500/[0.04]">
+                    <motion.span
+                      className="font-display block text-5xl font-bold text-emerald-500/15 transition-colors group-hover:text-emerald-500/30"
+                      whileInView={{ x: [12, 0], opacity: [0, 1] }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.5, delay: i * 0.08 }}
+                    >
+                      {item.step}
+                    </motion.span>
+                    <h3 className="mt-2 text-lg font-semibold text-white">
+                      {item.title}
+                    </h3>
+                    <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                      {item.text}
+                    </p>
+                  </div>
+                </Reveal>
+              </div>
             ))}
           </div>
 
           <div className="mt-20 grid gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((item, i) => (
-              <Reveal key={item.title} delay={i * 0.05}>
-                <div className="border-t border-white/[0.07] pt-5">
-                  <item.icon size={18} className="mb-3 text-emerald-400" />
-                  <h3 className="text-sm font-semibold text-white">
-                    {item.title}
-                  </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                    {item.text}
-                  </p>
-                </div>
-              </Reveal>
+              <div key={item.title}>
+                <Reveal delay={i * 0.05}>
+                  <div className="border-t border-white/[0.07] pt-5">
+                    <item.icon size={18} className="mb-3 text-emerald-400" />
+                    <h3 className="text-sm font-semibold text-white">
+                      {item.title}
+                    </h3>
+                    <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                      {item.text}
+                    </p>
+                  </div>
+                </Reveal>
+              </div>
             ))}
           </div>
         </div>
@@ -571,63 +575,65 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
 
           <div className="mt-14 grid gap-5 lg:grid-cols-3">
             {PLANS.map((plan, i) => (
-              <Reveal key={plan.id} delay={i * 0.08}>
-                <motion.div
-                  whileHover={reduceMotion ? undefined : { y: -6 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 22 }}
-                  className={`relative flex h-full flex-col rounded-2xl border p-6 sm:p-7 ${
-                    plan.highlighted
-                      ? "border-emerald-500/35 bg-emerald-500/[0.06] shadow-[0_0_60px_-20px_rgba(16,185,129,0.4)]"
-                      : "border-white/[0.07] bg-[#0a0c0e]/80"
-                  }`}
-                >
-                  {plan.highlighted && (
-                    <span className="absolute -top-3 left-6 rounded-full bg-emerald-500 px-2.5 py-0.5 text-[10px] font-bold tracking-wide text-black">
-                      Recomendado
-                    </span>
-                  )}
-                  <plan.icon
-                    size={20}
-                    className={
-                      plan.highlighted ? "text-emerald-400" : "text-zinc-400"
-                    }
-                  />
-                  <h3 className="mt-4 font-display text-lg font-semibold text-white">
-                    {plan.name}
-                  </h3>
-                  <p className="mt-1 text-2xl font-semibold tracking-tight text-emerald-400">
-                    {plan.price}
-                  </p>
-                  <p className="mt-3 text-sm leading-relaxed text-zinc-400">
-                    {plan.description}
-                  </p>
-                  <ul className="mt-6 flex-1 space-y-2.5">
-                    {plan.features.map((feature) => (
-                      <li
-                        key={feature}
-                        className="flex items-start gap-2 text-sm text-zinc-300"
-                      >
-                        <Check
-                          size={15}
-                          className="mt-0.5 shrink-0 text-emerald-400"
-                        />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                  <button
-                    type="button"
-                    onClick={() => scrollTo(contactRef)}
-                    className={`mt-8 w-full rounded-xl py-2.5 text-sm font-semibold transition-all ${
+              <div key={plan.id}>
+                <Reveal delay={i * 0.08}>
+                  <motion.div
+                    whileHover={reduceMotion ? undefined : { y: -6 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 22 }}
+                    className={`relative flex h-full flex-col rounded-2xl border p-6 sm:p-7 ${
                       plan.highlighted
-                        ? "bg-emerald-500 text-black hover:bg-emerald-400"
-                        : "border border-zinc-700 text-zinc-200 hover:border-zinc-500 hover:bg-zinc-900"
+                        ? "border-emerald-500/35 bg-emerald-500/[0.06] shadow-[0_0_60px_-20px_rgba(16,185,129,0.4)]"
+                        : "border-white/[0.07] bg-[#0a0c0e]/80"
                     }`}
                   >
-                    Falar sobre este plano
-                  </button>
-                </motion.div>
-              </Reveal>
+                    {plan.highlighted && (
+                      <span className="absolute -top-3 left-6 rounded-full bg-emerald-500 px-2.5 py-0.5 text-[10px] font-bold tracking-wide text-black">
+                        Recomendado
+                      </span>
+                    )}
+                    <plan.icon
+                      size={20}
+                      className={
+                        plan.highlighted ? "text-emerald-400" : "text-zinc-400"
+                      }
+                    />
+                    <h3 className="mt-4 font-display text-lg font-semibold text-white">
+                      {plan.name}
+                    </h3>
+                    <p className="mt-1 text-2xl font-semibold tracking-tight text-emerald-400">
+                      {plan.price}
+                    </p>
+                    <p className="mt-3 text-sm leading-relaxed text-zinc-400">
+                      {plan.description}
+                    </p>
+                    <ul className="mt-6 flex-1 space-y-2.5">
+                      {plan.features.map((feature) => (
+                        <li
+                          key={feature}
+                          className="flex items-start gap-2 text-sm text-zinc-300"
+                        >
+                          <Check
+                            size={15}
+                            className="mt-0.5 shrink-0 text-emerald-400"
+                          />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                    <button
+                      type="button"
+                      onClick={() => scrollTo(contactRef)}
+                      className={`mt-8 w-full rounded-xl py-2.5 text-sm font-semibold transition-all ${
+                        plan.highlighted
+                          ? "bg-emerald-500 text-black hover:bg-emerald-400"
+                          : "border border-zinc-700 text-zinc-200 hover:border-zinc-500 hover:bg-zinc-900"
+                      }`}
+                    >
+                      Falar sobre este plano
+                    </button>
+                  </motion.div>
+                </Reveal>
+              </div>
             ))}
           </div>
         </div>
