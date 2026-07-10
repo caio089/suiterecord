@@ -33,6 +33,7 @@ type DashboardViewProps = {
   currentUserEmail: string;
   /** Se true, pode ver visão da equipe; métricas padrão continuam pessoais. */
   isAdmin?: boolean;
+  onStartRecording?: () => void;
 };
 
 const MONTH_NAMES = [
@@ -97,6 +98,7 @@ export default function DashboardView({
   meetings,
   currentUserEmail,
   isAdmin = false,
+  onStartRecording,
 }: DashboardViewProps) {
   const [scope, setScope] = useState<"mine" | "team">(isAdmin ? "mine" : "mine");
 
@@ -371,6 +373,16 @@ export default function DashboardView({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {onStartRecording && (
+            <button
+              type="button"
+              onClick={onStartRecording}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-xs font-bold text-black shadow-[0_8px_24px_-10px_rgba(16,185,129,0.55)] transition-all hover:bg-emerald-400 active:scale-[0.98]"
+            >
+              <Mic2 size={15} />
+              Iniciar gravação
+            </button>
+          )}
           {isAdmin && (
             <div className="inline-flex rounded-xl border border-white/[0.06] bg-black/30 p-1">
               <button

@@ -4072,6 +4072,11 @@ Reunião vinculada ao Google Agenda:
                     meetings={meetings}
                     currentUserEmail={currentUser?.email || ""}
                     isAdmin={currentUser?.role === "Administrador"}
+                    onStartRecording={() => {
+                      setSelectedMeetingId(null);
+                      setActiveView("new_meeting");
+                      setNewMeetingSubView("choose");
+                    }}
                   />
                 )}
 
