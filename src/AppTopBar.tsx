@@ -12,7 +12,7 @@ const VIEW_LABELS: Record<AppView, string> = {
   history: "Reuniões",
   new_meeting: "Nova reunião",
   dashboard: "Dashboard",
-  backups: "Áudios",
+  backups: "Backup de Áudios",
   admin: "Equipe",
   suiter: "Integração",
 };

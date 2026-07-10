@@ -104,7 +104,7 @@ export async function connectGoogleCalendar(
     throw new Error(
       "VITE_API_URL não está configurada no build do frontend.\n\n" +
         "No Render → Static Site → Environment, defina:\n" +
-        "VITE_API_URL=https://SUA-API.onrender.com\n" +
+        "VITE_API_URL=https://suiterecord.onrender.com\n" +
         "Depois faça Clear cache & deploy do static.",
     );
   }

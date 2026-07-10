@@ -41,19 +41,18 @@ function openDB(): Promise<IDBDatabase> {
 }
 
 export async function saveLocalRecording(recording: LocalRecording): Promise<void> {
-  try {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, "readwrite");
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.put(recording);
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, "readwrite");
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.put(recording);
 
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
-  } catch (error) {
-    console.error("Erro ao salvar gravação local no IndexedDB:", error);
-  }
+    request.onsuccess = () => resolve();
+    request.onerror = () => {
+      console.error("Erro ao salvar gravação local no IndexedDB:", request.error);
+      reject(request.error);
+    };
+  });
 }
 
 export async function getLocalRecordings(): Promise<LocalRecording[]> {

@@ -4,7 +4,7 @@ import {
   Plus, Trash2, Settings, Send, Database, Download, CheckSquare, 
   Tag, ChevronRight, ChevronLeft, Info, X, Activity, Check, RefreshCw, AlertCircle,
   Menu, Lock, User, LogOut, Calendar, Users, Shield, Edit2, Clock,
-  BarChart2, Eye, EyeOff, Bell, BellRing
+  BarChart2, Eye, EyeOff, Bell, BellRing, HardDrive
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { jsPDF } from "jspdf";
@@ -1404,7 +1404,8 @@ Reunião vinculada ao Google Agenda:
       console.error("Falha ao transcrever gravação:", err);
       await updateLocalRecordingStatus(localRecordingId, "failed");
       await loadBackups();
-      alert(`Falha ao transcrever: ${err.message || err}.\n\nO áudio foi salvo em segurança localmente no menu "Backup de Áudios" (no menu lateral). Você pode tentar reprocessar a transcrição ou fazer o download do arquivo de áudio original lá para garantir que nenhum dado seja perdido.`);
+      setActiveView("backups");
+      alert(`Falha ao transcrever: ${err.message || err}.\n\nO áudio foi salvo em "Backup de Áudios" no menu lateral. Você pode ouvir e clicar em Reprocessar IA.`);
     } finally {
       setIsProcessingAudio(false);
       setProcessingStatus("");
@@ -1562,7 +1563,8 @@ Reunião vinculada ao Google Agenda:
         console.error("Erro no upload do arquivo:", err);
         await updateLocalRecordingStatus(localRecordingId, "failed").catch(() => undefined);
         await loadBackups();
-        alert(`Erro ao processar o arquivo de áudio: ${err.message || err}`);
+        setActiveView("backups");
+        alert(`Erro ao processar o arquivo de áudio: ${err.message || err}\n\nO áudio ficou em Backup de Áudios para reprocessar.`);
       } finally {
         setIsProcessingAudio(false);
         setProcessingStatus("");
@@ -3972,11 +3974,11 @@ Reunião vinculada ao Google Agenda:
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-800 pb-4">
                       <div>
                         <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-                          <span className="p-1 rounded bg-zinc-800 text-emerald-400"><Clock size={14} /></span>
-                          Histórico de Áudios / Reuniões
+                          <span className="p-1 rounded bg-zinc-800 text-emerald-400"><HardDrive size={14} /></span>
+                          Backup de Áudios
                         </h2>
                         <p className="text-xs text-zinc-400 mt-1">
-                          Resumo das reuniões com áudio no seu armazenamento local. Escuta opcional — o foco é o histórico.
+                          Áudios salvos neste navegador. Ouça, baixe ou reprocesse a transcrição com IA.
                         </p>
                       </div>
                       <button
@@ -4033,11 +4035,21 @@ Reunião vinculada ao Google Agenda:
                       if (summaries.length === 0) {
                         return (
                           <div className="p-12 text-center border border-dashed border-zinc-800 rounded-2xl bg-zinc-900/10">
-                            <AlertCircle className="mx-auto text-zinc-600 mb-3" size={32} />
-                            <h3 className="text-sm font-bold text-zinc-300">Nenhuma reunião com áudio ainda</h3>
+                            <HardDrive className="mx-auto text-zinc-600 mb-3" size={32} />
+                            <h3 className="text-sm font-bold text-zinc-300">Nenhum backup de áudio neste navegador</h3>
                             <p className="text-xs text-zinc-500 max-w-md mx-auto mt-1">
-                              Grave ou anexe um áudio em Nova Reunião. Os resumos aparecerão aqui automaticamente.
+                              Grave ou anexe um áudio em Nova Reunião. Os arquivos ficam salvos localmente aqui para ouvir e reprocessar com IA.
                             </p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveView("new_meeting");
+                                setNewMeetingSubView("choose");
+                              }}
+                              className="mt-4 py-2 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold cursor-pointer"
+                            >
+                              Ir para Nova reunião
+                            </button>
                           </div>
                         );
                       }

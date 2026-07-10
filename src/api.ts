@@ -3,10 +3,54 @@
  * - Local monolítico: vazio → usa o mesmo origin (`/api/...`)
  * - Produção (Render Static + API): `VITE_API_URL=https://seu-api.onrender.com`
  */
-export function getApiBaseUrl(): string {
-  return String(import.meta.env.VITE_API_URL || "")
+const API_URL_STORAGE_KEY = "suiter_api_url";
+
+/** Mapa conhecido Static → API (fallback se VITE_API_URL faltar no build do Render) */
+const KNOWN_STATIC_TO_API: Record<string, string> = {
+  "suiterecord-1.onrender.com": "https://suiterecord.onrender.com",
+};
+
+function readStoredApiUrl(): string {
+  try {
+    if (typeof localStorage === "undefined") return "";
+    return String(localStorage.getItem(API_URL_STORAGE_KEY) || "")
+      .trim()
+      .replace(/\/$/, "");
+  } catch {
+    return "";
+  }
+}
+
+export function setStoredApiUrl(url: string): void {
+  const cleaned = String(url || "")
     .trim()
     .replace(/\/$/, "");
+  try {
+    if (!cleaned) {
+      localStorage.removeItem(API_URL_STORAGE_KEY);
+      return;
+    }
+    localStorage.setItem(API_URL_STORAGE_KEY, cleaned);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function getApiBaseUrl(): string {
+  const fromEnv = String(import.meta.env.VITE_API_URL || "")
+    .trim()
+    .replace(/\/$/, "");
+  if (fromEnv) return fromEnv;
+
+  const stored = readStoredApiUrl();
+  if (stored) return stored;
+
+  if (typeof window !== "undefined") {
+    const known = KNOWN_STATIC_TO_API[window.location.hostname];
+    if (known) return known;
+  }
+
+  return "";
 }
 
 /** Monta URL absoluta ou relativa para rotas `/api/...` */
@@ -36,15 +80,15 @@ function isLocalHost(): boolean {
 }
 
 /**
- * Em produção (Static + API separados), VITE_API_URL é obrigatório.
- * Sem ele, POST /api/transcribe cai no Static Site e a resposta vem vazia → "Unexpected end of JSON input".
+ * Em produção (Static + API separados), precisa de URL da API
+ * (env de build, localStorage ou mapa conhecido).
  */
 export function assertApiConfigured(): void {
   if (!getApiBaseUrl() && !isLocalHost()) {
     throw new Error(
-      "VITE_API_URL não está configurada no build do frontend.\n\n" +
+      "URL da API não configurada.\n\n" +
         "No Render → Static Site → Environment:\n" +
-        "VITE_API_URL=https://SUA-API.onrender.com\n" +
+        "VITE_API_URL=https://suiterecord.onrender.com\n" +
         "(sem barra no final)\n\n" +
         "Depois: Clear cache & deploy.",
     );

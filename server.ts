@@ -39,16 +39,17 @@ app.use((req, res, next) => {
   const origin = req.headers.origin;
   const allowed = getAllowedOrigins();
   const originNorm = origin ? origin.replace(/\/$/, "") : "";
-  const allowAll = allowed.includes("*");
-  const isAllowed =
-    Boolean(originNorm) &&
-    (allowAll ||
-      allowed.includes(originNorm) ||
-      // Fallback: mesmo projeto Render (static vs api) quando FRONTEND_URL ainda não foi setado
-      (originNorm.endsWith(".onrender.com") &&
-        allowed.some((a) => a.includes("onrender.com"))));
 
-  if (origin && isAllowed) {
+  const allowAll = allowed.includes("*");
+  const listed = Boolean(originNorm) && allowed.includes(originNorm);
+  // Produção no Render: static (suiterecord-1) e API (suiterecord) em hosts diferentes
+  const renderPair =
+    process.env.NODE_ENV === "production" &&
+    Boolean(originNorm) &&
+    originNorm.startsWith("https://") &&
+    originNorm.endsWith(".onrender.com");
+
+  if (origin && (allowAll || listed || renderPair)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader(
@@ -698,14 +699,27 @@ function getGoogleOAuthConfig(req?: express.Request) {
     ""
   ).trim();
   // Frontend (static) — destino do redirect final quando não há opener
-  const frontendUrl = (
+  let frontendUrl = (
     process.env.FRONTEND_URL ||
     process.env.APP_URL ||
     process.env.CORS_ORIGINS?.split(",")[0] ||
-    "http://localhost:3000"
+    ""
   )
     .trim()
     .replace(/\/$/, "");
+
+  // Se ainda estiver localhost em produção, usa Origin da requisição (static real)
+  const reqOrigin = String(req?.headers?.origin || "")
+    .trim()
+    .replace(/\/$/, "");
+  if (
+    (!frontendUrl || frontendUrl.includes("localhost")) &&
+    reqOrigin.startsWith("https://") &&
+    reqOrigin.endsWith(".onrender.com")
+  ) {
+    frontendUrl = reqOrigin;
+  }
+  if (!frontendUrl) frontendUrl = "http://localhost:3000";
   // Nunca use a URL do static como redirect URI do Google
   const apiPublicUrl = resolveApiPublicUrl(req);
   const redirectUri = `${apiPublicUrl}/api/google/oauth/callback`;

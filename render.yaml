@@ -1,15 +1,18 @@
 # Suiter Record — 2 serviços no Render
+# Static: https://suiterecord-1.onrender.com
+# API:    https://suiterecord.onrender.com
+#
 # 1) suiterecord-web  → Static Site (frontend Vite)
 # 2) suiterecord-api  → Web Service (Express / Groq / OAuth)
 #
 # Ordem sugerida:
 # 1. Deploy da API primeiro
-# 2. Anote a URL (ex: https://suiterecord-api.onrender.com)
-# 3. Deploy do Static com VITE_API_URL apontando para a API
-# 4. Na API, defina FRONTEND_URL / APP_URL / CORS_ORIGINS com a URL do static
+# 2. Anote a URL (ex: https://suiterecord.onrender.com)
+# 3. Deploy do Static com VITE_API_URL=https://suiterecord.onrender.com
+# 4. Na API: FRONTEND_URL=https://suiterecord-1.onrender.com
 # 5. Google OAuth:
-#    - Origem JS: URL do static
-#    - Redirect URI: https://SEU-API.onrender.com/api/google/oauth/callback
+#    - Origem JS: https://suiterecord-1.onrender.com
+#    - Redirect URI: https://suiterecord.onrender.com/api/google/oauth/callback
 
 services:
   # ---------- BACKEND ----------

@@ -6,6 +6,7 @@ import {
   Clock,
   Database,
   FileText,
+  HardDrive,
   LogOut,
   Mic,
   Pause,
@@ -132,8 +133,8 @@ export default function AppSidebar({
     },
     {
       id: "backups" as const,
-      label: "Áudios",
-      icon: Clock,
+      label: "Backup de Áudios",
+      icon: HardDrive,
       badge: backupsCount > 0 ? backupsCount : undefined,
       badgeDanger: backupsHaveFailed,
     },
@@ -501,7 +502,7 @@ export default function AppSidebar({
               <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-400">
                 {activeView === "dashboard" && <BarChart2 size={20} />}
                 {activeView === "new_meeting" && <Mic size={20} />}
-                {activeView === "backups" && <Clock size={20} />}
+                {activeView === "backups" && <HardDrive size={20} />}
                 {activeView === "admin" && <Shield size={20} />}
                 {activeView === "suiter" && <Database size={20} />}
                 {activeView === "history" && <FileText size={20} />}
@@ -509,7 +510,7 @@ export default function AppSidebar({
               <h3 className="font-display text-sm font-bold text-white">
                 {activeView === "dashboard" && "Dashboard"}
                 {activeView === "new_meeting" && "Nova reunião"}
-                {activeView === "backups" && "Áudios locais"}
+                {activeView === "backups" && "Backup de Áudios"}
                 {activeView === "admin" && "Equipe"}
                 {activeView === "suiter" && "Integração Suiter"}
                 {activeView === "history" && "Reuniões"}
@@ -520,7 +521,7 @@ export default function AppSidebar({
                 {activeView === "new_meeting" &&
                   "Grave ou importe áudio e sincronize com a agenda."}
                 {activeView === "backups" &&
-                  "Backups de áudio salvos neste dispositivo."}
+                  "Áudios salvos neste dispositivo — ouça e reprocesse com IA."}
                 {activeView === "admin" &&
                   "Gerencie perfis e permissões da equipe."}
                 {activeView === "suiter" &&
