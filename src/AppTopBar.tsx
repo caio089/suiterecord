@@ -49,7 +49,7 @@ export default function AppTopBar({
           type="button"
           onClick={onToggleMobileSidebar}
           className="rounded-xl p-2.5 text-zinc-400 transition-colors hover:bg-white/[0.05] hover:text-white md:hidden"
-          title="Abrir menu"
+          title="Expandir ou recolher menu"
         >
           <Menu size={18} />
         </button>

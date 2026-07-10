@@ -2365,20 +2365,6 @@ Reunião vinculada ao Google Agenda:
 
   return (
     <div className="app-shell relative flex h-[100svh] w-screen overflow-hidden font-sans text-white antialiased">
-      
-      {/* Mobile Sidebar Backdrop Overlay */}
-      <AnimatePresence>
-        {isMobileSidebarOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
-            onClick={() => setIsMobileSidebarOpen(false)}
-          />
-        )}
-      </AnimatePresence>
-
       <AppSidebar
         logoSrc={triforceLogo}
         collapsed={isSidebarCollapsed}
@@ -2431,7 +2417,7 @@ Reunião vinculada ao Google Agenda:
           userName={currentUser?.name}
           userRole={currentUser?.role}
           showSmartSearch={showSmartSearch}
-          onToggleMobileSidebar={() => setIsMobileSidebarOpen(true)}
+          onToggleMobileSidebar={() => setIsMobileSidebarOpen((v) => !v)}
           onToggleSidebarCollapsed={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           onToggleSmartSearch={() => setShowSmartSearch(!showSmartSearch)}
           onLogout={handleLogout}

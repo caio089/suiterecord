@@ -183,11 +183,6 @@ html {
     padding-bottom: env(safe-area-inset-bottom);
   }
 
-  .app-sidebar {
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-
   /* Evita “zoom/aproximação” visual quando o teclado abre (layout estável com svh) */
   .app-shell,
   .landing-page {
