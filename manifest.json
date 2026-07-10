@@ -1,0 +1,19 @@
+{
+  "name": "Suiter Record - Gravador & Transcritor de Reuniões IA",
+  "short_name": "Suiter Record",
+  "description": "Grave e transcreva reuniões automaticamente usando inteligência artificial.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#090b0e",
+  "theme_color": "#090b0e",
+  "orientation": "portrait",
+  "categories": ["productivity", "business"],
+  "icons": [
+    {
+      "src": "/logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}

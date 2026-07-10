@@ -1,0 +1,12 @@
+node_modules
+dist
+build
+coverage
+tmp
+.git
+.claude
+*.log
+.env
+.env.*
+!.env.example
+REVISAO-SUITER-RECORD.md

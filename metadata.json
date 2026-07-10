@@ -1,0 +1,6 @@
+{
+  "name": "Suiter Recorder - Transcritor de Reuniões",
+  "description": "Grave e transcreva reuniões com inteligência artificial, organize com tags, faça buscas inteligentes e exporte para PDF, Word (DOCX) e para o sistema Suiter.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

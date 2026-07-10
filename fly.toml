@@ -1,0 +1,25 @@
+# Fly.io — Suiter Record
+# Região São Paulo (gru). Troque "app" por um nome único antes do primeiro deploy
+# (ou deixe o `fly launch` gerar um).
+
+app = "suiter-record"
+primary_region = "gru"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  # App é stateful (fila de jobs em memória + processamento em background após a
+  # resposta HTTP). Manter 1 máquina sempre ligada evita que um job de transcrição
+  # seja interrompido por auto-stop. Suba esses números se precisar de concorrência.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  size = "shared-cpu-1x"
+  # 1GB: o endpoint aceita áudio grande (base64 na memória). Pode reduzir para 512mb
+  # se limitar o tamanho de upload no server.
+  memory = "1gb"

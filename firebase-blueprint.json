@@ -1,0 +1,159 @@
+{
+  "entities": {
+    "Meeting": {
+      "title": "Meeting",
+      "description": "Details of recorded meetings, transcripts, and summaries",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string"
+        },
+        "duration": {
+          "type": "string"
+        },
+        "audioUrl": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "sentiment": {
+          "type": "string"
+        },
+        "isSynced": {
+          "type": "boolean"
+        },
+        "syncedAt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "date"
+      ]
+    },
+    "PermittedUser": {
+      "title": "PermittedUser",
+      "description": "Authorized users permitted to access the application",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "photoUrl": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "googleCalendarLinked": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "name"
+      ]
+    },
+    "SuiterConfig": {
+      "title": "SuiterConfig",
+      "description": "Configuration options for Suiter Integration",
+      "type": "object",
+      "properties": {
+        "apiUrl": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        },
+        "isMock": {
+          "type": "boolean"
+        },
+        "mapping": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "apiUrl",
+        "token",
+        "isMock"
+      ]
+    },
+    "SuiterLog": {
+      "title": "SuiterLog",
+      "description": "Integration sync log entry",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string"
+        },
+        "meetingId": {
+          "type": "string"
+        },
+        "meetingTitle": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "timestamp",
+        "meetingId",
+        "status",
+        "message"
+      ]
+    }
+  },
+  "firestore": {
+    "meetings/{meetingId}": {
+      "schema": "Meeting",
+      "description": "Meetings list"
+    },
+    "permitted_users/{userId}": {
+      "schema": "PermittedUser",
+      "description": "Permitted users list"
+    },
+    "config/suiter_config": {
+      "schema": "SuiterConfig",
+      "description": "Suiter integration settings"
+    },
+    "config/suiter_logs": {
+      "schema": "SuiterLog",
+      "description": "Suiter log entries list"
+    }
+  }
+}
