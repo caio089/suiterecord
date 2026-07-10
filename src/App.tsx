@@ -320,8 +320,6 @@ export default function App() {
   const [meetingToDeleteId, setMeetingToDeleteId] = useState<string | null>(null);
   const [userToDeleteEmail, setUserToDeleteEmail] = useState<string | null>(null);
   const [customAlertMessage, setCustomAlertMessage] = useState<string | null>(null);
-  const [editingPasswordUserEmail, setEditingPasswordUserEmail] = useState<string | null>(null);
-  const [newPasswordInput, setNewPasswordInput] = useState("");
 
   const [isLoginSubmitting, setIsLoginSubmitting] = useState(false);
 
