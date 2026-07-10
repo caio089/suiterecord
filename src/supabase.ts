@@ -11,16 +11,19 @@ const supabaseAnonKey =
   import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
   import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
+/** False quando o Static Site foi buildado sem as vars VITE_* do Supabase. */
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+
+if (!isSupabaseConfigured) {
   console.error(
-    "Supabase: defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no arquivo .env"
+    "Supabase: defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no Environment do Static Site e faça redeploy (Clear build cache)."
   );
 }
 
-export const supabase: SupabaseClient = createClient(
-  supabaseUrl || "",
-  supabaseAnonKey || ""
-);
+// createClient("", "") lança e deixa a tela preta — só instancia com credenciais válidas.
+export const supabase: SupabaseClient = isSupabaseConfigured
+  ? createClient(supabaseUrl!, supabaseAnonKey!)
+  : (null as unknown as SupabaseClient);
 
 function handleDbError(error: unknown, operation: string, path: string): never {
   const message = error instanceof Error ? error.message : String(error);
