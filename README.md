@@ -1,100 +1,72 @@
 # Suiter Record
 
-Extensão corporativa do ecossistema Suiter: gravação, transcrição com IA (Groq), atas e Google Agenda.
-
-## Arquitetura atual (híbrida — alinhada ao plano Supabase + front CDN)
-
-```
-Browser (SPA)
-   │  supabase-js + RLS
-   ▼
-Supabase (Auth + Postgres + RLS)
-   │
-   │  VITE_API_URL → API worker
-   ▼
-API Express (Render hoje · Fly.io opcional em gru)
-   • /api/transcribe (+ jobs)
-   • /api/smart-search, export, OAuth Google Agenda
-   ▼
-Groq (Whisper + Llama)
-```
-
-| Camada | Onde | Status |
-|--------|------|--------|
-| Dados + Auth + RLS | **Supabase** | ✅ já migrado (sem Firebase) |
-| Frontend SPA | Render Static **ou Vercel** | ✅ Render; Vercel preparado (`vercel.json`) |
-| API / transcrição longa | **Worker Express** (Render/Fly) | ✅ stateful; tabela `transcription_jobs` criada p/ próxima etapa |
-| IA | Groq | ✅ |
-
-> O documento de migração citava Firebase + Gemini + Cloud Run. **Isso já não é o estado do repo.** Auth/dados estão no Supabase; a IA é Groq.
+Extensão corporativa do ecossistema Suiter: gravação, transcrição com IA, atas e Google Agenda.
 
 ## Local (monolítico)
 
 1. `npm install`
-2. Copie `.env.example` → `.env` (deixe `VITE_API_URL` vazio)
+2. Copie `.env.example` → `.env` e preencha (deixe `VITE_API_URL` vazio)
 3. `npm run dev` → http://localhost:3000
 
-## Deploy — opção A: Render (atual)
+## Deploy no Render (2 serviços)
 
 | Serviço | Tipo | Função |
 |---------|------|--------|
-| API | Web Service | Transcrição, busca IA, export, OAuth Google |
-| Web | Static Site | Frontend Vite |
+| `suiterecord-api` | Web Service (Node) | Transcrição, busca IA, export, OAuth Google |
+| `suiterecord-web` | Static Site | Frontend React |
 
-Static precisa de `VITE_API_URL=https://SUA-API.onrender.com` (ex.: `https://suiterecord.onrender.com`).
+### Passo a passo
 
-Google OAuth:
-- Origem JS: URL do **static** (`https://suiterecord-1.onrender.com`)
-- Redirect: `https://SUA-API.onrender.com/api/google/oauth/callback`
-
-## Deploy — opção B: Vercel (front) + API worker (recomendado no médio prazo)
-
-### 1) Frontend na Vercel
-
-1. Importe o repo na Vercel (framework Vite; usa `vercel.json`)
-2. Environment Variables (Production):
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
+1. Push do repo no GitHub
+2. Render → **New → Blueprint** → selecione o repo (`render.yaml`)
+3. **API** — preencha:
+   - `GROQ_API_KEY`
+   - `FRONTEND_URL` / `APP_URL` / `CORS_ORIGINS` → URL do static (pode ajustar depois do 1º deploy)
+   - `VITE_GOOGLE_CLIENT_ID`, `API_GOOGLE_CALENDAR_TOKEN`, `GOOGLE_CLIENT_SECRET`
+4. Anote a URL da API (`https://suiterecord-api.onrender.com`)
+5. **Static** — preencha:
+   - `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
    - `VITE_GOOGLE_CLIENT_ID`
-   - `VITE_API_URL` = URL pública da API worker (Render ou Fly), **sem** barra final
-3. Deploy → anote a URL (ex. `https://suiterecord.vercel.app`)
+   - `VITE_API_URL` → URL da API (sem barra no final)
+6. Depois do deploy do static, volte na API e confirme `FRONTEND_URL` / `CORS_ORIGINS` com a URL real do static → **Manual Deploy** na API
 
-⚠️ Plano Hobby da Vercel é **não-comercial**. Uso corporativo → **Pro**.
+### Google OAuth
 
-### 2) API worker (Render ou Fly.io São Paulo)
+No Google Cloud Console → OAuth Client (Web):
 
-A transcrição longa **não** cabe bem em serverless puro. Mantenha o Express:
+- **Origens JavaScript:** `https://suiterecord-web.onrender.com`
+- **Redirect URIs:** `https://suiterecord-api.onrender.com/api/google/oauth/callback`
 
-- **Render:** `API_ONLY=true`, `FRONTEND_URL`/`CORS_ORIGINS` = URL da Vercel
-- **Fly.io (gru):** `fly.toml` já aponta São Paulo; `fly launch` / `fly deploy`
+## Segurança (multi-tenant)
 
-Na API:
+- Login obrigatório via **Supabase Auth**
+- **RLS** no Postgres: cada usuário só lê/grava as próprias reuniões e o próprio perfil
+- Admin (`role = Administrador`) gerencia usuários, config Suiter e logs
+- Senhas **não** ficam no client nem são listadas no painel
+- Confirmação por e-mail **somente** na troca de senha (“Esqueci a senha”)
+
+### Aplicar RLS no Supabase (obrigatório)
+
+Já aplicado no projeto **Record** (`brzefsmeghkzzwrsvrlt`) em 2026-07-10.
+
+Para reaplicar / outro ambiente:
+
+```bash
+chmod +x scripts/apply-migrations.sh
+./scripts/apply-migrations.sh
 ```
-FRONTEND_URL=https://seu-app.vercel.app
-CORS_ORIGINS=https://seu-app.vercel.app
-GROQ_API_KEY=...
-VITE_GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
-API_PUBLIC_URL=https://sua-api...
-```
 
-No Google Cloud, adicione a origem JS da Vercel e o redirect da API.
+### Auth sem confirmação no cadastro
 
-### 3) Supabase Auth URLs
+No painel (token da API não tem permissão de Owner para alterar Auth):
 
-Site URL + Redirect URLs = URL da Vercel (ou do static atual).
+Supabase → projeto **Record** → **Authentication → Providers → Email** → desative **Confirm email**.
 
-## Roadmap (próximas etapas — confirmar antes)
+Mantenha o e-mail ativo para **Reset password**.
 
-1. ✅ Schema + Auth + RLS no Supabase  
-2. ✅ Front preparado para Vercel (`vercel.json`) + tabela `transcription_jobs`  
-3. ⏳ Ligar a API aos jobs no Postgres (sair da fila só em memória)  
-4. ⏳ Storage (áudio/fotos) no Supabase  
-5. ⏳ (Opcional) Realtime no status do job  
+**URL Configuration:**
+- Site URL = URL do Static Site (Render) em produção, ou `http://localhost:3000` local
+- Redirect URLs = mesma URL
 
-## Segurança
+Usuários já existentes foram confirmados no banco.
 
-- Login via **Supabase Auth**
-- **RLS** no Postgres
-- Senhas não ficam no client
-- Migrations: `./scripts/apply-migrations.sh`
