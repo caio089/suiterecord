@@ -328,49 +328,6 @@ export const ensurePermittedUserProfile = async (input: {
   };
 };
 
-export const signUpWithEmail = async (params: {
-  name: string;
-  email: string;
-  password: string;
-}): Promise<{ profile: AuthProfile | null; needsEmailConfirmation: boolean }> => {
-  if (!isSupabaseConfigured) {
-    throw new Error("Supabase não configurado.");
-  }
-
-  const email = params.email.trim().toLowerCase();
-  const name = params.name.trim();
-
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password: params.password,
-    options: {
-      data: {
-        name,
-        full_name: name,
-      },
-    },
-  });
-
-  if (error) {
-    throw new Error(mapAuthErrorMessage(error.message));
-  }
-
-  const profile = await ensurePermittedUserProfile({ email, name, role: "user" });
-
-  // Sem confirmação de e-mail no cadastro: se não houver session, o projeto
-  // ainda exige Confirm email no painel do Supabase.
-  if (!data.session) {
-    throw new Error(
-      "Conta criada, mas o login automático falhou. No Supabase: Authentication → Providers → Email → desative \"Confirm email\", depois entre com seu e-mail e senha."
-    );
-  }
-
-  return {
-    profile,
-    needsEmailConfirmation: false,
-  };
-};
-
 export const signInWithEmail = async (params: {
   email: string;
   password: string;

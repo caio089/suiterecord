@@ -11,7 +11,7 @@ import { jsPDF } from "jspdf";
 import triforceLogo from "./assets/images/suiter_record_logo_1783097489467.jpg";
 import { Meeting, SuiterConfig, SuiterLog, PermittedUser, GoogleCalendarEvent } from "./types";
 import LandingPage from "./LandingPage";
-import LoginPage, { type AuthMode } from "./LoginPage";
+import LoginPage from "./LoginPage";
 import AppSidebar from "./AppSidebar";
 import AppTopBar from "./AppTopBar";
 import DashboardView from "./DashboardView";
@@ -29,7 +29,6 @@ import {
   saveSuiterLogsInCloud,
   loadSuiterLogsFromCloud,
   signInWithEmail,
-  signUpWithEmail,
   signOutAuth,
   getAuthSessionProfile,
   isSupabaseConfigured,
@@ -277,11 +276,8 @@ export default function App() {
 
   // Login Form States
   const [authScreen, setAuthScreen] = useState<"landing" | "login">("landing");
-  const [authMode, setAuthMode] = useState<AuthMode>("login");
-  const [loginName, setLoginName] = useState("");
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
-  const [loginPasswordConfirm, setLoginPasswordConfirm] = useState("");
   const [loginError, setLoginError] = useState("");
   const [loginSuccess, setLoginSuccess] = useState("");
   const [passwordRecoveryMode, setPasswordRecoveryMode] = useState(false);
@@ -328,16 +324,14 @@ export default function App() {
     setCurrentUser(userPayload);
     localStorage.setItem("plaud_authenticated", "true");
     localStorage.setItem("plaud_current_user", JSON.stringify(userPayload));
-    setLoginName("");
     setLoginEmail("");
     setLoginPassword("");
-    setLoginPasswordConfirm("");
     setLoginError("");
     setLoginSuccess("");
     setIsAuthenticated(true);
   };
 
-  // AUTHENTICATION HANDLERS — Supabase Auth (isolamento por conta)
+  // AUTHENTICATION HANDLERS — login apenas (usuários pré-definidos)
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError("");
@@ -350,41 +344,6 @@ export default function App() {
 
     const email = loginEmail.trim().toLowerCase();
     const password = loginPassword;
-
-    if (authMode === "signup") {
-      const name = loginName.trim();
-      if (!name) {
-        setLoginError("Informe seu nome para criar a conta.");
-        return;
-      }
-      if (password !== loginPasswordConfirm) {
-        setLoginError("As senhas não coincidem.");
-        return;
-      }
-      const strength = validatePasswordStrength(password);
-      if (!strength.isValid) {
-        setLoginError(strength.message);
-        return;
-      }
-
-      setIsLoginSubmitting(true);
-      try {
-        const { profile } = await signUpWithEmail({ name, email, password });
-        if (!profile) {
-          setLoginError("Não foi possível criar o perfil da conta.");
-          return;
-        }
-        persistAuthenticatedUser(profile);
-        setIsDbLoaded(false);
-      } catch (err) {
-        setLoginError(
-          err instanceof Error ? err.message : "Não foi possível criar a conta."
-        );
-      } finally {
-        setIsLoginSubmitting(false);
-      }
-      return;
-    }
 
     setIsLoginSubmitting(true);
     try {
@@ -447,7 +406,6 @@ export default function App() {
         persistAuthenticatedUser(profile);
         setIsDbLoaded(false);
       } else {
-        setAuthMode("login");
         setAuthScreen("login");
       }
     } catch (err) {
@@ -466,7 +424,6 @@ export default function App() {
     setGoogleAccessToken(null);
     clearStoredGoogleAccessToken();
     setAuthScreen("landing");
-    setAuthMode("login");
     setIsDbLoaded(false);
     setMeetings([]);
     setPermittedUsers([]);
@@ -2278,23 +2235,17 @@ Reunião vinculada ao Google Agenda:
     return (
       <LoginPage
         logoSrc={triforceLogo}
-        mode="login"
         passwordRecoveryMode
-        loginName={loginName}
         loginEmail={loginEmail}
         loginPassword={loginPassword}
-        loginPasswordConfirm={loginPasswordConfirm}
         recoveryPassword={recoveryPassword}
         recoveryPasswordConfirm={recoveryPasswordConfirm}
         loginError={loginError}
         loginSuccess={loginSuccess}
         isReady={isSupabaseConfigured}
         isSubmitting={isLoginSubmitting}
-        onModeChange={setAuthMode}
-        onNameChange={setLoginName}
         onEmailChange={setLoginEmail}
         onPasswordChange={setLoginPassword}
-        onPasswordConfirmChange={setLoginPasswordConfirm}
         onRecoveryPasswordChange={setRecoveryPassword}
         onRecoveryPasswordConfirmChange={setRecoveryPasswordConfirm}
         onSubmit={handleLogin}
@@ -2320,27 +2271,17 @@ Reunião vinculada ao Google Agenda:
     return (
       <LoginPage
         logoSrc={triforceLogo}
-        mode={authMode}
         passwordRecoveryMode={false}
-        loginName={loginName}
         loginEmail={loginEmail}
         loginPassword={loginPassword}
-        loginPasswordConfirm={loginPasswordConfirm}
         recoveryPassword={recoveryPassword}
         recoveryPasswordConfirm={recoveryPasswordConfirm}
         loginError={loginError}
         loginSuccess={loginSuccess}
         isReady={isSupabaseConfigured}
         isSubmitting={isLoginSubmitting}
-        onModeChange={(mode) => {
-          setAuthMode(mode);
-          setLoginError("");
-          setLoginSuccess("");
-        }}
-        onNameChange={setLoginName}
         onEmailChange={setLoginEmail}
         onPasswordChange={setLoginPassword}
-        onPasswordConfirmChange={setLoginPasswordConfirm}
         onRecoveryPasswordChange={setRecoveryPassword}
         onRecoveryPasswordConfirmChange={setRecoveryPasswordConfirm}
         onSubmit={handleLogin}
@@ -2349,7 +2290,6 @@ Reunião vinculada ao Google Agenda:
         onBackToLanding={() => {
           setLoginError("");
           setLoginSuccess("");
-          setAuthMode("login");
           setPasswordRecoveryMode(false);
           setAuthScreen("landing");
         }}
@@ -3816,7 +3756,7 @@ Reunião vinculada ao Google Agenda:
                         Módulo de Administração Corporativa
                       </h2>
                       <p className="text-xs text-zinc-400 mt-1">
-                        Gerencie colaboradores e cargos. Novos usuários também podem criar conta na tela de login (Supabase Auth); aqui você define perfil e permissões.
+                        Gerencie colaboradores e cargos. O acesso ao app é só por usuários pré-definidos; aqui você define perfil e permissões.
                       </p>
                     </div>
 

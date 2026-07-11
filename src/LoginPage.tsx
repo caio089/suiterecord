@@ -1,28 +1,20 @@
 import type { FormEvent } from "react";
-import { Mail, Lock, AlertCircle, ArrowLeft, User, CheckCircle2 } from "lucide-react";
+import { Mail, Lock, AlertCircle, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { motion } from "motion/react";
-
-export type AuthMode = "login" | "signup";
 
 type LoginPageProps = {
   logoSrc: string;
-  mode: AuthMode;
   passwordRecoveryMode?: boolean;
-  loginName: string;
   loginEmail: string;
   loginPassword: string;
-  loginPasswordConfirm: string;
   recoveryPassword?: string;
   recoveryPasswordConfirm?: string;
   loginError: string;
   loginSuccess: string;
   isReady: boolean;
   isSubmitting: boolean;
-  onModeChange: (mode: AuthMode) => void;
-  onNameChange: (value: string) => void;
   onEmailChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
-  onPasswordConfirmChange: (value: string) => void;
   onRecoveryPasswordChange?: (value: string) => void;
   onRecoveryPasswordConfirmChange?: (value: string) => void;
   onSubmit: (e: FormEvent) => void;
@@ -33,23 +25,17 @@ type LoginPageProps = {
 
 export default function LoginPage({
   logoSrc,
-  mode,
   passwordRecoveryMode = false,
-  loginName,
   loginEmail,
   loginPassword,
-  loginPasswordConfirm,
   recoveryPassword = "",
   recoveryPasswordConfirm = "",
   loginError,
   loginSuccess,
   isReady,
   isSubmitting,
-  onModeChange,
-  onNameChange,
   onEmailChange,
   onPasswordChange,
-  onPasswordConfirmChange,
   onRecoveryPasswordChange,
   onRecoveryPasswordConfirmChange,
   onSubmit,
@@ -57,8 +43,6 @@ export default function LoginPage({
   onForgotPassword,
   onBackToLanding,
 }: LoginPageProps) {
-  const isSignup = mode === "signup";
-
   return (
     <div className="relative flex min-h-[100svh] w-full items-start justify-center overflow-x-hidden overflow-y-auto bg-zinc-950 px-4 py-8 font-sans text-white select-none sm:items-center sm:p-6 sm:py-10">
       <div className="pointer-events-none absolute inset-0">
@@ -104,38 +88,9 @@ export default function LoginPage({
             <p className="mt-1.5 text-xs leading-relaxed text-zinc-500">
               {passwordRecoveryMode
                 ? "Defina sua nova senha"
-                : isSignup
-                  ? "Crie sua conta com e-mail e senha"
-                  : "Entre com seu e-mail e senha"}
+                : "Entre com seu e-mail e senha"}
             </p>
           </div>
-
-          {!passwordRecoveryMode && (
-            <div className="mb-5 grid grid-cols-2 gap-1 rounded-xl border border-white/[0.06] bg-zinc-950/60 p-1">
-              <button
-                type="button"
-                onClick={() => onModeChange("login")}
-                className={`rounded-lg py-2 text-xs font-semibold transition-colors ${
-                  !isSignup
-                    ? "bg-emerald-500 text-black"
-                    : "text-zinc-400 hover:text-white"
-                }`}
-              >
-                Entrar
-              </button>
-              <button
-                type="button"
-                onClick={() => onModeChange("signup")}
-                className={`rounded-lg py-2 text-xs font-semibold transition-colors ${
-                  isSignup
-                    ? "bg-emerald-500 text-black"
-                    : "text-zinc-400 hover:text-white"
-                }`}
-              >
-                Criar conta
-              </button>
-            </div>
-          )}
 
           {loginError && (
             <motion.div
@@ -236,28 +191,6 @@ export default function LoginPage({
                 }
               }}
             >
-              {isSignup && (
-                <div>
-                  <label className="mb-1.5 block text-[11px] font-medium tracking-wide text-zinc-400">
-                    Nome
-                  </label>
-                  <div className="relative">
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-zinc-500">
-                      <User size={15} />
-                    </span>
-                    <input
-                      type="text"
-                      required
-                      autoComplete="name"
-                      placeholder="Seu nome"
-                      value={loginName}
-                      onChange={(e) => onNameChange(e.target.value)}
-                      className="w-full rounded-xl border border-white/[0.07] bg-zinc-950/70 py-2.5 pr-3.5 pl-10 text-sm text-white placeholder-zinc-600 outline-none transition-all focus:border-emerald-500/50 focus:bg-zinc-950 focus:ring-2 focus:ring-emerald-500/15"
-                    />
-                  </div>
-                </div>
-              )}
-
               <div>
                 <label className="mb-1.5 block text-[11px] font-medium tracking-wide text-zinc-400">
                   E-mail
@@ -269,7 +202,7 @@ export default function LoginPage({
                   <input
                     type="email"
                     required
-                    autoFocus={!isSignup}
+                    autoFocus
                     autoComplete="email"
                     placeholder="seu@email.com"
                     value={loginEmail}
@@ -284,7 +217,7 @@ export default function LoginPage({
                   <label className="block text-[11px] font-medium tracking-wide text-zinc-400">
                     Senha
                   </label>
-                  {!isSignup && onForgotPassword && (
+                  {onForgotPassword && (
                     <button
                       type="button"
                       onClick={onForgotPassword}
@@ -301,41 +234,14 @@ export default function LoginPage({
                   <input
                     type="password"
                     required
-                    autoComplete={isSignup ? "new-password" : "current-password"}
+                    autoComplete="current-password"
                     placeholder="••••••••"
                     value={loginPassword}
                     onChange={(e) => onPasswordChange(e.target.value)}
                     className="w-full rounded-xl border border-white/[0.07] bg-zinc-950/70 py-2.5 pr-3.5 pl-10 text-sm text-white placeholder-zinc-600 outline-none transition-all focus:border-emerald-500/50 focus:bg-zinc-950 focus:ring-2 focus:ring-emerald-500/15"
                   />
                 </div>
-                {isSignup && (
-                  <p className="mt-1.5 text-[10px] leading-relaxed text-zinc-500">
-                    Mín. 8 caracteres, com maiúscula, minúscula e caractere especial.
-                  </p>
-                )}
               </div>
-
-              {isSignup && (
-                <div>
-                  <label className="mb-1.5 block text-[11px] font-medium tracking-wide text-zinc-400">
-                    Confirmar senha
-                  </label>
-                  <div className="relative">
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-zinc-500">
-                      <Lock size={15} />
-                    </span>
-                    <input
-                      type="password"
-                      required
-                      autoComplete="new-password"
-                      placeholder="••••••••"
-                      value={loginPasswordConfirm}
-                      onChange={(e) => onPasswordConfirmChange(e.target.value)}
-                      className="w-full rounded-xl border border-white/[0.07] bg-zinc-950/70 py-2.5 pr-3.5 pl-10 text-sm text-white placeholder-zinc-600 outline-none transition-all focus:border-emerald-500/50 focus:bg-zinc-950 focus:ring-2 focus:ring-emerald-500/15"
-                    />
-                  </div>
-                </div>
-              )}
 
               <button
                 type="submit"
@@ -345,12 +251,8 @@ export default function LoginPage({
                 {!isReady
                   ? "Preparando..."
                   : isSubmitting
-                    ? isSignup
-                      ? "Criando conta..."
-                      : "Entrando..."
-                    : isSignup
-                      ? "Criar conta"
-                      : "Entrar"}
+                    ? "Entrando..."
+                    : "Entrar"}
               </button>
             </form>
           )}
