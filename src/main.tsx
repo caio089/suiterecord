@@ -13,8 +13,7 @@ if (!isSupabaseConfigured) {
         <h1 style="font-size:1.25rem;margin:0 0 12px">Configuração incompleta</h1>
         <p style="margin:0;opacity:.85;line-height:1.5">
           Defina <code>VITE_SUPABASE_URL</code> e <code>VITE_SUPABASE_ANON_KEY</code>
-          no Environment do Static Site no Render e faça
-          <strong>Clear build cache &amp; deploy</strong>.
+          nas Environment Variables do projeto na Vercel e faça um novo deploy.
         </p>
       </div>
     </div>

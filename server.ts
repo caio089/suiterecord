@@ -7,10 +7,8 @@ import app from "./src/server/app";
 const PORT = Number(process.env.PORT) || 3000;
 
 /**
- * Entrypoint local / Docker monolítico / Fly.io — camadas de dev server (Vite) e
- * static-serving por cima do app Express compartilhado (src/server/app.ts).
- * A Vercel usa api/index.ts, que exporta o mesmo app sem essa camada (não faz
- * sentido rodar `app.listen`/Vite middleware dentro de uma função serverless).
+ * Entrypoint local — dev monolítico com Vite (`npm run dev`).
+ * Produção: Vercel usa api/index.ts (mesmo app Express, sem listen/Vite).
  */
 async function startServer() {
   const apiOnly = process.env.API_ONLY === "true" || process.env.API_ONLY === "1";
@@ -32,7 +30,7 @@ async function startServer() {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
-  // API_ONLY=true → só rotas /api e /health (frontend em Static Site à parte)
+  // API_ONLY — legado; na Vercel não se aplica (função serverless em /api)
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(

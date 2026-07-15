@@ -50,7 +50,7 @@ app.use((req, res, next) => {
     process.env.NODE_ENV === "production" &&
     Boolean(originNorm) &&
     originNorm.startsWith("https://") &&
-    (originNorm.endsWith(".vercel.app") || originNorm.endsWith(".onrender.com"));
+    (originNorm.endsWith(".vercel.app") || originNorm.endsWith(".vercel.dev"));
 
   if (origin && (allowAll || listed || knownPreviewHost)) {
     res.setHeader("Access-Control-Allow-Origin", origin);

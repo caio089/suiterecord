@@ -1,4 +1,4 @@
-import { apiUrl, getApiBaseUrl, getApiOrigin } from "./api";
+import { apiUrl, getApiOrigin } from "./api";
 import type { GoogleCalendarEvent } from "./types";
 
 const TOKEN_STORAGE_KEY = "suiter_google_calendar_token";
@@ -94,26 +94,11 @@ export async function connectGoogleCalendar(
 ): Promise<string> {
   const frontendOrigin =
     typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
-  const apiBase = getApiBaseUrl();
-  const isLocalHost =
-    /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname) ||
-    window.location.hostname === "";
-
-  // Em produção (Static + API), VITE_API_URL é obrigatório — sem ele o popup abre no próprio static e "nada acontece"
-  if (!apiBase && !isLocalHost) {
-    throw new Error(
-      "VITE_API_URL não está configurada no build do frontend.\n\n" +
-        "No Render → Static Site → Environment, defina:\n" +
-        "VITE_API_URL=https://suiterecord.onrender.com\n" +
-        "Depois faça Clear cache & deploy do static.",
-    );
-  }
-
   const apiOrigin = getApiOrigin() || frontendOrigin;
   const oauthStart = apiUrl("/api/google/oauth/start");
   const statusUrl = apiUrl("/api/google/oauth/status");
 
-  // Preflight: acorda a API (cold start) e valida config OAuth
+  // Preflight: acorda a função serverless (cold start) e valida config OAuth
   try {
     const ctrl = new AbortController();
     const timeout = window.setTimeout(() => ctrl.abort(), 45_000);
@@ -134,7 +119,7 @@ export async function connectGoogleCalendar(
         "Google OAuth incompleto na API.\n\n" +
           `Client ID: ${status.hasClientId ? "ok" : "faltando"}\n` +
           `Client Secret: ${status.hasClientSecret ? "ok" : "faltando"}\n\n` +
-          "Defina VITE_GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET no Web Service da API.",
+          "Defina VITE_GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET nas Environment Variables da Vercel.",
       );
     }
   } catch (err: unknown) {
@@ -145,7 +130,7 @@ export async function connectGoogleCalendar(
     throw new Error(
       `Não foi possível falar com a API (${statusUrl}).\n\n` +
         `${msg}\n\n` +
-        "Confira se VITE_API_URL aponta para o Web Service (não o Static) e se a API está no ar.",
+        "Confira se o deploy na Vercel está ativo e se GROQ_API_KEY / variáveis Google estão definidas.",
     );
   }
 
@@ -196,7 +181,7 @@ export async function connectGoogleCalendar(
           `${message}\n\nNo Google Cloud → Credenciais → OAuth Client (Web), cadastre:\n` +
             `URI de redirecionamento: ${apiOrigin}/api/google/oauth/callback\n` +
             `Origem JavaScript: ${frontendOrigin}\n\n` +
-            `Na API (Render): FRONTEND_URL=${frontendOrigin}`,
+            `Na Vercel: FRONTEND_URL=${frontendOrigin}`,
         ),
       );
     };
