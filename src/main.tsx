@@ -2,11 +2,13 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import {isSupabaseConfigured} from './supabase';
+import {PREVIEW_MODE} from './previewData';
 import './index.css';
 
 const root = document.getElementById('root')!;
 
-if (!isSupabaseConfigured) {
+// Modo conferência (VITE_PREVIEW=true): renderiza a UI sem exigir Supabase.
+if (!isSupabaseConfigured && !PREVIEW_MODE) {
   root.innerHTML = `
     <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#F7F8FA;color:#2A2F36;font-family:Inter,system-ui,sans-serif;padding:24px;text-align:center">
       <div style="max-width:440px">

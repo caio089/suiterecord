@@ -59,6 +59,7 @@ import {
   updateLocalRecordingStatus,
 } from "./indexedDb";
 import { prepareAudioForStorage, validateAudioFile } from "./audioProcessing";
+import { PREVIEW_MODE, PREVIEW_USER, PREVIEW_MEETINGS } from "./previewData";
 
 // Timezone-safe local date helper function
 const getLocalDateString = (dateObj: Date | string) => {
@@ -263,19 +264,19 @@ const getMeetingParticipantsList = (meeting: any, permittedUsers: any[] = []) =>
 
 export default function App() {
   // CLOUD DATABASE LOADING STATE
-  const [isDbLoaded, setIsDbLoaded] = useState(false);
+  const [isDbLoaded, setIsDbLoaded] = useState(PREVIEW_MODE);
 
   // DYNAMIC SYSTEM ACCOUNTS FOR ADMINISTRATION MODULE
   const [permittedUsers, setPermittedUsers] = useState<PermittedUser[]>([]);
 
   // AUTHENTICATION STATE — só sessão Auth válida (sem “login fantasma” via localStorage)
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(PREVIEW_MODE);
   const [currentUser, setCurrentUser] = useState<{
     name: string;
     email: string;
     role: string;
     photoUrl?: string;
-  } | null>(null);
+  } | null>(PREVIEW_MODE ? { ...PREVIEW_USER } : null);
 
   // Login Form States
   const [authScreen, setAuthScreen] = useState<"landing" | "login">("landing");
@@ -661,10 +662,13 @@ export default function App() {
   };
 
   // STATE MANAGEMENT
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [isMeetingsLoaded, setIsMeetingsLoaded] = useState(false);
+  const [meetings, setMeetings] = useState<Meeting[]>(
+    PREVIEW_MODE ? PREVIEW_MEETINGS : [],
+  );
+  const [isMeetingsLoaded, setIsMeetingsLoaded] = useState(PREVIEW_MODE);
 
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(() => {
+    if (PREVIEW_MODE) return null;
     return localStorage.getItem("plaud_selected_id");
   });
 
@@ -953,6 +957,7 @@ export default function App() {
 
   // LOAD USER MEETINGS — RLS isola no banco; filtro client é defesa em profundidade
   useEffect(() => {
+    if (PREVIEW_MODE) return; // modo conferência: mantém a reunião de amostra
     if (!isDbLoaded || !isAuthenticated || !currentUser?.email) return;
 
     let active = true;
