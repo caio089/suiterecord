@@ -12,6 +12,10 @@ export interface LocalRecording {
   overview?: string;
   originalBytes?: number;
   compressedBytes?: number;
+  /** ID do job de transcrição no servidor (transcription_jobs no Supabase) — permite retomar após reload. */
+  jobId?: string;
+  /** Caminho do áudio no Supabase Storage (bucket audio-recordings). */
+  storagePath?: string;
 }
 
 const DB_NAME = "SuiterRecorderOfflineDB";

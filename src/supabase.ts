@@ -258,6 +258,44 @@ export const loadSuiterLogsFromCloud = async (): Promise<SuiterLog[]> => {
   return (data || []).map((row) => logFromRow(row as Record<string, unknown>));
 };
 
+// --- Storage: áudio original (upload direto do cliente, fora do corpo da API) ---
+
+const AUDIO_BUCKET = "audio-recordings";
+
+function sanitizeStorageSegment(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9@._-]/g, "_");
+}
+
+/** Caminho por usuário — precisa bater com a policy do bucket (1º segmento = e-mail). */
+export function buildAudioStoragePath(ownerEmail: string, recordingId: string, mimeType: string): string {
+  const ext = (mimeType.split("/")[1] || "webm").split(";")[0];
+  return `${sanitizeStorageSegment(ownerEmail)}/${sanitizeStorageSegment(recordingId)}.${ext}`;
+}
+
+/** Sobe o áudio direto pro Storage — evita mandar o binário pelo corpo da função de API. */
+export const uploadAudioToStorage = async (
+  storagePath: string,
+  blob: Blob,
+  mimeType: string,
+): Promise<void> => {
+  if (!isSupabaseConfigured) {
+    throw new Error("Supabase não configurado — não é possível subir o áudio para a nuvem.");
+  }
+  const { error } = await supabase.storage.from(AUDIO_BUCKET).upload(storagePath, blob, {
+    contentType: mimeType.split(";")[0],
+    upsert: true,
+  });
+  if (error) handleDbError(error, "upload", `storage/${AUDIO_BUCKET}/${storagePath}`);
+};
+
+export const deleteAudioFromStorage = async (storagePath: string): Promise<void> => {
+  if (!isSupabaseConfigured || !storagePath) return;
+  const { error } = await supabase.storage.from(AUDIO_BUCKET).remove([storagePath]);
+  if (error) {
+    console.error(`Erro ao apagar áudio do Storage (${storagePath}):`, error.message);
+  }
+};
+
 // --- Auth (Supabase Auth) ---
 
 export type AuthProfile = {

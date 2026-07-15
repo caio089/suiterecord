@@ -35,6 +35,9 @@ import {
   requestPasswordReset,
   updatePasswordAfterRecovery,
   onAuthStateChange,
+  uploadAudioToStorage,
+  buildAudioStoragePath,
+  deleteAudioFromStorage,
 } from "./supabase";
 import {
   connectGoogleCalendar,
@@ -743,27 +746,29 @@ export default function App() {
   const [isProcessingAudio, setIsProcessingAudio] = useState(false);
   const [processingStatus, setProcessingStatus] = useState("");
   
-  // Progress animation effect for audio processing
+  // Zera a barra de progresso quando não há processamento em andamento. O avanço em
+  // si é reportado por chamadas explícitas a setProcessingProgress ao longo do fluxo
+  // (validação → upload → etapas reais do job no servidor), não por uma animação
+  // artificial — uma barra que "enche sozinha" até 95% e trava lá não diz nada sobre
+  // o que de fato está acontecendo, especialmente em áudios longos.
   useEffect(() => {
-    let interval: any = null;
-    if (isProcessingAudio) {
-      setProcessingProgress(5);
-      interval = setInterval(() => {
-        setProcessingProgress((prev) => {
-          if (prev >= 95) {
-            clearInterval(interval);
-            return 95;
-          }
-          const increment = prev < 40 ? 10 : prev < 75 ? 5 : 1;
-          return prev + increment;
-        });
-      }, 350);
-    } else {
+    if (!isProcessingAudio) {
       setProcessingProgress(0);
     }
-    return () => {
-      if (interval) clearInterval(interval);
+  }, [isProcessingAudio]);
+
+  // Avisa antes de fechar/recarregar enquanto o áudio ainda está subindo ou sendo
+  // transcrito — sair da página nesse meio-tempo interrompe o acompanhamento no
+  // navegador (o job em si continua no servidor, mas o usuário perde a barra de
+  // progresso e precisa ir manualmente em Backup de Áudios reprocessar).
+  useEffect(() => {
+    if (!isProcessingAudio) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
     };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
   }, [isProcessingAudio]);
   
   // MediaRecorder refs
@@ -1324,7 +1329,7 @@ export default function App() {
       await saveLocalRecording(offlineRecording);
       await loadBackups();
 
-      setProcessingStatus("Enviando áudio para a API (multipart)...");
+      setProcessingStatus("Enviando áudio para a nuvem...");
       setProcessingProgress(35);
 
       const contextText = `
@@ -1339,41 +1344,28 @@ Reunião vinculada ao Google Agenda:
 ` : "Gravação direta de áudio (sem evento do Google Agenda vinculado)."}
       `.trim();
 
-      assertApiConfigured();
-
-      const form = new FormData();
-      form.append(
-        "audio",
+      const started = await startOrResumeTranscription(
+        localRecordingId,
         prepared.blob,
-        `gravacao_${Date.now()}.${(prepared.mimeType.split("/")[1] || "webm").split(";")[0]}`,
-      );
-      form.append("mimeType", prepared.mimeType);
-      form.append("context", contextText);
-
-      const response = await fetch(apiUrl("/api/transcribe"), {
-        method: "POST",
-        headers: {
-          "X-User-Email": currentUser?.email || "",
-        },
-        body: form,
-      });
-
-      const startResult = await readApiJson<{ jobId?: string; error?: string; status?: string }>(
-        response,
+        prepared.mimeType,
+        contextText,
+        existingBackup?.jobId,
       );
 
-      if (!response.ok) {
-        throw new Error(startResult.error || `Erro ${response.status} no servidor durante a transcrição`);
+      let aiResult: any;
+      if (started.status === "completed") {
+        aiResult = started.result;
+      } else {
+        await saveLocalRecording({
+          ...offlineRecording,
+          jobId: started.jobId,
+          storagePath: started.storagePath || existingBackup?.storagePath,
+        });
+        setProcessingStatus("Iniciando Transcrição por Inteligência Artificial...");
+        aiResult = await pollTranscriptionJob(started.jobId, (msg) => {
+          setProcessingStatus(msg);
+        });
       }
-      if (!startResult.jobId) {
-        throw new Error("O servidor não retornou um ID de tarefa de transcrição válido.");
-      }
-
-      setProcessingStatus("Iniciando Transcrição por Inteligência Artificial...");
-
-      const aiResult = await pollTranscriptionJob(startResult.jobId, (msg) => {
-        setProcessingStatus(msg);
-      });
 
       const linkedMeetingId =
         options?.existingMeetingId ||
@@ -1474,9 +1466,14 @@ Reunião vinculada ao Google Agenda:
           setProcessingStatus(msg);
         });
 
-        if (prepared.compressedBytes > 12 * 1024 * 1024) {
+        // O áudio não é mais reencodado no cliente (reencode em tempo real era a causa
+        // do travamento em áudios longos) — o arquivo original é que vai pro Whisper, que
+        // aceita até 25 MB por upload direto. Formatos já compactos (m4a/mp3/ogg/webm)
+        // raramente esbarram nisso; WAV bruto de reuniões longas pode passar.
+        if (prepared.compressedBytes > 24 * 1024 * 1024) {
           throw new Error(
-            `Mesmo após compressão o áudio ficou com ${(prepared.compressedBytes / (1024 * 1024)).toFixed(1)} MB. Tente um arquivo menor ou em trechos.`
+            `Arquivo com ${(prepared.compressedBytes / (1024 * 1024)).toFixed(1)} MB — acima do limite de 25 MB da transcrição. ` +
+              "Exporte em um formato compactado (MP3, M4A ou OGG) ou grave direto pelo app em vez de fazer upload de um WAV bruto."
           );
         }
 
@@ -1489,7 +1486,7 @@ Reunião vinculada ao Google Agenda:
           `Salvando backup otimizado (${(prepared.compressedBytes / (1024 * 1024)).toFixed(2)} MB, ${prepared.compressionRatio}x menor)...`
         );
         setProcessingProgress(25);
-        await saveLocalRecording({
+        const offlineRecording: LocalRecording = {
           id: localRecordingId,
           title: finalTitle,
           date: getLocalDateString(new Date()),
@@ -1500,7 +1497,8 @@ Reunião vinculada ao Google Agenda:
           createdBy: currentUser?.email || "atendimento@triforceconsultoria.com",
           originalBytes: prepared.originalBytes,
           compressedBytes: prepared.compressedBytes,
-        });
+        };
+        await saveLocalRecording(offlineRecording);
         await loadBackups();
 
         setProcessingStatus("Transmitindo áudio comprimido para análise da IA...");
@@ -1518,33 +1516,21 @@ Reunião vinculada ao Google Agenda:
 ` : "Gravação direta via upload (sem evento do Google Agenda vinculado)."}
         `.trim();
 
-        assertApiConfigured();
+        const started = await startOrResumeTranscription(localRecordingId, prepared.blob, prepared.mimeType, contextText);
 
-        const form = new FormData();
-        form.append("audio", prepared.blob, file.name || `upload_${Date.now()}.webm`);
-        form.append("mimeType", prepared.mimeType);
-        form.append("context", contextText);
-
-        const response = await fetch(apiUrl("/api/transcribe"), {
-          method: "POST",
-          headers: {
-            "X-User-Email": currentUser?.email || "",
-          },
-          body: form,
-        });
-
-        const startResult = await readApiJson<{ jobId?: string; error?: string }>(response);
-
-        if (!response.ok) {
-          throw new Error(startResult.error || "Erro ao processar o arquivo de áudio");
+        let aiResult: any;
+        if (started.status === "completed") {
+          aiResult = started.result;
+        } else {
+          await saveLocalRecording({
+            ...offlineRecording,
+            jobId: started.jobId,
+            storagePath: started.storagePath,
+          });
+          aiResult = await pollTranscriptionJob(started.jobId, (msg) => {
+            setProcessingStatus(msg);
+          });
         }
-        if (!startResult.jobId) {
-          throw new Error("O servidor não retornou um ID de tarefa válido para processamento de áudio.");
-        }
-
-        const aiResult = await pollTranscriptionJob(startResult.jobId, (msg) => {
-          setProcessingStatus(msg);
-        });
 
         const newMtg: Meeting = {
           id: `mtg_${Date.now()}`,
@@ -1608,46 +1594,132 @@ Reunião vinculada ao Google Agenda:
     })();
   };
 
-  // Helper to poll the status of an asynchronous transcription job
+  /**
+   * Sobe o áudio direto pro Supabase Storage e inicia (ou retoma) um job de
+   * transcrição no servidor. Manda só um JSON pequeno pra /api/transcribe — o
+   * binário nunca passa pelo corpo dessa rota (limite de 4.5 MB por requisição
+   * em funções serverless da Vercel).
+   *
+   * Se `existingJobId` for passado (fluxo de "Reprocessar IA" sobre um backup
+   * que já tinha um job em andamento), primeiro consulta o status: se já
+   * terminou, reaproveita o resultado sem gastar upload/Groq de novo; se ainda
+   * está rodando no servidor, retoma o polling nesse mesmo job em vez de subir
+   * o áudio e começar tudo do zero — o processamento no servidor continua
+   * mesmo que a aba tenha sido fechada nesse meio-tempo.
+   */
+  const startOrResumeTranscription = async (
+    recordingId: string,
+    blob: Blob,
+    mimeType: string,
+    contextText: string,
+    existingJobId?: string,
+  ): Promise<
+    | { status: "completed"; result: any }
+    | { status: "started" | "resumed"; jobId: string; storagePath?: string }
+  > => {
+    const ownerEmail = currentUser?.email || "atendimento@triforceconsultoria.com";
+
+    if (existingJobId) {
+      try {
+        const statusResponse = await fetch(apiUrl(`/api/transcribe/status/${existingJobId}`), {
+          headers: { "X-User-Email": ownerEmail },
+        });
+        if (statusResponse.ok) {
+          const job = await readApiJson<{ status?: string; result?: unknown }>(statusResponse);
+          if (job.status === "completed") {
+            return { status: "completed", result: job.result };
+          }
+          if (job.status && job.status !== "failed") {
+            return { status: "resumed", jobId: existingJobId };
+          }
+        }
+        // 404 ou status "failed" — cai no fluxo normal abaixo (novo upload + novo job)
+      } catch {
+        // Falha de rede ao checar o job antigo — tenta iniciar um novo em vez de travar aqui
+      }
+    }
+
+    const storagePath = buildAudioStoragePath(ownerEmail, recordingId, mimeType);
+    await uploadAudioToStorage(storagePath, blob, mimeType);
+
+    const response = await fetch(apiUrl("/api/transcribe"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-User-Email": ownerEmail,
+      },
+      body: JSON.stringify({ storagePath, mimeType, context: contextText }),
+    });
+
+    const startResult = await readApiJson<{ jobId?: string; error?: string }>(response);
+    if (!response.ok) {
+      throw new Error(startResult.error || `Erro ${response.status} no servidor durante a transcrição`);
+    }
+    if (!startResult.jobId) {
+      throw new Error("O servidor não retornou um ID de tarefa de transcrição válido.");
+    }
+    return { status: "started", jobId: startResult.jobId, storagePath };
+  };
+
+  // Consulta o status de um job de transcrição até ele terminar. O estado do job
+  // vive no Supabase (não em memória do servidor), então sobrevive a refresh da
+  // página e a troca de instância do servidor — só a espera no cliente é reiniciada.
   const pollTranscriptionJob = async (jobId: string, onProgress: (msg: string) => void): Promise<any> => {
     const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
-    const maxPolls = 180; // Up to 15 minutes of max processing for extremely long recordings
-    
+    const maxPolls = 240; // Até 20 minutos de espera no cliente
+    const maxConsecutiveNetworkFailures = 6; // ~30s de tolerância a instabilidade de rede antes de desistir
+
+    let consecutiveFailures = 0;
     for (let i = 0; i < maxPolls; i++) {
-      assertApiConfigured();
-      const response = await fetch(apiUrl(`/api/transcribe/status/${jobId}`), {
-        headers: {
-          "X-User-Email": currentUser?.email || ""
+      let job: { status?: string; result?: unknown; error?: string; progressMessage?: string };
+      try {
+        const response = await fetch(apiUrl(`/api/transcribe/status/${jobId}`), {
+          headers: { "X-User-Email": currentUser?.email || "" },
+        });
+        job = await readApiJson<typeof job>(response);
+        if (!response.ok) {
+          throw new Error(job.error || `Erro ao consultar o status do processador (${response.status})`);
         }
-      });
-
-      const job = await readApiJson<{
-        status?: string;
-        result?: unknown;
-        error?: string;
-        progressMessage?: string;
-      }>(response);
-
-      if (!response.ok) {
-        throw new Error(
-          job.error || `Erro ao consultar o status do processador (${response.status})`,
-        );
+        consecutiveFailures = 0;
+      } catch (err: any) {
+        consecutiveFailures += 1;
+        if (consecutiveFailures >= maxConsecutiveNetworkFailures) {
+          throw new Error(
+            `Não foi possível confirmar o status da transcrição após várias tentativas (${err.message || err}). ` +
+              "O processamento pode continuar no servidor — confira em Backup de Áudios em alguns minutos.",
+          );
+        }
+        await delay(5000);
+        continue;
       }
-      
+
+      // Progresso real vindo do status do job — substitui a animação "presa em 95%"
+      // por um valor que reflete a etapa em que o processamento de fato está.
+      const stageProgress: Record<string, number> = {
+        pending: 45,
+        uploading: 55,
+        processing: 70,
+        transcribing: 88,
+      };
+      if (job.status && stageProgress[job.status] !== undefined) {
+        setProcessingProgress(stageProgress[job.status]);
+      }
+
       if (job.status === "completed") {
         return job.result;
       } else if (job.status === "failed") {
         throw new Error(job.error || "Ocorreu um erro inesperado no processamento inteligente.");
-      } else {
-        if (job.progressMessage) {
-          onProgress(job.progressMessage);
-        }
+      } else if (job.progressMessage) {
+        onProgress(job.progressMessage);
       }
-      
+
       await delay(5000); // Poll every 5 seconds
     }
-    
-    throw new Error("O tempo limite de processamento de áudio foi excedido (máximo de 15 minutos).");
+
+    throw new Error(
+      "O tempo limite de acompanhamento no navegador foi excedido (20 minutos). " +
+        "O processamento pode continuar no servidor — confira em Backup de Áudios em alguns minutos e clique em Reprocessar IA para retomar.",
+    );
   };
 
   // EXPORT TO PDF (jspdf) with executive-level premium layout
@@ -4177,6 +4249,9 @@ Reunião vinculada ao Google Agenda:
                                       <button
                                         onClick={async () => {
                                           if (confirm("Excluir este áudio do armazenamento local?")) {
+                                            if (item.backup!.storagePath) {
+                                              await deleteAudioFromStorage(item.backup!.storagePath);
+                                            }
                                             await deleteLocalRecording(item.backup!.id);
                                             await loadBackups();
                                           }

@@ -8,34 +8,54 @@ Extensão corporativa do ecossistema Suiter: gravação, transcrição com IA, a
 2. Copie `.env.example` → `.env` e preencha (deixe `VITE_API_URL` vazio)
 3. `npm run dev` → http://localhost:3000
 
-## Deploy no Render (2 serviços)
+## Deploy na Vercel (1 projeto — front + API)
 
-| Serviço | Tipo | Função |
-|---------|------|--------|
-| `suiterecord-api` | Web Service (Node) | Transcrição, busca IA, export, OAuth Google |
-| `suiterecord-web` | Static Site | Frontend React |
+Front (Vite, estático) e API (função serverless em `api/index.ts`, que reexporta o
+Express de `src/server/app.ts`) sobem juntos no mesmo projeto Vercel, no mesmo
+domínio — não precisa de `VITE_API_URL` nem de CORS entre serviços.
 
 ### Passo a passo
 
-1. Push do repo no GitHub
-2. Render → **New → Blueprint** → selecione o repo (`render.yaml`)
-3. **API** — preencha:
+1. Aplique a migration mais recente no Supabase (cria `transcription_jobs` e o
+   bucket privado `audio-recordings` usados pela transcrição em background):
+   ```bash
+   chmod +x scripts/apply-migrations.sh
+   ./scripts/apply-migrations.sh
+   ```
+2. Push do repo no GitHub
+3. Vercel → **Add New → Project** → importe o repo (o `vercel.json` já define
+   `buildCommand`/`outputDirectory`/rewrites/`maxDuration` — não precisa configurar
+   framework manualmente)
+4. Em **Environment Variables**, preencha (Production e Preview):
+   - `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (client)
+   - `SUPABASE_URL` (mesma URL), `SUPABASE_SERVICE_ROLE_KEY` (server — nunca com
+     prefixo `VITE_`, senão vaza pro bundle do front)
    - `GROQ_API_KEY`
-   - `FRONTEND_URL` / `APP_URL` / `CORS_ORIGINS` → URL do static (pode ajustar depois do 1º deploy)
-   - `VITE_GOOGLE_CLIENT_ID`, `API_GOOGLE_CALENDAR_TOKEN`, `GOOGLE_CLIENT_SECRET`
-4. Anote a URL da API (`https://suiterecord-api.onrender.com`)
-5. **Static** — preencha:
-   - `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
-   - `VITE_GOOGLE_CLIENT_ID`
-   - `VITE_API_URL` → URL da API (sem barra no final)
-6. Depois do deploy do static, volte na API e confirme `FRONTEND_URL` / `CORS_ORIGINS` com a URL real do static → **Manual Deploy** na API
+   - `VITE_GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+   - `FRONTEND_URL` → sua URL de produção (ex.: `https://suiterecord.vercel.app`),
+     ajuste depois do 1º deploy se o domínio final for outro
+5. Deploy. `VITE_API_URL` fica vazio — o front chama `/api/...` no próprio domínio.
+
+**Timeout da função:** `vercel.json` define `maxDuration: 60` (funciona em Hobby e
+Pro sem configuração extra). O Whisper da Groq é bem mais rápido que tempo real,
+então 60s cobre a maioria das reuniões: mesmo áudios de 1–2h costumam transcrever em
+segundos. Se aparecerem timeouts em reuniões muito longas, suba pra Pro com Fluid
+Compute e aumente `maxDuration` (até 300s) no `vercel.json`.
 
 ### Google OAuth
 
 No Google Cloud Console → OAuth Client (Web):
 
-- **Origens JavaScript:** `https://suiterecord-web.onrender.com`
-- **Redirect URIs:** `https://suiterecord-api.onrender.com/api/google/oauth/callback`
+- **Origens JavaScript:** `https://SEU-APP.vercel.app`
+- **Redirect URIs:** `https://SEU-APP.vercel.app/api/google/oauth/callback`
+
+## Deploy alternativo (Render / Fly.io / Docker monolítico)
+
+`server.ts` (raiz) ainda funciona como entrypoint tradicional (Express +
+`app.listen`) pra quem preferir Render (`render.yaml`), Fly.io (`fly.toml`) ou um
+container Docker único — usa o mesmo app de `src/server/app.ts` por baixo. Nesses
+casos `VITE_API_URL` volta a ser necessário quando front e API estão em domínios
+separados (ver `.env.example`).
 
 ## Segurança (multi-tenant)
 
@@ -65,7 +85,7 @@ Supabase → projeto **Record** → **Authentication → Providers → Email** �
 Mantenha o e-mail ativo para **Reset password**.
 
 **URL Configuration:**
-- Site URL = URL do Static Site (Render) em produção, ou `http://localhost:3000` local
+- Site URL = URL de produção (Vercel), ou `http://localhost:3000` local
 - Redirect URLs = mesma URL
 
 Usuários já existentes foram confirmados no banco.
