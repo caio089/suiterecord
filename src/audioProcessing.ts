@@ -130,11 +130,8 @@ export async function getAudioDurationSeconds(blob: Blob): Promise<number> {
  *
  * Versões anteriores reencodavam para mono 16 kHz/Opus reproduzindo o áudio em
  * tempo real (MediaRecorder ligado a um AudioContext "ao vivo" e aguardando o
- * evento `onended`) — ou seja, comprimir um áudio de 40 minutos levava ~40
- * minutos de execução no navegador antes mesmo do upload começar, e nada era
- * salvo localmente nesse meio-tempo. `decodeAudioData` já é suficiente (e
- * rápido, não depende da duração do áudio) para validar o arquivo e obter a
- * duração real; o reencode fica a cargo do Groq Whisper no servidor.
+ * evento `onended`). A versão atual lê somente metadados, evitando expandir
+ * horas de áudio comprimido para PCM na memória do dispositivo.
  */
 export async function compressAudioBlob(
   input: Blob,
@@ -152,33 +149,10 @@ export async function compressAudioBlob(
     compressionRatio: 1,
   });
 
-  if (typeof AudioContext === "undefined" && typeof webkitAudioContext === "undefined") {
-    const durationSeconds = await getAudioDurationSeconds(input).catch(() => 60);
-    return asIs(durationSeconds);
-  }
-
-  onProgress?.("Validando áudio...");
-  const arrayBuffer = await input.arrayBuffer();
-  const AudioCtx =
-    window.AudioContext ||
-    (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-  const audioCtx = new AudioCtx();
-
-  let decoded: AudioBuffer | null = null;
-  try {
-    decoded = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
-  } catch {
-    // decoded fica null — tratado abaixo
-  } finally {
-    await audioCtx.close().catch(() => undefined);
-  }
-
-  if (!decoded) {
-    const durationSeconds = await getAudioDurationSeconds(input).catch(() => 60);
-    return asIs(durationSeconds);
-  }
-
-  const durationSeconds = Math.max(1, Math.round(decoded.duration));
+  // Não decodifica o áudio inteiro em PCM: em mobile uma reunião de horas pode
+  // consumir gigabytes de RAM. A duração é lida apenas dos metadados.
+  onProgress?.("Validando metadados do áudio...");
+  const durationSeconds = await getAudioDurationSeconds(input).catch(() => 0);
   if (durationSeconds > MAX_DURATION_SECONDS) {
     throw new Error(
       `Áudio muito longo (${Math.round(durationSeconds / 60)} min). Máximo: ${MAX_DURATION_SECONDS / 3600}h.`
@@ -186,7 +160,7 @@ export async function compressAudioBlob(
   }
 
   onProgress?.("Áudio validado, preparando envio...");
-  return asIs(durationSeconds);
+  return asIs(durationSeconds || 1);
 }
 
 export async function prepareAudioForStorage(
@@ -208,6 +182,3 @@ export async function prepareAudioForStorage(
   void fileName;
   return compressAudioBlob(fileOrBlob, onProgress);
 }
-
-// Tipagem para Safari legado
-declare const webkitAudioContext: typeof AudioContext | undefined;

@@ -68,14 +68,14 @@ export interface GoogleCalendarEvent {
   }[];
 }
 
-export interface SuiterConfig {
+export interface IntegrationConfig {
   apiUrl: string;
   token: string;
   isMock: boolean;
   mapping: string;
 }
 
-export interface SuiterLog {
+export interface IntegrationLog {
   timestamp: string;
   meetingTitle: string;
   status: "success" | "error";

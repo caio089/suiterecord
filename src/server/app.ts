@@ -57,7 +57,7 @@ app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader(
       "Access-Control-Allow-Headers",
-      "Content-Type, Authorization, X-User-Email",
+      "Content-Type, Authorization, X-Alfredo-API-Key",
     );
     res.setHeader(
       "Access-Control-Allow-Methods",
@@ -85,7 +85,7 @@ const GROQ_CHAT_MAX_TOKENS = 8000;
 app.get("/health", (_req, res) => {
   res.status(200).json({
     ok: true,
-    service: "suiterecord-api",
+    service: "alfredo-api",
     env: process.env.NODE_ENV || "development",
   });
 });
@@ -264,15 +264,74 @@ async function groqTranscribeAudio(
   return String(text).trim();
 }
 
-// Gate simples: exige e-mail do usuário logado (header). A autorização real é no client/admin.
-function authenticateRequest(req: express.Request, res: express.Response, next: express.NextFunction) {
-  const userEmail = String(req.headers["x-user-email"] || "").trim();
-  if (!userEmail || !userEmail.includes("@")) {
-    return res.status(401).json({
-      error: "Acesso não autorizado. Faça login com uma conta válida.",
-    });
+async function authenticateRequest(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const authorization = String(req.headers.authorization || "");
+  const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
+  if (!token) return res.status(401).json({ error: "Sessão Supabase ausente." });
+  try {
+    const admin = getSupabaseAdmin();
+    const { data, error } = await admin.auth.getUser(token);
+    if (error || !data.user?.id || !data.user.email) {
+      return res.status(401).json({ error: "Sessão Supabase inválida ou expirada." });
+    }
+    res.locals.authUser = {
+      id: data.user.id,
+      email: data.user.email.toLowerCase(),
+    };
+    next();
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || "Falha ao validar sessão." });
   }
+}
+
+async function requireAdmin(_req: express.Request, res: express.Response, next: express.NextFunction) {
+  const admin = getSupabaseAdmin();
+  const { data } = await admin.from("permitted_users").select("role")
+    .eq("email", res.locals.authUser.email).maybeSingle();
+  if (data?.role !== "Administrador") return res.status(403).json({ error: "Acesso restrito a administradores." });
   next();
+}
+
+async function authenticateApiKey(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const raw = String(req.headers["x-alfredo-api-key"] || "");
+  if (!raw.startsWith("alf_")) return res.status(401).json({ error: "Chave da API ausente." });
+  const hash = crypto.createHash("sha256").update(raw).digest("hex");
+  const admin = getSupabaseAdmin();
+  const { data } = await admin.from("api_keys").select("id,owner_id,scopes,revoked_at")
+    .eq("key_hash", hash).maybeSingle();
+  if (!data || data.revoked_at) return res.status(401).json({ error: "Chave inválida ou revogada." });
+  res.locals.apiKey = data;
+  await admin.from("api_keys").update({ last_used_at: new Date().toISOString() }).eq("id", data.id);
+  next();
+}
+
+app.get("/api/v1/meetings", authenticateApiKey, async (_req, res) => {
+  if (!res.locals.apiKey.scopes.includes("meetings:read")) return res.status(403).json({ error: "Escopo insuficiente." });
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin.from("meetings")
+    .select("id,title,date,duration,overview,topics,decisions,actions,tags,participants,created_at")
+    .eq("owner_id", res.locals.apiKey.owner_id).order("created_at", { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  return res.json({ data });
+});
+
+async function enqueueDurableTranscription(req: express.Request, jobId: string): Promise<boolean> {
+  const qstashToken = process.env.QSTASH_TOKEN || "";
+  const workerSecret = process.env.TRANSCRIPTION_WORKER_SECRET || "";
+  if (!qstashToken || !workerSecret) return false;
+  const callback = `${resolveApiPublicUrl(req)}/api/internal/transcription-worker`;
+  const response = await fetch(`https://qstash.upstash.io/v2/publish/${encodeURIComponent(callback)}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${qstashToken}`,
+      "Content-Type": "application/json",
+      "Upstash-Retries": "5",
+      "Upstash-Forward-Authorization": `Bearer ${workerSecret}`,
+    },
+    body: JSON.stringify({ jobId }),
+  });
+  if (!response.ok) throw new Error(`Não foi possível enfileirar a transcrição (${response.status}).`);
+  return true;
 }
 
 const MEETING_JSON_SCHEMA_HINT = `{
@@ -366,9 +425,25 @@ async function runTranscriptionBackground(
       progress_message: "Gerando ata estruturada com Groq Llama (etapa 2 de 2)...",
     });
 
+    let transcriptForAnalysis = rawTranscript;
+    if (rawTranscript.length > 60_000) {
+      const parts = rawTranscript.match(/[\s\S]{1,45_000}/g) || [rawTranscript];
+      const summaries: string[] = [];
+      for (let index = 0; index < parts.length; index++) {
+        await updateJob(supabaseAdmin, jobId, {
+          progress_message: `Consolidando trecho ${index + 1} de ${parts.length}...`,
+        });
+        summaries.push(await groqChatText(
+          "Resuma fielmente este trecho de reunião, preservando nomes, decisões, ações, responsáveis e fatos. Não invente dados.",
+          parts[index],
+        ));
+      }
+      transcriptForAnalysis = summaries.join("\n\n--- PRÓXIMO TRECHO ---\n\n");
+    }
+
     let userPrompt = `Transcrição bruta da reunião:
 """
-${rawTranscript}
+${transcriptForAnalysis}
 """
 
 Com base nessa transcrição, produza a ata estruturada no JSON exigido.
@@ -389,6 +464,9 @@ ${MEETING_JSON_SCHEMA_HINT}
 Todos os campos obrigatórios devem existir. Use português brasileiro.`;
 
     const result = await groqChatJson(systemPrompt, userPrompt);
+
+    // A ata pode usar resumos hierárquicos, mas a transcrição entregue permanece integral.
+    result.transcript = rawTranscript;
 
     // Garante transcript mesmo se o modelo omitir
     if (!result.transcript) {
@@ -450,13 +528,18 @@ function cleanupOldJobs(supabaseAdmin: SupabaseClient) {
 // Supabase Storage pelo cliente antes desta chamada (ver src/supabase.ts).
 app.post("/api/transcribe", authenticateRequest, async (req, res) => {
   try {
-    const userEmail = String(req.headers["x-user-email"] || "").trim().toLowerCase();
+    const userEmail = String(res.locals.authUser.email);
+    const ownerId = String(res.locals.authUser.id);
     const { storagePath, mimeType, context } = req.body || {};
 
     if (!storagePath || typeof storagePath !== "string") {
       return res.status(400).json({
         error: "storagePath é obrigatório — envie o áudio ao Storage antes de chamar /api/transcribe.",
       });
+    }
+    const normalizedPath = storagePath.toLowerCase();
+    if (!normalizedPath.startsWith(`${userEmail}/`)) {
+      return res.status(403).json({ error: "O áudio informado não pertence ao usuário autenticado." });
     }
 
     // Valida Groq e Supabase cedo — evita job "fantasma" que só falha no poll.
@@ -476,6 +559,7 @@ app.post("/api/transcribe", authenticateRequest, async (req, res) => {
       storage_path: storagePath,
       mime_type: mimeType || null,
       created_by: userEmail,
+      owner_id: ownerId,
     });
     if (insertError) {
       console.error("Erro ao criar job de transcrição:", insertError);
@@ -487,11 +571,14 @@ app.post("/api/transcribe", authenticateRequest, async (req, res) => {
 
     cleanupOldJobs(supabaseAdmin);
 
-    runInBackground(() =>
-      runTranscriptionBackground(jobId, { storagePath, mimeType, context, supabaseAdmin }),
-    );
+    const queued = await enqueueDurableTranscription(req, jobId);
+    if (!queued) {
+      runInBackground(() =>
+        runTranscriptionBackground(jobId, { storagePath, mimeType, context, supabaseAdmin }),
+      );
+    }
 
-    return res.json({ jobId, status: "pending" });
+    return res.json({ jobId, status: "pending", durableQueue: queued });
   } catch (error: any) {
     console.error("Erro ao iniciar job de transcrição:", error);
     return res.status(500).json({
@@ -501,11 +588,46 @@ app.post("/api/transcribe", authenticateRequest, async (req, res) => {
   }
 });
 
+app.post("/api/internal/transcription-worker", async (req, res) => {
+  const expected = process.env.TRANSCRIPTION_WORKER_SECRET || "";
+  const supplied = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+  if (!expected || supplied !== expected) return res.status(401).json({ error: "Worker não autorizado." });
+  const jobId = String(req.body?.jobId || "");
+  const admin = getSupabaseAdmin();
+  const { data: job, error } = await admin.from("transcription_jobs")
+    .select("id,status,storage_path,mime_type")
+    .eq("id", jobId)
+    .maybeSingle();
+  if (error || !job) return res.status(404).json({ error: "Job não encontrado." });
+  if (job.status === "completed") return res.json({ ok: true, alreadyCompleted: true });
+  await runTranscriptionBackground(jobId, {
+    storagePath: job.storage_path,
+    mimeType: job.mime_type || undefined,
+    supabaseAdmin: admin,
+  });
+  return res.json({ ok: true });
+});
+
+app.post("/api/integrations/api-keys", authenticateRequest, requireAdmin, async (req, res) => {
+  const raw = `alf_${crypto.randomBytes(32).toString("base64url")}`;
+  const hash = crypto.createHash("sha256").update(raw).digest("hex");
+  const admin = getSupabaseAdmin();
+  const { error } = await admin.from("api_keys").insert({
+    owner_id: res.locals.authUser.id,
+    name: String(req.body?.name || "Integração externa").slice(0, 80),
+    key_hash: hash,
+    key_prefix: raw.slice(0, 12),
+    scopes: Array.isArray(req.body?.scopes) ? req.body.scopes : ["meetings:read"],
+  });
+  if (error) return res.status(500).json({ error: error.message });
+  return res.status(201).json({ apiKey: raw, warning: "Esta chave será exibida apenas uma vez." });
+});
+
 // API endpoint to check the status of a Transcription Job — lê do Postgres, não de
 // memória do processo, então sobrevive a refresh do cliente e a restart/nova invocação do servidor.
 app.get("/api/transcribe/status/:jobId", authenticateRequest, async (req, res) => {
   const { jobId } = req.params;
-  const userEmail = String(req.headers["x-user-email"] || "").trim().toLowerCase();
+    const userEmail = String(res.locals.authUser.email);
 
   let supabaseAdmin: SupabaseClient;
   try {
@@ -516,14 +638,14 @@ app.get("/api/transcribe/status/:jobId", authenticateRequest, async (req, res) =
 
   const { data, error } = await supabaseAdmin
     .from("transcription_jobs")
-    .select("status, progress_message, result, error, created_by")
+    .select("status, progress_message, result, error, created_by, owner_id")
     .eq("id", jobId)
     .maybeSingle();
 
   if (error) {
     return res.status(500).json({ error: `Erro ao consultar o job: ${error.message}` });
   }
-  if (!data || data.created_by.toLowerCase() !== userEmail) {
+  if (!data || data.owner_id !== res.locals.authUser.id) {
     return res.status(404).json({ error: "Job de transcrição não encontrado ou já expirou." });
   }
 
@@ -580,12 +702,12 @@ Se a informação não estiver disponível nos históricos fornecidos, explique 
   }
 });
 
-// API endpoint for sending structured data to Suiter System Database
-app.post("/api/export-suiter", authenticateRequest, async (req, res) => {
-  const { suiterConfig, summaryData } = req.body;
-  const targetUrl = suiterConfig?.apiUrl || "https://api.suiter.interno/v1/meetings";
-  const token = suiterConfig?.token || "";
-  const isMock = suiterConfig?.isMock !== false; // defaults to true if not specified, allowing a robust fallback simulator
+// API endpoint for sending structured data to destino externo System Database
+app.post("/api/export-integration", authenticateRequest, requireAdmin, async (req, res) => {
+  const { summaryData } = req.body;
+  const targetUrl = String(process.env.INTEGRATION_WEBHOOK_URL || "https://example.invalid/webhook");
+  const token = String(process.env.INTEGRATION_WEBHOOK_TOKEN || "");
+  const isMock = process.env.INTEGRATION_WEBHOOK_ENABLED !== "true";
 
   // SSRF prevention: Validate export URL host
   let parsedUrl: URL;
@@ -594,17 +716,13 @@ app.post("/api/export-suiter", authenticateRequest, async (req, res) => {
   } catch (e) {
     return res.status(400).json({ error: "URL de API inválida." });
   }
-  const allowedHosts = [
-    "api.suiter.interno",
-    "suiter.interno",
-    "api.suiter.com",
-    "api.suiter.com.br"
-  ];
+  const allowedHosts = String(process.env.INTEGRATION_ALLOWED_HOSTS || "")
+    .split(",").map((host) => host.trim().toLowerCase()).filter(Boolean);
   const isHostAllowed = allowedHosts.some(host =>
     parsedUrl.hostname === host || parsedUrl.hostname.endsWith("." + host)
   );
-  if (!isMock && !isHostAllowed) {
-    return res.status(400).json({ error: "URL de API não permitida para exportação real. Use o modo de simulação para outros destinos." });
+  if (!isMock && (parsedUrl.protocol !== "https:" || !isHostAllowed)) {
+    return res.status(400).json({ error: "Destino não autorizado. Use HTTPS e configure INTEGRATION_ALLOWED_HOSTS." });
   }
 
   // Format payload according to configured database mapping
@@ -649,8 +767,8 @@ app.post("/api/export-suiter", authenticateRequest, async (req, res) => {
 
     const mockResponse = {
       success: true,
-      message: "Resumo exportado com sucesso para a base de dados do Suiter!",
-      suiter_id: `suit_mtg_${Math.floor(Math.random() * 900000 + 100000)}`,
+      message: "Resumo exportado com sucesso para a base de dados do destino externo!",
+      integration_id: `suit_mtg_${Math.floor(Math.random() * 900000 + 100000)}`,
       status: "synchronized",
       created_at: new Date().toISOString(),
     };
@@ -664,7 +782,7 @@ app.post("/api/export-suiter", authenticateRequest, async (req, res) => {
         statusText: "Created (Simulado)",
         headers: {
           "content-type": "application/json",
-          "x-powered-by": "Suiter API Gateway",
+          "x-powered-by": "destino externo API Gateway",
         },
         body: mockResponse,
       },
@@ -705,12 +823,12 @@ app.post("/api/export-suiter", authenticateRequest, async (req, res) => {
       },
     });
   } catch (err: any) {
-    console.error("Erro ao integrar com o Suiter:", err);
+    console.error("Erro ao integrar com o destino externo:", err);
     return res.status(502).json({
       success: false,
       simulated: false,
       request: requestDetails,
-      error: `Falha de conexão com a API do Suiter: ${err.message || err}`,
+      error: `Falha de conexão com a API do destino externo: ${err.message || err}`,
     });
   }
 });
@@ -799,10 +917,10 @@ function getGoogleOAuthConfig(req?: express.Request) {
 const oauthStateSecret =
   process.env.GOOGLE_OAUTH_STATE_SECRET ||
   process.env.GOOGLE_CLIENT_SECRET ||
-  process.env.SECRET_GOOGLE_CLIENT_ID ||
-  "suiter-oauth-dev-secret";
+  process.env.SECRET_GOOGLE_CLIENT_ID || "";
 
 function signOAuthState(): string {
+  if (!oauthStateSecret) throw new Error("GOOGLE_OAUTH_STATE_SECRET não configurado.");
   const payload = Buffer.from(
     JSON.stringify({ t: Date.now(), n: crypto.randomBytes(8).toString("hex") }),
     "utf8",
@@ -832,7 +950,8 @@ app.get("/api/google/oauth/status", (req, res) => {
   const cfg = getGoogleOAuthConfig(req);
   res.json({
     ok: true,
-    oauthConfigured: Boolean(cfg.clientId && cfg.clientSecret),
+    oauthConfigured: Boolean(cfg.clientId && cfg.clientSecret && oauthStateSecret),
+    hasStateSecret: Boolean(oauthStateSecret),
     hasClientId: Boolean(cfg.clientId),
     hasClientSecret: Boolean(cfg.clientSecret),
     frontendUrl: cfg.frontendUrl,
@@ -934,7 +1053,6 @@ app.get("/api/google/oauth/callback", async (req, res) => {
       ok: true,
       accessToken: tokenData.access_token,
       expiresIn: Number(tokenData.expires_in || 3600),
-      refreshToken: tokenData.refresh_token || "",
       frontendUrl,
     }));
   } catch (err: any) {
@@ -951,16 +1069,14 @@ function renderOAuthResultPage(opts: {
   ok: boolean;
   accessToken?: string;
   expiresIn?: number;
-  refreshToken?: string;
   error?: string;
   frontendUrl: string;
 }) {
   const payload = JSON.stringify({
-    type: "suiter-google-oauth",
+    type: "integration-google-oauth",
     ok: opts.ok,
     accessToken: opts.accessToken || null,
     expiresIn: opts.expiresIn || 0,
-    refreshToken: opts.refreshToken || null,
     error: opts.error || null,
   });
   const frontend = JSON.stringify(opts.frontendUrl);
@@ -985,11 +1101,10 @@ function renderOAuthResultPage(opts: {
     (function () {
       var payload = ${payload};
       var frontend = ${frontend};
-      // postMessage com '*' — FRONTEND_URL errado quebrava o targetOrigin e o popup fechava sem avisar
+      // Entrega o token somente à origem configurada do frontend.
       try {
         if (window.opener && !window.opener.closed) {
           try { window.opener.postMessage(payload, frontend); } catch (e1) {}
-          try { window.opener.postMessage(payload, "*"); } catch (e2) {}
           setTimeout(function () { window.close(); }, 600);
           return;
         }
