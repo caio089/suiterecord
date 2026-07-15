@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { jsPDF } from "jspdf";
-import triforceLogo from "./assets/images/suiter_record_logo_1783097489467.jpg";
+import triforceLogo from "./assets/brand/alfredo-symbol-white-512.png";
 import { Meeting, SuiterConfig, SuiterLog, PermittedUser, GoogleCalendarEvent } from "./types";
 import LandingPage from "./LandingPage";
 import LoginPage from "./LoginPage";
@@ -606,7 +606,7 @@ export default function App() {
 
     const payload = {
       summary: opts.title,
-      description: opts.description || "Criado pelo Suiter Record",
+      description: opts.description || "Criado pelo Alfredo",
       startDateTime,
       endDateTime,
       attendees: currentUser?.email
@@ -635,7 +635,7 @@ export default function App() {
         title: meeting.title,
         date: meetingConfirmedDate || meeting.date,
         time,
-        description: `${meeting.overview}\n\n— Inserido pelo Suiter Record`,
+        description: `${meeting.overview}\n\n— Inserido pelo Alfredo`,
         durationMinutes: Math.max(30, Math.round((meeting.duration || 3600) / 60) || 60),
         existingEventId: meeting.googleCalendarEventId || selectedCalendarEvent?.id,
       });
@@ -1216,9 +1216,9 @@ export default function App() {
       for (let i = 0; i < bufferLength; i++) {
         barHeight = (dataArray[i] / 255) * height * 0.8;
 
-        // Gradient for premium Plaud aesthetics (emerald green energy)
+        // Gradient for premium Alfredo (emerald green energy)
         const gradient = ctx.createLinearGradient(0, height, 0, height - barHeight);
-        gradient.addColorStop(0, "rgba(16, 185, 129, 0.2)");
+        gradient.addColorStop(0, "rgba(27, 166, 182, 0.2)");
         gradient.addColorStop(0.5, "rgba(52, 211, 153, 0.6)");
         gradient.addColorStop(1, "rgba(74, 222, 128, 0.9)");
 
@@ -1727,7 +1727,7 @@ Reunião vinculada ao Google Agenda:
     const doc = new jsPDF();
     
     // Header section for cover page
-    doc.setFillColor(10, 10, 10); // Elegant near-black header
+    doc.setFillColor(13, 27, 42); // Elegant near-black header
     doc.rect(0, 0, 210, 36, "F");
     
     // Inject base64 logo if preloaded successfully
@@ -1747,7 +1747,7 @@ Reunião vinculada ao Google Agenda:
     
     doc.setFont("Helvetica", "normal");
     doc.setFontSize(8.5);
-    doc.setTextColor(16, 185, 129); // Accent emerald
+    doc.setTextColor(27, 166, 182); // Accent emerald
     doc.text("Triforce Consultoria - Inteligência e Otimização de Processos", 44, 21);
     doc.setTextColor(200, 200, 200);
     doc.text(`Ata gerada automaticamente em: ${new Date().toLocaleDateString()} às ${new Date().toLocaleTimeString()}`, 44, 27);
@@ -1759,7 +1759,7 @@ Reunião vinculada ao Google Agenda:
       if (currentY + heightNeeded > 275) {
         doc.addPage();
         // Background header bar on secondary pages
-        doc.setFillColor(15, 15, 15);
+        doc.setFillColor(13, 27, 42);
         doc.rect(0, 0, 210, 16, "F");
         
         doc.setTextColor(255, 255, 255);
@@ -1769,7 +1769,7 @@ Reunião vinculada ao Google Agenda:
         
         doc.setFont("Helvetica", "normal");
         doc.setFontSize(7.5);
-        doc.setTextColor(16, 185, 129);
+        doc.setTextColor(27, 166, 182);
         doc.text(`Ata de Reunião: ${meeting.title}`, 50, 10);
         
         doc.setTextColor(156, 163, 175);
@@ -1784,7 +1784,7 @@ Reunião vinculada ao Google Agenda:
       checkPageBreak(18);
       doc.setFillColor(243, 244, 246);
       doc.rect(15, currentY, 180, 8, "F");
-      doc.setFillColor(16, 185, 129); // Emerald accent left bar
+      doc.setFillColor(27, 166, 182); // Emerald accent left bar
       doc.rect(15, currentY, 2, 8, "F");
       
       doc.setFont("Helvetica", "bold");
@@ -1830,7 +1830,7 @@ Reunião vinculada ao Google Agenda:
 
     doc.setFont("Helvetica", "bold");
     doc.setFontSize(9);
-    doc.setTextColor(16, 185, 129);
+    doc.setTextColor(27, 166, 182);
     doc.text("Triforce Consultoria (Membros Internos):", 15, currentY);
     doc.setFont("Helvetica", "normal");
     doc.setTextColor(55, 65, 81);
@@ -1838,7 +1838,7 @@ Reunião vinculada ao Google Agenda:
     currentY += 10;
 
     doc.setFont("Helvetica", "bold");
-    doc.setTextColor(59, 130, 246); // Blue for clients
+    doc.setTextColor(15, 61, 70); // Blue for clients
     doc.text("Membros de Clientes & Parceiros de Negócios:", 15, currentY);
     doc.setFont("Helvetica", "normal");
     doc.setTextColor(55, 65, 81);
@@ -1919,9 +1919,9 @@ Reunião vinculada ao Google Agenda:
       
       // Style priority badge text
       if (a.priority === "Alta") {
-        doc.setTextColor(220, 38, 38);
+        doc.setTextColor(255, 107, 90);
       } else if (a.priority === "Média") {
-        doc.setTextColor(217, 119, 6);
+        doc.setTextColor(217, 155, 43);
       } else {
         doc.setTextColor(5, 150, 105);
       }
@@ -1958,7 +1958,7 @@ Reunião vinculada ao Google Agenda:
         checkPageBreak(12);
         doc.setFont("Helvetica", "bold");
         doc.setFontSize(9);
-        doc.setTextColor(16, 185, 129); // Emerald accent color for speaker turn
+        doc.setTextColor(27, 166, 182); // Emerald accent color for speaker turn
         doc.text(speaker, 15, currentY);
         currentY += 4.5;
       }
@@ -1984,7 +1984,7 @@ Reunião vinculada ao Google Agenda:
     doc.setFont("Helvetica", "italic");
     doc.setFontSize(7.5);
     doc.setTextColor(156, 163, 175);
-    doc.text("Ata corporativa oficial emitida via Suiter Recorder pelo ecossistema Triforce Consultoria.", 15, currentY + 8);
+    doc.text("Ata corporativa oficial emitida via Alfredo pelo ecossistema Triforce Consultoria.", 15, currentY + 8);
 
     doc.save(`${meeting.title.toLowerCase().replace(/\s+/g, "_")}_relatorio_suiter.pdf`);
   };
@@ -2002,17 +2002,17 @@ Reunião vinculada ao Google Agenda:
         <title>${meeting.title}</title>
         <style>
           body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #1a202c; padding: 30px; }
-          .header-table { width: 100%; border: none; margin-bottom: 25px; background-color: #0a0a0a; padding: 20px; }
+          .header-table { width: 100%; border: none; margin-bottom: 25px; background-color: #0D1B2A; padding: 20px; }
           .header-title { color: #ffffff; font-size: 20px; font-weight: bold; margin: 0; font-family: Arial, sans-serif; }
-          .header-subtitle { color: #10b981; font-size: 11px; margin-top: 5px; font-weight: bold; }
+          .header-subtitle { color: #1BA6B6; font-size: 11px; margin-top: 5px; font-weight: bold; }
           .header-date { color: #a0aec0; font-size: 11px; margin-top: 2px; }
-          h2 { color: #111827; font-size: 15px; font-weight: bold; margin-top: 35px; margin-bottom: 12px; background-color: #f3f4f6; padding: 8px 15px; border-left: 5px solid #10b981; }
+          h2 { color: #111827; font-size: 15px; font-weight: bold; margin-top: 35px; margin-bottom: 12px; background-color: #f3f4f6; padding: 8px 15px; border-left: 5px solid #1BA6B6; }
           .meta-box { width: 100%; margin-bottom: 20px; border-collapse: collapse; }
           .meta-box td { padding: 6px 12px; font-size: 11px; border: 1px solid #e5e7eb; }
           .meta-label { font-weight: bold; background-color: #f9fafb; width: 25%; }
           .participants-section { margin-bottom: 15px; font-size: 11px; }
           .participants-title { font-weight: bold; margin-bottom: 3px; }
-          .p-triforce { color: #10b981; font-weight: bold; }
+          .p-triforce { color: #1BA6B6; font-weight: bold; }
           .p-client { color: #3b82f6; font-weight: bold; }
           p { margin: 8px 0; font-size: 11px; color: #374151; }
           .overview-text { font-size: 11.5px; line-height: 1.7; color: #1f2937; text-align: justify; }
@@ -2026,7 +2026,7 @@ Reunião vinculada ao Google Agenda:
           table.action-table td { border: 1px solid #e5e7eb; padding: 8px 12px; font-size: 11px; color: #374151; }
           .badge-alta { color: #dc2626; font-weight: bold; }
           .badge-media { color: #d97706; font-weight: bold; }
-          .badge-baixa { color: #059669; font-weight: bold; }
+          .badge-baixa { color: #117985; font-weight: bold; }
           .transcript-box { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #374151; margin-top: 15px; text-align: justify; }
           .footer-text { font-size: 10px; color: #9ca3af; text-align: center; margin-top: 40px; border-top: 1px solid #e5e7eb; padding-top: 15px; }
         </style>
@@ -2123,7 +2123,7 @@ Reunião vinculada ao Google Agenda:
             if (match) {
               const speaker = match[1].trim();
               const speech = para.substring(match[0].length).trim();
-              return `<p style="margin-bottom: 12px; text-align: justify;"><b style="color: #10b981;">${speaker}:</b> ${speech}</p>`;
+              return `<p style="margin-bottom: 12px; text-align: justify;"><b style="color: #1BA6B6;">${speaker}:</b> ${speech}</p>`;
             } else {
               return `<p style="margin-bottom: 12px; text-align: justify;">${para}</p>`;
             }
@@ -2131,7 +2131,7 @@ Reunião vinculada ao Google Agenda:
         </div>
         
         <div class="footer-text">
-          Ata corporativa oficial emitida via Suiter Recorder pelo ecossistema Triforce Consultoria. Todos os direitos reservados.
+          Ata corporativa oficial emitida via Alfredo pelo ecossistema Triforce Consultoria. Todos os direitos reservados.
         </div>
       </body>
       </html>
@@ -2371,15 +2371,15 @@ Reunião vinculada ao Google Agenda:
 
   if (!isDbLoaded) {
     return (
-      <div className="app-shell flex h-[100svh] w-screen flex-col items-center justify-center gap-3 text-sm text-zinc-400">
-        <div className="h-9 w-9 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-400" />
-        <p className="font-medium tracking-tight text-zinc-300">Carregando seu workspace...</p>
+      <div className="app-shell flex h-[100svh] w-screen flex-col items-center justify-center gap-3 text-sm text-alfredo-graphite">
+        <div className="h-9 w-9 animate-spin rounded-full border-2 border-alfredo-teal/25 border-t-alfredo-teal" />
+        <p className="font-medium tracking-tight text-alfredo-graphite">Carregando seu workspace...</p>
       </div>
     );
   }
 
   return (
-    <div className="app-shell relative flex h-[100svh] w-screen overflow-hidden font-sans text-white antialiased">
+    <div className="app-shell relative flex h-[100svh] w-screen overflow-hidden font-sans text-alfredo-navy antialiased">
       <AppSidebar
         logoSrc={triforceLogo}
         collapsed={isSidebarCollapsed}
@@ -2440,30 +2440,30 @@ Reunião vinculada ao Google Agenda:
 
         {/* PROCESSING & TRANSCRIPTION LOADER OVERLAY */}
         {isProcessingAudio && (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 bg-zinc-950/95 backdrop-blur-sm z-50">
-            <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800 flex flex-col items-center w-full max-w-sm text-center shadow-2xl">
-              <div className="w-12 h-12 rounded-full border-4 border-emerald-500/20 border-t-emerald-400 animate-spin mb-4"></div>
+          <div className="flex-1 flex flex-col items-center justify-center p-8 bg-white/95 backdrop-blur-sm z-50">
+            <div className="p-6 rounded-2xl bg-white border border-alfredo-border flex flex-col items-center w-full max-w-sm text-center shadow-2xl">
+              <div className="w-12 h-12 rounded-full border-4 border-alfredo-teal/25 border-t-alfredo-teal animate-spin mb-4"></div>
               
-              <h3 className="text-sm font-semibold text-white mb-2">Processamento & Transcrição</h3>
+              <h3 className="text-sm font-semibold text-alfredo-navy mb-2">Processamento & Transcrição</h3>
               
-              <p className="text-xs text-zinc-400 leading-relaxed font-mono bg-zinc-950 py-1.5 px-3 rounded border border-zinc-850 w-full mb-4">
+              <p className="text-xs text-alfredo-graphite leading-relaxed font-mono bg-alfredo-offwhite py-1.5 px-3 rounded border border-alfredo-border w-full mb-4">
                 {processingStatus}
               </p>
 
               {/* Real-time elegant progress bar */}
-              <div className="w-full bg-zinc-950 rounded-full h-2.5 mb-2 overflow-hidden border border-zinc-850">
+              <div className="w-full bg-alfredo-offwhite rounded-full h-2.5 mb-2 overflow-hidden border border-alfredo-border">
                 <div 
-                  className="bg-emerald-500 h-2.5 rounded-full transition-all duration-300 ease-out" 
+                  className="bg-alfredo-teal h-2.5 rounded-full transition-all duration-300 ease-out" 
                   style={{ width: `${processingProgress}%` }}
                 ></div>
               </div>
               
-              <div className="flex justify-between w-full text-[10px] text-zinc-500 font-mono mb-4">
+              <div className="flex justify-between w-full text-[10px] text-alfredo-muted font-mono mb-4">
                 <span>FASE ATUAL</span>
-                <span className="text-emerald-400 font-bold">{processingProgress}% CONCLUÍDO</span>
+                <span className="text-alfredo-teal-dark font-bold">{processingProgress}% CONCLUÍDO</span>
               </div>
 
-              <div className="flex items-center gap-1.5 text-[10px] text-zinc-500">
+              <div className="flex items-center gap-1.5 text-[10px] text-alfredo-muted">
                 <Info size={11} />
                 <span>Análise de locutores e sumário de tarefas</span>
               </div>
@@ -2486,22 +2486,22 @@ Reunião vinculada ao Google Agenda:
                   className="flex-1 flex flex-col h-full overflow-hidden"
                 >
                 {/* Meeting Header Metadata and Custom Tag Editor */}
-                <div className="p-4 sm:p-6 border-b border-zinc-800 bg-zinc-900/20 transition-all duration-300">
+                <div className="p-4 sm:p-6 border-b border-alfredo-border bg-alfredo-offwhite transition-all duration-300">
                   {isDetailsCollapsed ? (
                     /* COMPACT / COLLAPSED HEADER */
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
                         <button
                           onClick={() => setSelectedMeetingId(null)}
-                          className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg bg-white border border-alfredo-border text-alfredo-graphite hover:text-alfredo-navy transition-colors cursor-pointer"
                           title="Voltar para Minhas Reuniões"
                         >
                           <ChevronLeft size={14} />
                         </button>
                         <div className="min-w-0">
-                          <h2 className="font-semibold text-sm text-white truncate tracking-tight flex items-center gap-2">
+                          <h2 className="font-semibold text-sm text-alfredo-navy truncate tracking-tight flex items-center gap-2">
                             <span>{selectedMeeting.title}</span>
-                            <span className="text-[10px] bg-zinc-850 text-zinc-400 font-mono py-0.5 px-2 rounded border border-zinc-800">
+                            <span className="text-[10px] bg-white text-alfredo-graphite font-mono py-0.5 px-2 rounded border border-alfredo-border">
                               {selectedMeeting.date}
                             </span>
                           </h2>
@@ -2512,7 +2512,7 @@ Reunião vinculada ao Google Agenda:
                         {/* Compact actions button triggers */}
                         <button
                           onClick={() => triggerPdfExport(selectedMeeting)}
-                          className="px-2 py-1 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-850 text-[10px] text-zinc-400 font-mono transition-colors"
+                          className="px-2 py-1 rounded bg-white hover:bg-alfredo-offwhite border border-alfredo-border text-[10px] text-alfredo-graphite font-mono transition-colors"
                           title="PDF"
                         >
                           PDF
@@ -2520,14 +2520,14 @@ Reunião vinculada ao Google Agenda:
                         <button
                           onClick={() => handleInsertMeetingToCalendar(selectedMeeting)}
                           disabled={isInsertingToCalendar}
-                          className="px-2 py-1 rounded bg-blue-950/50 hover:bg-blue-900/60 border border-blue-500/30 text-[10px] text-blue-300 font-mono transition-colors disabled:opacity-50"
+                          className="px-2 py-1 rounded bg-alfredo-surface-teal hover:bg-alfredo-surface-teal border border-alfredo-teal/30 text-[10px] text-alfredo-teal-dark font-mono transition-colors disabled:opacity-50"
                           title="Inserir na Google Agenda"
                         >
                           {selectedMeeting.googleCalendarEventId ? "Agenda ✓" : "Inserir Agenda"}
                         </button>
                         <button
                           onClick={() => triggerDocxExport(selectedMeeting)}
-                          className="px-2 py-1 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-850 text-[10px] text-zinc-400 font-mono transition-colors"
+                          className="px-2 py-1 rounded bg-white hover:bg-alfredo-offwhite border border-alfredo-border text-[10px] text-alfredo-graphite font-mono transition-colors"
                           title="DOCX"
                         >
                           DOCX
@@ -2536,7 +2536,7 @@ Reunião vinculada ao Google Agenda:
                           <button
                             onClick={() => exportMeetingToSuiter(selectedMeeting)}
                             disabled={isExportingToSuiter}
-                            className="px-2 py-1 rounded bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-800 text-black font-bold text-[10px] transition-colors"
+                            className="px-2 py-1 rounded bg-alfredo-teal hover:bg-alfredo-teal-dark disabled:bg-alfredo-offwhite text-alfredo-navy font-bold text-[10px] transition-colors"
                             title="Exportar Suiter"
                           >
                             Suiter
@@ -2544,7 +2544,7 @@ Reunião vinculada ao Google Agenda:
                         )}
                         <button
                           onClick={() => setIsDetailsCollapsed(false)}
-                          className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-750 text-emerald-400 hover:text-white text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                          className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-alfredo-offwhite hover:bg-[#E7EDEF] text-alfredo-teal-dark hover:text-alfredo-navy text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer"
                           title="Expandir detalhes da reunião"
                         >
                           <Eye size={12} />
@@ -2559,17 +2559,17 @@ Reunião vinculada ao Google Agenda:
                         <div>
                           <button
                             onClick={() => setSelectedMeetingId(null)}
-                            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-emerald-400 transition-colors mb-2 cursor-pointer group"
+                            className="flex items-center gap-1.5 text-xs text-alfredo-graphite hover:text-alfredo-teal-dark transition-colors mb-2 cursor-pointer group"
                           >
                             <ChevronLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
                             Voltar para Minhas Reuniões
                           </button>
-                          <h2 className="font-semibold text-xl text-white tracking-tight">
+                          <h2 className="font-semibold text-xl text-alfredo-navy tracking-tight">
                             {selectedMeeting.title}
                           </h2>
                           
-                          <div className="flex items-center gap-4 text-xs text-zinc-400 font-mono mt-1.5">
-                            <span className="flex items-center gap-1 text-zinc-400">
+                          <div className="flex items-center gap-4 text-xs text-alfredo-graphite font-mono mt-1.5">
+                            <span className="flex items-center gap-1 text-alfredo-graphite">
                               Data: {selectedMeeting.date}
                             </span>
                             <span>•</span>
@@ -2584,26 +2584,26 @@ Reunião vinculada ao Google Agenda:
                           {currentUser?.role === "Administrador" && (
                             <button
                               onClick={() => deleteMeeting(selectedMeeting.id)}
-                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-red-950/30 border border-zinc-700 hover:border-red-500/30 text-xs font-medium text-zinc-300 hover:text-red-400 transition-all cursor-pointer"
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white hover:bg-[#FFF0ED] border border-alfredo-border hover:border-alfredo-coral/30 text-xs font-medium text-alfredo-graphite hover:text-alfredo-coral transition-all cursor-pointer"
                               title="Excluir Reunião Permanentemente"
                             >
-                              <Trash2 size={12} className="text-red-500" />
+                              <Trash2 size={12} className="text-alfredo-coral" />
                               Excluir Reunião
                             </button>
                           )}
 
                           <button
                             onClick={() => triggerPdfExport(selectedMeeting)}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-xs font-medium text-zinc-300 transition-colors cursor-pointer"
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white hover:bg-alfredo-offwhite border border-alfredo-border text-xs font-medium text-alfredo-graphite transition-colors cursor-pointer"
                             title="Exportar PDF"
                           >
-                            <Download size={12} className="text-red-400" />
+                            <Download size={12} className="text-alfredo-coral" />
                             PDF
                           </button>
                           <button
                             onClick={() => handleInsertMeetingToCalendar(selectedMeeting)}
                             disabled={isInsertingToCalendar}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-950/40 hover:bg-blue-900/50 border border-blue-500/30 text-xs font-medium text-blue-300 transition-colors cursor-pointer disabled:opacity-50"
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-alfredo-surface-teal hover:bg-alfredo-surface-teal border border-alfredo-teal/30 text-xs font-medium text-alfredo-teal-dark transition-colors cursor-pointer disabled:opacity-50"
                             title="Inserir esta reunião na sua Google Agenda"
                           >
                             <Calendar size={12} />
@@ -2615,10 +2615,10 @@ Reunião vinculada ao Google Agenda:
                           </button>
                           <button
                             onClick={() => triggerDocxExport(selectedMeeting)}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-xs font-medium text-zinc-300 transition-colors cursor-pointer"
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white hover:bg-alfredo-offwhite border border-alfredo-border text-xs font-medium text-alfredo-graphite transition-colors cursor-pointer"
                             title="Exportar Word (DOCX)"
                           >
-                            <Download size={12} className="text-blue-400" />
+                            <Download size={12} className="text-alfredo-teal-dark" />
                             DOCX
                           </button>
                           
@@ -2628,8 +2628,8 @@ Reunião vinculada ao Google Agenda:
                               disabled={isExportingToSuiter}
                               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold shadow-md transition-all cursor-pointer ${
                                 isExportingToSuiter 
-                                  ? "bg-zinc-800 text-zinc-500 border border-zinc-750 cursor-not-allowed" 
-                                  : "bg-emerald-500 hover:bg-emerald-600 text-black border border-transparent"
+                                  ? "bg-alfredo-offwhite text-alfredo-muted border border-alfredo-border cursor-not-allowed" 
+                                  : "bg-alfredo-teal hover:bg-alfredo-teal-dark text-alfredo-navy border border-transparent"
                               }`}
                               title="Exportar para Base de Dados Suiter"
                             >
@@ -2644,7 +2644,7 @@ Reunião vinculada ao Google Agenda:
 
                           <button
                             onClick={() => setIsDetailsCollapsed(true)}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-750 border border-zinc-700 text-xs font-medium text-emerald-400 hover:text-white transition-all cursor-pointer"
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-alfredo-offwhite hover:bg-[#E7EDEF] border border-alfredo-border text-xs font-medium text-alfredo-teal-dark hover:text-alfredo-navy transition-all cursor-pointer"
                             title="Recolher detalhes"
                           >
                             <EyeOff size={12} />
@@ -2655,19 +2655,19 @@ Reunião vinculada ao Google Agenda:
 
                       {/* Active meeting tags and quick adder */}
                       <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                        <span className="text-xs text-zinc-500 mr-1 flex items-center gap-1">
+                        <span className="text-xs text-alfredo-muted mr-1 flex items-center gap-1">
                           <Tag size={11} />
                           Tags:
                         </span>
                         {selectedMeeting.tags.map((tag) => (
                           <span 
                             key={tag}
-                            className="flex items-center gap-1 px-2.5 py-1 bg-zinc-850 border border-zinc-700 rounded-md text-zinc-300 text-xs font-medium group/tag"
+                            className="flex items-center gap-1 px-2.5 py-1 bg-white border border-alfredo-border rounded-md text-alfredo-graphite text-xs font-medium group/tag"
                           >
                             {tag}
                             <button
                               onClick={() => removeTagFromMeeting(tag)}
-                              className="text-zinc-500 hover:text-red-400 transition-colors"
+                              className="text-alfredo-muted hover:text-alfredo-coral transition-colors"
                               title="Remover tag"
                             >
                               <X size={10} />
@@ -2680,7 +2680,7 @@ Reunião vinculada ao Google Agenda:
                           {!showTagMenu ? (
                             <button
                               onClick={() => setShowTagMenu(true)}
-                              className="flex items-center gap-1 px-2 py-0.5 border border-dashed border-zinc-700 hover:border-zinc-500 rounded text-zinc-400 text-xs transition-colors cursor-pointer"
+                              className="flex items-center gap-1 px-2 py-0.5 border border-dashed border-alfredo-border hover:border-alfredo-border rounded text-alfredo-graphite text-xs transition-colors cursor-pointer"
                             >
                               <Plus size={10} />
                               Adicionar Tag
@@ -2695,18 +2695,18 @@ Reunião vinculada ao Google Agenda:
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter") addTagToMeeting(newTagInput);
                                 }}
-                                className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-0.5 text-xs text-white max-w-24 focus:outline-none focus:border-emerald-500"
+                                className="bg-alfredo-offwhite border border-alfredo-border rounded px-1.5 py-0.5 text-xs text-alfredo-navy max-w-24 focus:outline-none focus:border-alfredo-teal/60"
                                 autoFocus
                               />
                               <button
                                 onClick={() => addTagToMeeting(newTagInput)}
-                                className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 text-emerald-400 transition-colors"
+                                className="p-1 rounded bg-alfredo-offwhite hover:bg-[#E1E8EB] text-alfredo-teal-dark transition-colors"
                               >
                                 <Check size={11} />
                               </button>
                               <button
                                 onClick={() => { setShowTagMenu(false); setNewTagInput(""); }}
-                                className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-500"
+                                className="p-1 rounded bg-alfredo-offwhite hover:bg-[#E1E8EB] text-alfredo-muted"
                               >
                                 <X size={11} />
                               </button>
@@ -2719,13 +2719,13 @@ Reunião vinculada ao Google Agenda:
                 </div>
 
                 {/* VIEW TABS SELECTOR */}
-                <div className="px-6 border-b border-zinc-800 flex gap-4 bg-zinc-900/10 shrink-0">
+                <div className="px-6 border-b border-alfredo-border flex gap-4 bg-alfredo-offwhite shrink-0">
                   <button
                     onClick={() => setActiveTab("summary")}
                     className={`py-3.5 px-1 font-semibold text-xs tracking-wide uppercase border-b-2 transition-colors cursor-pointer ${
                       activeTab === "summary" 
-                        ? "border-emerald-500 text-emerald-400 font-bold" 
-                        : "border-transparent text-zinc-400 hover:text-white"
+                        ? "border-alfredo-teal/60 text-alfredo-teal-dark font-bold" 
+                        : "border-transparent text-alfredo-graphite hover:text-alfredo-navy"
                     }`}
                   >
                     Resumo Inteligente & Tópicos
@@ -2734,8 +2734,8 @@ Reunião vinculada ao Google Agenda:
                     onClick={() => setActiveTab("transcript")}
                     className={`py-3.5 px-1 font-semibold text-xs tracking-wide uppercase border-b-2 transition-colors cursor-pointer ${
                       activeTab === "transcript" 
-                        ? "border-emerald-500 text-emerald-400 font-bold" 
-                        : "border-transparent text-zinc-400 hover:text-white"
+                        ? "border-alfredo-teal/60 text-alfredo-teal-dark font-bold" 
+                        : "border-transparent text-alfredo-graphite hover:text-alfredo-navy"
                     }`}
                   >
                     Transcrição Completa
@@ -2748,8 +2748,8 @@ Reunião vinculada ao Google Agenda:
                   {/* TRANSCRIPT TAB */}
                   {activeTab === "transcript" && (
                     <div className="space-y-4 max-w-4xl mx-auto">
-                      <div className="p-4 bg-zinc-900/60 border border-zinc-800 rounded-xl text-xs text-zinc-400 flex items-start gap-2.5">
-                        <Info size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                      <div className="p-4 bg-alfredo-offwhite border border-alfredo-border rounded-xl text-xs text-alfredo-graphite flex items-start gap-2.5">
+                        <Info size={16} className="text-alfredo-teal-dark shrink-0 mt-0.5" />
                         <div>
                           A transcrição é processada na íntegra pelo modelo de voz do Gemini. O modelo detecta automaticamente os locutores na reunião física para organizar o diálogo em parágrafos separados.
                         </div>
@@ -2757,20 +2757,20 @@ Reunião vinculada ao Google Agenda:
 
                       {/* SPEAKER IDENTIFICATION TOOL */}
                       {getSpeakersFromTranscript(selectedMeeting.transcript).length > 0 && (
-                        <div className="p-4 bg-zinc-900/40 border border-zinc-800 rounded-xl space-y-3">
+                        <div className="p-4 bg-alfredo-offwhite border border-alfredo-border rounded-xl space-y-3">
                           <div className="flex items-center gap-2">
-                            <Users size={14} className="text-emerald-400" />
-                            <h4 className="text-xs font-bold text-white uppercase tracking-wider">Identificação Manual de Palestrantes</h4>
+                            <Users size={14} className="text-alfredo-teal-dark" />
+                            <h4 className="text-xs font-bold text-alfredo-navy uppercase tracking-wider">Identificação Manual de Palestrantes</h4>
                           </div>
-                          <p className="text-[11px] text-zinc-400">
+                          <p className="text-[11px] text-alfredo-graphite">
                             Substitua as marcas automáticas da transcrição (ex: "Palestrante 1") pelos nomes reais dos participantes de forma global. Selecione da lista ou digite e aperte Enter:
                           </p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pt-1">
                             {getSpeakersFromTranscript(selectedMeeting.transcript).map((speaker, sIdx) => (
-                              <div key={sIdx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-zinc-950/60 border border-zinc-800 rounded-lg text-xs">
+                              <div key={sIdx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-white/85 border border-alfredo-border rounded-lg text-xs">
                                 <div className="flex items-center gap-2">
-                                  <User size={13} className="text-emerald-400" />
-                                  <span className="font-mono text-zinc-300 font-bold">{speaker}</span>
+                                  <User size={13} className="text-alfredo-teal-dark" />
+                                  <span className="font-mono text-alfredo-graphite font-bold">{speaker}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   {/* Select from Participants */}
@@ -2788,7 +2788,7 @@ Reunião vinculada ao Google Agenda:
                                         return m;
                                       }));
                                     }}
-                                    className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-zinc-300 focus:outline-none focus:border-emerald-500 cursor-pointer font-sans"
+                                    className="bg-white border border-alfredo-border rounded px-2 py-1 text-[11px] text-alfredo-graphite focus:outline-none focus:border-alfredo-teal/60 cursor-pointer font-sans"
                                   >
                                     <option value="">-- Mapear --</option>
                                     <optgroup label="Triforce">
@@ -2845,7 +2845,7 @@ Reunião vinculada ao Google Agenda:
                                         e.currentTarget.value = "";
                                       }
                                     }}
-                                    className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-emerald-500 w-24"
+                                    className="bg-white border border-alfredo-border rounded px-2 py-1 text-[11px] text-alfredo-graphite placeholder-alfredo-muted focus:outline-none focus:border-alfredo-teal/60 w-24"
                                   />
                                 </div>
                               </div>
@@ -2854,7 +2854,7 @@ Reunião vinculada ao Google Agenda:
                         </div>
                       )}
 
-                      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-inner">
+                      <div className="bg-white border border-alfredo-border rounded-xl p-6 shadow-inner">
                         <div className="prose prose-invert max-w-none">
                           {formatTranscriptText(selectedMeeting.transcript).split("\n\n").map((para, i) => {
                             // Extract speaker name dynamically
@@ -2890,21 +2890,21 @@ Reunião vinculada ao Google Agenda:
                             const isEmerald = isTriforce || (speakerIndex === -1 ? false : isFirstSpeaker);
                             const isBlue = isClient || (speakerIndex === -1 ? false : isSecondSpeaker);
 
-                            const colorClass = isEmerald ? "text-emerald-400" : isBlue ? "text-blue-400" : "text-amber-400";
+                            const colorClass = isEmerald ? "text-alfredo-teal-dark" : isBlue ? "text-alfredo-teal-dark" : "text-alfredo-warning";
 
                             return (
-                              <div key={i} className="mb-4 pb-4 border-b border-zinc-800/30 last:border-0 last:mb-0 last:pb-0">
+                              <div key={i} className="mb-4 pb-4 border-b border-alfredo-border last:border-0 last:mb-0 last:pb-0">
                                 {speakerName ? (
                                   <div className="flex flex-col gap-1">
                                     <span className={`font-mono text-[10px] font-bold uppercase tracking-wider ${colorClass}`}>
                                       {speakerName}
                                     </span>
-                                    <p className="text-sm text-zinc-300 leading-relaxed m-0 text-justify">
+                                    <p className="text-sm text-alfredo-graphite leading-relaxed m-0 text-justify">
                                       {speechContent}
                                     </p>
                                   </div>
                                 ) : (
-                                  <p className="text-sm text-zinc-300 leading-relaxed m-0 text-justify">
+                                  <p className="text-sm text-alfredo-graphite leading-relaxed m-0 text-justify">
                                     {para}
                                   </p>
                                 )}
@@ -2926,14 +2926,14 @@ Reunião vinculada ao Google Agenda:
                           <FileText size={120} />
                         </div>
                         <div className="flex items-center gap-2 mb-3">
-                          <div className="p-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-emerald-400">
+                          <div className="p-1.5 rounded-lg bg-alfredo-offwhite border border-alfredo-border text-alfredo-teal-dark">
                             <Sparkles size={14} />
                           </div>
-                          <h3 className="font-semibold text-sm uppercase tracking-wider text-white">
+                          <h3 className="font-semibold text-sm uppercase tracking-wider text-alfredo-navy">
                             Visão Geral Inteligente (IA)
                           </h3>
                         </div>
-                        <p className="text-sm text-zinc-300 leading-relaxed">
+                        <p className="text-sm text-alfredo-graphite leading-relaxed">
                           {selectedMeeting.overview}
                         </p>
                       </div>
@@ -2942,10 +2942,10 @@ Reunião vinculada ao Google Agenda:
                       <div className="glass rounded-2xl p-6">
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-2">
-                            <div className="p-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-emerald-400">
+                            <div className="p-1.5 rounded-lg bg-alfredo-offwhite border border-alfredo-border text-alfredo-teal-dark">
                               <Users size={14} />
                             </div>
-                            <h3 className="font-semibold text-sm uppercase tracking-wider text-white">
+                            <h3 className="font-semibold text-sm uppercase tracking-wider text-alfredo-navy">
                               Participantes Confirmados (Sincronização Triforce)
                             </h3>
                           </div>
@@ -2956,7 +2956,7 @@ Reunião vinculada ao Google Agenda:
                               setEditClientMembers(parts.membersClient.join("\n"));
                               setIsParticipantsModalOpen(true);
                             }}
-                            className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-950/70 border border-emerald-500/30 rounded-lg px-2.5 py-1 transition-all"
+                            className="flex items-center gap-1.5 text-[11px] font-bold text-alfredo-teal-dark hover:text-alfredo-teal-dark bg-alfredo-surface-teal hover:bg-alfredo-surface-teal border border-alfredo-teal/30 rounded-lg px-2.5 py-1 transition-all"
                           >
                             <Edit2 size={12} />
                             Editar Participantes
@@ -2965,26 +2965,26 @@ Reunião vinculada ao Google Agenda:
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {/* Column 1: Triforce */}
-                          <div className="p-4 bg-zinc-900/40 border border-zinc-800 rounded-xl">
+                          <div className="p-4 bg-alfredo-offwhite border border-alfredo-border rounded-xl">
                             <div className="flex items-center gap-2 mb-3">
-                              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                              <h4 className="text-xs font-bold text-white uppercase tracking-wider">Triforce Consultoria</h4>
+                              <span className="w-2 h-2 rounded-full bg-alfredo-teal"></span>
+                              <h4 className="text-xs font-bold text-alfredo-navy uppercase tracking-wider">Triforce Consultoria</h4>
                             </div>
                             <div className="space-y-2">
                               {getMeetingParticipantsList(selectedMeeting, permittedUsers).membersTriforce.length === 0 ? (
-                                <div className="p-3 text-center text-zinc-500 italic text-[11px] bg-zinc-950/30 border border-zinc-850 rounded-lg">
+                                <div className="p-3 text-center text-alfredo-muted italic text-[11px] bg-alfredo-offwhite border border-alfredo-border rounded-lg">
                                   Nenhum consultor identificado ou adicionado.
                                 </div>
                               ) : (
                                 getMeetingParticipantsList(selectedMeeting, permittedUsers).membersTriforce.map((member, idx) => (
-                                  <div key={idx} className="flex items-center justify-between p-2 bg-zinc-950/60 border border-zinc-800/80 rounded-lg text-xs">
+                                  <div key={idx} className="flex items-center justify-between p-2 bg-white/85 border border-alfredo-border rounded-lg text-xs">
                                     <div className="flex items-center gap-2">
-                                      <div className="w-5 h-5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold flex items-center justify-center text-[10px]">
+                                      <div className="w-5 h-5 rounded-full bg-alfredo-teal/10 text-alfredo-teal-dark font-bold flex items-center justify-center text-[10px]">
                                         {member[0] || "?"}
                                       </div>
-                                      <span className="text-zinc-300 font-medium">{member}</span>
+                                      <span className="text-alfredo-graphite font-medium">{member}</span>
                                     </div>
-                                    <span className="text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-500/25 px-1.5 py-0.5 rounded-full font-sans font-bold">
+                                    <span className="text-[9px] bg-alfredo-surface-teal text-alfredo-teal-dark border border-alfredo-teal/30 px-1.5 py-0.5 rounded-full font-sans font-bold">
                                       Presente
                                     </span>
                                   </div>
@@ -2994,26 +2994,26 @@ Reunião vinculada ao Google Agenda:
                           </div>
 
                           {/* Column 2: Client */}
-                          <div className="p-4 bg-zinc-900/40 border border-zinc-800 rounded-xl">
+                          <div className="p-4 bg-alfredo-offwhite border border-alfredo-border rounded-xl">
                             <div className="flex items-center gap-2 mb-3">
-                              <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                              <h4 className="text-xs font-bold text-white uppercase tracking-wider">Cliente / Parceiros</h4>
+                              <span className="w-2 h-2 rounded-full bg-alfredo-teal"></span>
+                              <h4 className="text-xs font-bold text-alfredo-navy uppercase tracking-wider">Cliente / Parceiros</h4>
                             </div>
                             <div className="space-y-2">
                               {getMeetingParticipantsList(selectedMeeting, permittedUsers).membersClient.length === 0 ? (
-                                <div className="p-3 text-center text-zinc-500 italic text-[11px] bg-zinc-950/30 border border-zinc-850 rounded-lg">
+                                <div className="p-3 text-center text-alfredo-muted italic text-[11px] bg-alfredo-offwhite border border-alfredo-border rounded-lg">
                                   Nenhum cliente identificado ou adicionado.
                                 </div>
                               ) : (
                                 getMeetingParticipantsList(selectedMeeting, permittedUsers).membersClient.map((member, idx) => (
-                                  <div key={idx} className="flex items-center justify-between p-2 bg-zinc-950/60 border border-zinc-800/80 rounded-lg text-xs">
+                                  <div key={idx} className="flex items-center justify-between p-2 bg-white/85 border border-alfredo-border rounded-lg text-xs">
                                     <div className="flex items-center gap-2">
-                                      <div className="w-5 h-5 rounded-full bg-blue-500/10 text-blue-400 font-bold flex items-center justify-center text-[10px]">
+                                      <div className="w-5 h-5 rounded-full bg-alfredo-teal/10 text-alfredo-teal-dark font-bold flex items-center justify-center text-[10px]">
                                         {member[0] || "?"}
                                       </div>
-                                      <span className="text-zinc-300 font-medium">{member}</span>
+                                      <span className="text-alfredo-graphite font-medium">{member}</span>
                                     </div>
-                                    <span className="text-[9px] bg-blue-950/40 text-blue-400 border border-blue-500/25 px-1.5 py-0.5 rounded-full font-sans font-bold">
+                                    <span className="text-[9px] bg-alfredo-surface-teal text-alfredo-teal-dark border border-alfredo-teal/30 px-1.5 py-0.5 rounded-full font-sans font-bold">
                                       Presente
                                     </span>
                                   </div>
@@ -3027,10 +3027,10 @@ Reunião vinculada ao Google Agenda:
                       {/* BENTO BLOCK 1.6: KEY DECISIONS */}
                       <div className="glass rounded-2xl p-6 relative overflow-hidden">
                         <div className="flex items-center gap-2 mb-4">
-                          <div className="p-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-amber-400">
+                          <div className="p-1.5 rounded-lg bg-alfredo-offwhite border border-alfredo-border text-alfredo-warning">
                             <CheckSquare size={14} />
                           </div>
-                          <h3 className="font-semibold text-sm uppercase tracking-wider text-white">
+                          <h3 className="font-semibold text-sm uppercase tracking-wider text-alfredo-navy">
                             Decisões Importantes & Alinhamentos Estratégicos
                           </h3>
                         </div>
@@ -3044,11 +3044,11 @@ Reunião vinculada ao Google Agenda:
                                 "Próximo alinhamento de acompanhamento de sprint agendado para o dia 15."
                               ]
                           ).map((decision, idx) => (
-                            <div key={idx} className="flex items-start gap-3 p-3 bg-zinc-900/50 border border-zinc-800 hover:border-zinc-750 rounded-xl transition-all">
-                              <span className="w-5 h-5 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                            <div key={idx} className="flex items-start gap-3 p-3 bg-alfredo-offwhite border border-alfredo-border hover:border-alfredo-border rounded-xl transition-all">
+                              <span className="w-5 h-5 rounded-full bg-alfredo-warning/10 text-alfredo-warning flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
                                 {idx + 1}
                               </span>
-                              <p className="text-xs text-zinc-300 leading-relaxed font-sans">
+                              <p className="text-xs text-alfredo-graphite leading-relaxed font-sans">
                                 {decision}
                               </p>
                             </div>
@@ -3062,25 +3062,25 @@ Reunião vinculada ao Google Agenda:
                         {/* Discussion Topics list */}
                         <div className="glass rounded-2xl p-6 flex flex-col">
                           <div className="flex items-center gap-2 mb-4 shrink-0">
-                            <div className="p-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-emerald-400">
+                            <div className="p-1.5 rounded-lg bg-alfredo-offwhite border border-alfredo-border text-alfredo-teal-dark">
                               <Info size={14} />
                             </div>
-                            <h3 className="font-semibold text-sm uppercase tracking-wider text-white">
+                            <h3 className="font-semibold text-sm uppercase tracking-wider text-alfredo-navy">
                               Tópicos Discutidos
                             </h3>
                           </div>
                           
                           <div className="space-y-4 overflow-y-auto flex-1 pr-1 custom-scrollbar">
                             {selectedMeeting.topics.length === 0 ? (
-                              <p className="text-xs text-zinc-500">Nenhum tópico extraído.</p>
+                              <p className="text-xs text-alfredo-muted">Nenhum tópico extraído.</p>
                             ) : (
                               selectedMeeting.topics.map((t, idx) => (
-                                <div key={idx} className="p-3 bg-zinc-800/40 border border-zinc-700/30 hover:border-emerald-500/30 rounded-xl transition-all">
-                                  <h4 className="text-xs font-semibold text-white flex items-center gap-2 mb-1.5">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                <div key={idx} className="p-3 bg-alfredo-offwhite border border-alfredo-border hover:border-alfredo-teal/30 rounded-xl transition-all">
+                                  <h4 className="text-xs font-semibold text-alfredo-navy flex items-center gap-2 mb-1.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-alfredo-teal"></span>
                                     {t.topic}
                                   </h4>
-                                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                                  <p className="text-[11px] text-alfredo-graphite leading-relaxed">
                                     {t.details}
                                   </p>
                                 </div>
@@ -3093,10 +3093,10 @@ Reunião vinculada ao Google Agenda:
                         <div className="glass rounded-2xl p-6 flex flex-col">
                           <div className="flex items-center justify-between mb-4 shrink-0">
                             <div className="flex items-center gap-2">
-                              <div className="p-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-emerald-400">
+                              <div className="p-1.5 rounded-lg bg-alfredo-offwhite border border-alfredo-border text-alfredo-teal-dark">
                                 <CheckSquare size={14} />
                               </div>
-                              <h3 className="font-semibold text-sm uppercase tracking-wider text-white">
+                              <h3 className="font-semibold text-sm uppercase tracking-wider text-alfredo-navy">
                                 Fluxo de Tarefas & Plano de Ação
                               </h3>
                             </div>
@@ -3117,13 +3117,13 @@ Reunião vinculada ao Google Agenda:
                                   setTaskPriority("Média");
                                   setIsTaskModalOpen(true);
                                 }}
-                                className="flex items-center gap-1 text-[11px] font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-950/70 border border-emerald-500/30 rounded-lg px-2 py-1 transition-all cursor-pointer"
+                                className="flex items-center gap-1 text-[11px] font-bold text-alfredo-teal-dark hover:text-alfredo-teal-dark bg-alfredo-surface-teal hover:bg-alfredo-surface-teal border border-alfredo-teal/30 rounded-lg px-2 py-1 transition-all cursor-pointer"
                               >
                                 <Plus size={11} />
                                 Nova Tarefa
                               </button>
                               
-                              <div className="text-[10px] text-zinc-400 font-mono bg-zinc-950 py-0.5 px-2 rounded border border-zinc-800">
+                              <div className="text-[10px] text-alfredo-graphite font-mono bg-alfredo-offwhite py-0.5 px-2 rounded border border-alfredo-border">
                                 {selectedMeeting.actions.filter(a => a.status === "completed").length} / {selectedMeeting.actions.length} Concluído
                               </div>
                             </div>
@@ -3131,9 +3131,9 @@ Reunião vinculada ao Google Agenda:
 
                           {/* Progress Bar */}
                           {selectedMeeting.actions.length > 0 && (
-                            <div className="w-full h-1 bg-zinc-950 rounded-full mb-4 overflow-hidden">
+                            <div className="w-full h-1 bg-alfredo-offwhite rounded-full mb-4 overflow-hidden">
                               <div 
-                                className="h-full bg-gradient-to-r from-emerald-500 to-emerald-300 transition-all duration-500"
+                                className="h-full bg-gradient-to-r from-alfredo-teal to-alfredo-teal transition-all duration-500"
                                 style={{
                                   width: `${(selectedMeeting.actions.filter(a => a.status === "completed").length / selectedMeeting.actions.length) * 100}%`
                                 }}
@@ -3143,7 +3143,7 @@ Reunião vinculada ao Google Agenda:
                           
                           <div className="space-y-2 overflow-y-auto flex-1 pr-1 custom-scrollbar">
                             {selectedMeeting.actions.length === 0 ? (
-                              <p className="text-xs text-zinc-500">Nenhuma ação ou tarefa definida para esta reunião.</p>
+                              <p className="text-xs text-alfredo-muted">Nenhuma ação ou tarefa definida para esta reunião.</p>
                             ) : (
                               selectedMeeting.actions.map((a, idx) => {
                                 const completed = a.status === "completed";
@@ -3153,15 +3153,15 @@ Reunião vinculada ao Google Agenda:
                                     onClick={() => toggleActionItemStatus(selectedMeeting.id, idx)}
                                     className={`p-3 border rounded-xl flex items-start gap-3 cursor-pointer group transition-all ${
                                       completed 
-                                        ? "bg-emerald-950/20 border-emerald-500/20 opacity-80" 
-                                        : "bg-zinc-900/40 border border-zinc-800 hover:border-zinc-750"
+                                        ? "bg-alfredo-surface-teal border-alfredo-teal/25 opacity-80" 
+                                        : "bg-alfredo-offwhite border border-alfredo-border hover:border-alfredo-border"
                                     }`}
                                   >
                                     <div className="mt-0.5 shrink-0">
                                       <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
                                         completed 
-                                          ? "bg-emerald-500 border-emerald-600 text-black" 
-                                          : "border-zinc-650 group-hover:border-emerald-500 bg-zinc-950"
+                                          ? "bg-alfredo-teal border-alfredo-teal text-alfredo-navy" 
+                                          : "border-alfredo-border group-hover:border-alfredo-teal/60 bg-alfredo-offwhite"
                                       }`}>
                                         {completed && <Check size={10} strokeWidth={3} />}
                                       </div>
@@ -3169,20 +3169,20 @@ Reunião vinculada ao Google Agenda:
  
                                     <div className="flex-1 min-w-0 flex items-start justify-between gap-2">
                                       <div className="flex-1 min-w-0">
-                                        <p className={`text-[12px] font-medium leading-normal break-words ${completed ? "text-zinc-500 line-through" : "text-zinc-300"}`}>
+                                        <p className={`text-[12px] font-medium leading-normal break-words ${completed ? "text-alfredo-muted line-through" : "text-alfredo-graphite"}`}>
                                           {a.action}
                                         </p>
                                         
                                         <div className="flex items-center gap-2 mt-1.5">
-                                          <span className="text-[9px] text-zinc-400 font-mono bg-zinc-850 px-1.5 py-0.5 rounded border border-zinc-750">
-                                            Resp: <b className="text-white">{a.assignee}</b>
+                                          <span className="text-[9px] text-alfredo-graphite font-mono bg-white px-1.5 py-0.5 rounded border border-alfredo-border">
+                                            Resp: <b className="text-alfredo-navy">{a.assignee}</b>
                                           </span>
                                           <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${
                                             a.priority === "Alta" 
-                                              ? "bg-red-500/10 text-red-400 border border-red-900/30" 
+                                              ? "bg-alfredo-coral/10 text-alfredo-coral border border-alfredo-coral/30" 
                                               : a.priority === "Média" 
-                                                ? "bg-amber-500/10 text-amber-400 border border-amber-900/30" 
-                                                : "bg-emerald-500/10 text-emerald-400 border border-emerald-900/30"
+                                                ? "bg-alfredo-warning/10 text-alfredo-warning border border-alfredo-warning/30" 
+                                                : "bg-alfredo-teal/10 text-alfredo-teal-dark border border-alfredo-teal/30"
                                           }`}>
                                             {a.priority}
                                           </span>
@@ -3200,7 +3200,7 @@ Reunião vinculada ao Google Agenda:
                                             setTaskPriority(a.priority);
                                             setIsTaskModalOpen(true);
                                           }}
-                                          className="p-1 text-zinc-400 hover:text-emerald-400 hover:bg-zinc-850 rounded transition-colors cursor-pointer"
+                                          className="p-1 text-alfredo-graphite hover:text-alfredo-teal-dark hover:bg-white rounded transition-colors cursor-pointer"
                                         >
                                           <Edit2 size={11} />
                                         </button>
@@ -3214,7 +3214,7 @@ Reunião vinculada ao Google Agenda:
                                               return m;
                                             }));
                                           }}
-                                          className="p-1 text-zinc-400 hover:text-red-400 hover:bg-zinc-850 rounded transition-colors cursor-pointer"
+                                          className="p-1 text-alfredo-graphite hover:text-alfredo-coral hover:bg-white rounded transition-colors cursor-pointer"
                                         >
                                           <Trash2 size={11} />
                                         </button>
@@ -3243,27 +3243,27 @@ Reunião vinculada ao Google Agenda:
                 transition={{ duration: 0.2, ease: "easeInOut" }}
                 className="flex-1 flex flex-col h-full overflow-hidden"
               >
-                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-zinc-950 sm:p-6">
+                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-alfredo-offwhite sm:p-6">
                 {activeView === "history" && (
                   <div className="max-w-5xl mx-auto space-y-8 py-4">
                     {/* Welcome Banner */}
-                    <div className="relative p-6 rounded-2xl border border-zinc-800 bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-950 overflow-hidden shadow-xl">
-                      <div className="absolute right-0 top-0 h-full w-1/3 opacity-10 pointer-events-none bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-400 via-zinc-900 to-transparent"></div>
+                    <div className="relative p-6 rounded-2xl border border-alfredo-border bg-gradient-to-br from-white via-alfredo-offwhite to-alfredo-offwhite overflow-hidden shadow-xl">
+                      <div className="absolute right-0 top-0 h-full w-1/3 opacity-10 pointer-events-none bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-alfredo-teal via-alfredo-offwhite to-transparent"></div>
                       <div className="relative flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div>
-                          <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 py-1 px-2.5 rounded-full font-mono uppercase tracking-wider font-bold">
-                            Suiter Record v2.0
+                          <span className="text-[10px] bg-alfredo-teal/10 text-alfredo-teal-dark border border-alfredo-teal/30 py-1 px-2.5 rounded-full font-mono uppercase tracking-wider font-bold">
+                            Alfredo v2.0
                           </span>
-                          <h2 className="text-xl sm:text-2xl font-bold text-white mt-3 tracking-tight">
+                          <h2 className="text-xl sm:text-2xl font-bold text-alfredo-navy mt-3 tracking-tight">
                             Bem-vindo de volta, {currentUser?.name || "Usuário"}!
                           </h2>
-                          <p className="text-xs text-zinc-400 mt-1">
+                          <p className="text-xs text-alfredo-graphite mt-1">
                             Acompanhe os alinhamentos corporativos e transcreva reuniões físicas de forma simples e discreta.
                           </p>
                         </div>
                         <div className="hidden sm:block text-right">
-                          <p className="text-[10px] text-zinc-500 font-mono">Triforce Workspace</p>
-                          <p className="text-xs text-zinc-300 font-bold mt-0.5">{currentUser?.role || "Consultor"}</p>
+                          <p className="text-[10px] text-alfredo-muted font-mono">Triforce Workspace</p>
+                          <p className="text-xs text-alfredo-graphite font-bold mt-0.5">{currentUser?.role || "Consultor"}</p>
                         </div>
                       </div>
                     </div>
@@ -3272,17 +3272,17 @@ Reunião vinculada ao Google Agenda:
 
                     {/* Atividades Recentes */}
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between border-b border-zinc-850 pb-2">
-                        <h3 className="text-xs font-bold uppercase text-white tracking-wider flex items-center gap-1.5">
-                          <Activity size={14} className="text-emerald-400" />
+                      <div className="flex items-center justify-between border-b border-alfredo-border pb-2">
+                        <h3 className="text-xs font-bold uppercase text-alfredo-navy tracking-wider flex items-center gap-1.5">
+                          <Activity size={14} className="text-alfredo-teal-dark" />
                           Atividades Recentes
                         </h3>
-                        <span className="text-[10px] text-zinc-500 font-mono">Histórico Completo</span>
+                        <span className="text-[10px] text-alfredo-muted font-mono">Histórico Completo</span>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {meetings.length === 0 ? (
-                          <div className="col-span-2 py-12 text-center text-zinc-500 text-xs border border-dashed border-zinc-800 rounded-2xl bg-zinc-950">
+                          <div className="col-span-2 py-12 text-center text-alfredo-muted text-xs border border-dashed border-alfredo-border rounded-2xl bg-alfredo-offwhite">
                             Nenhuma reunião cadastrada no sistema. Comece gravando ou importando uma nova reunião!
                           </div>
                         ) : (
@@ -3293,29 +3293,29 @@ Reunião vinculada ao Google Agenda:
                                 setSelectedMeetingId(m.id);
                                 setActiveView("history");
                               }}
-                              className="p-4 rounded-xl border border-zinc-800 hover:border-emerald-500/25 bg-zinc-900/20 hover:bg-zinc-900/30 transition-all cursor-pointer group"
+                              className="p-4 rounded-xl border border-alfredo-border hover:border-alfredo-teal/30 bg-alfredo-offwhite hover:bg-alfredo-offwhite transition-all cursor-pointer group"
                             >
                               <div className="flex justify-between items-start mb-2">
-                                <span className="text-[9px] bg-zinc-800 text-zinc-400 border border-zinc-750 font-mono py-0.5 px-1.5 rounded">
+                                <span className="text-[9px] bg-alfredo-offwhite text-alfredo-graphite border border-alfredo-border font-mono py-0.5 px-1.5 rounded">
                                   {m.id}
                                 </span>
-                                <span className="text-[10px] text-zinc-500 font-mono">{m.date}</span>
+                                <span className="text-[10px] text-alfredo-muted font-mono">{m.date}</span>
                               </div>
-                              <h4 className="text-xs font-bold text-white group-hover:text-emerald-400 transition-colors line-clamp-1">
+                              <h4 className="text-xs font-bold text-alfredo-navy group-hover:text-alfredo-teal-dark transition-colors line-clamp-1">
                                 {m.title}
                               </h4>
-                              <p className="text-[11px] text-zinc-400 mt-1 line-clamp-2 leading-relaxed">
+                              <p className="text-[11px] text-alfredo-graphite mt-1 line-clamp-2 leading-relaxed">
                                 {m.overview}
                               </p>
-                              <div className="flex justify-between items-center mt-3 pt-3 border-t border-zinc-850">
+                              <div className="flex justify-between items-center mt-3 pt-3 border-t border-alfredo-border">
                                 <div className="flex gap-1">
                                   {m.tags.slice(0, 2).map((t, i) => (
-                                    <span key={i} className="text-[8px] bg-zinc-850 text-zinc-400 border border-zinc-800 py-0.5 px-1 rounded">
+                                    <span key={i} className="text-[8px] bg-white text-alfredo-graphite border border-alfredo-border py-0.5 px-1 rounded">
                                       {t}
                                     </span>
                                   ))}
                                 </div>
-                                <span className="text-[10px] text-emerald-400 font-semibold group-hover:underline flex items-center gap-1">
+                                <span className="text-[10px] text-alfredo-teal-dark font-semibold group-hover:underline flex items-center gap-1">
                                   Abrir Detalhes →
                                 </span>
                               </div>
@@ -3326,12 +3326,12 @@ Reunião vinculada ao Google Agenda:
                     </div>
 
                     {/* Logo Watermark Footer */}
-                    <div className="flex flex-col items-center justify-center pt-8 border-t border-zinc-850 opacity-40 hover:opacity-70 transition-opacity">
+                    <div className="flex flex-col items-center justify-center pt-8 border-t border-alfredo-border opacity-40 hover:opacity-70 transition-opacity">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-zinc-500 font-mono text-[9px] tracking-wider uppercase">SUPORTADO POR</span>
-                        <span className="text-white font-bold text-xs">TRIFORCE CONSULTORIA</span>
+                        <span className="text-alfredo-muted font-mono text-[9px] tracking-wider uppercase">SUPORTADO POR</span>
+                        <span className="text-alfredo-navy font-bold text-xs">TRIFORCE CONSULTORIA</span>
                       </div>
-                      <p className="text-[9px] text-zinc-600 font-mono italic">
+                      <p className="text-[9px] text-alfredo-muted font-mono italic">
                         "Desenvolvida pela Triforce Consultoria, para uso exclusivo interno"
                       </p>
                     </div>
@@ -3343,11 +3343,11 @@ Reunião vinculada ao Google Agenda:
                   <div className="max-w-4xl mx-auto space-y-6 py-4 px-4 sm:px-6">
                     {/* Header */}
                     <div>
-                      <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-                        <span className="p-1 rounded bg-zinc-800 text-emerald-400"><Mic size={14} /></span>
+                      <h2 className="text-lg font-bold text-alfredo-navy tracking-tight flex items-center gap-2">
+                        <span className="p-1 rounded bg-alfredo-offwhite text-alfredo-teal-dark"><Mic size={14} /></span>
                         Iniciar Nova Sessão de Reunião
                       </h2>
-                      <p className="text-xs text-zinc-400 mt-1">
+                      <p className="text-xs text-alfredo-graphite mt-1">
                         Sincronize com o Google Agenda corporativo ou inicie um registro customizado do zero.
                       </p>
                     </div>
@@ -3366,20 +3366,20 @@ Reunião vinculada ao Google Agenda:
                             setMeetingConfirmedDate(getLocalDateString(new Date()));
                             setMeetingConfirmedTime("14:00");
                           }}
-                          className="p-6 rounded-2xl border-2 border-zinc-800/80 hover:border-blue-500/50 bg-zinc-900/40 hover:bg-zinc-900/60 transition-all cursor-pointer flex flex-col items-center text-center justify-between group h-72 shadow-xl"
+                          className="p-6 rounded-2xl border-2 border-alfredo-border hover:border-alfredo-teal/50 bg-alfredo-offwhite hover:bg-alfredo-offwhite transition-all cursor-pointer flex flex-col items-center text-center justify-between group h-72 shadow-xl"
                         >
                           <div className="my-auto space-y-3">
-                            <div className="w-16 h-16 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(59,130,246,0.15)]">
+                            <div className="w-16 h-16 rounded-full bg-alfredo-teal/10 border border-alfredo-teal/30 text-alfredo-teal-dark flex items-center justify-center mx-auto group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(59,130,246,0.15)]">
                               <Calendar size={28} />
                             </div>
-                            <h3 className="text-sm font-bold text-white uppercase tracking-wider group-hover:text-blue-400 transition-colors">
+                            <h3 className="text-sm font-bold text-alfredo-navy uppercase tracking-wider group-hover:text-alfredo-teal-dark transition-colors">
                               Reuniões da Agenda
                             </h3>
-                            <p className="text-xs text-zinc-400 max-w-xs leading-relaxed">
+                            <p className="text-xs text-alfredo-graphite max-w-xs leading-relaxed">
                               Busque seus compromissos no Google Agenda, valide o dia/horário e associe a gravação.
                             </p>
                           </div>
-                          <span className="text-[10px] text-blue-400 font-semibold group-hover:underline">
+                          <span className="text-[10px] text-alfredo-teal-dark font-semibold group-hover:underline">
                             Buscar na Agenda →
                           </span>
                         </motion.div>
@@ -3396,20 +3396,20 @@ Reunião vinculada ao Google Agenda:
                             const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
                             setMeetingConfirmedTime(timeStr);
                           }}
-                          className="p-6 rounded-2xl border-2 border-zinc-800/80 hover:border-emerald-500/50 bg-zinc-900/40 hover:bg-zinc-900/60 transition-all cursor-pointer flex flex-col items-center text-center justify-between group h-72 shadow-xl"
+                          className="p-6 rounded-2xl border-2 border-alfredo-border hover:border-alfredo-teal/50 bg-alfredo-offwhite hover:bg-alfredo-offwhite transition-all cursor-pointer flex flex-col items-center text-center justify-between group h-72 shadow-xl"
                         >
                           <div className="my-auto space-y-3">
-                            <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(16,185,129,0.15)]">
+                            <div className="w-16 h-16 rounded-full bg-alfredo-teal/10 border border-alfredo-teal/30 text-alfredo-teal-dark flex items-center justify-center mx-auto group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(27,166,182,0.15)]">
                               <Plus size={28} />
                             </div>
-                            <h3 className="text-sm font-bold text-white uppercase tracking-wider group-hover:text-emerald-400 transition-colors">
+                            <h3 className="text-sm font-bold text-alfredo-navy uppercase tracking-wider group-hover:text-alfredo-teal-dark transition-colors">
                               Criar Reunião Avulsa
                             </h3>
-                            <p className="text-xs text-zinc-400 max-w-xs leading-relaxed">
+                            <p className="text-xs text-alfredo-graphite max-w-xs leading-relaxed">
                               Inicie uma reunião livre imediatamente do zero. Defina o título e comece a gravar ou importar áudio.
                             </p>
                           </div>
-                          <span className="text-[10px] text-emerald-400 font-semibold group-hover:underline">
+                          <span className="text-[10px] text-alfredo-teal-dark font-semibold group-hover:underline">
                             Criar do Zero →
                           </span>
                         </motion.div>
@@ -3422,33 +3422,33 @@ Reunião vinculada ao Google Agenda:
                         <div className="flex items-center justify-between">
                           <button
                             onClick={() => setNewMeetingSubView("choose")}
-                            className="text-xs text-zinc-400 hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
+                            className="text-xs text-alfredo-graphite hover:text-alfredo-navy transition-colors flex items-center gap-1 cursor-pointer"
                           >
                             <ChevronLeft size={14} /> Voltar para opções
                           </button>
-                          <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800">
+                          <span className="text-[10px] font-mono text-alfredo-muted uppercase tracking-widest bg-white px-2 py-0.5 rounded border border-alfredo-border">
                             Integração Google Calendar
                           </span>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                           {/* Calendar Picker & Controls */}
-                          <div className="md:col-span-1 p-5 rounded-2xl border border-zinc-800 bg-zinc-900/30 space-y-4">
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-white border-b border-zinc-800 pb-2 flex items-center gap-1.5">
-                              <Calendar size={13} className="text-blue-400" />
+                          <div className="md:col-span-1 p-5 rounded-2xl border border-alfredo-border bg-alfredo-offwhite space-y-4">
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-alfredo-navy border-b border-alfredo-border pb-2 flex items-center gap-1.5">
+                              <Calendar size={13} className="text-alfredo-teal-dark" />
                               Filtro por Data
                             </h3>
 
                             {/* Connection Status Badge */}
-                            <div className="flex items-center justify-between text-[10px] border-b border-zinc-850 pb-2">
-                              <span className="text-zinc-500 font-mono font-bold uppercase">Google Agenda</span>
+                            <div className="flex items-center justify-between text-[10px] border-b border-alfredo-border pb-2">
+                              <span className="text-alfredo-muted font-mono font-bold uppercase">Google Agenda</span>
                               {googleAccessToken ? (
-                                <span className="text-emerald-400 font-bold flex items-center gap-1">
-                                  <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
+                                <span className="text-alfredo-teal-dark font-bold flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 bg-alfredo-teal rounded-full"></span>
                                   Real
                                 </span>
                               ) : (
-                                <span className="text-zinc-500 font-mono uppercase bg-zinc-950 px-1.5 py-0.5 rounded border border-zinc-850">
+                                <span className="text-alfredo-muted font-mono uppercase bg-alfredo-offwhite px-1.5 py-0.5 rounded border border-alfredo-border">
                                   Demonstração
                                 </span>
                               )}
@@ -3456,12 +3456,12 @@ Reunião vinculada ao Google Agenda:
 
                             {/* Select Date */}
                             <div className="space-y-1">
-                              <label className="text-[9px] uppercase text-zinc-500 font-mono font-bold">Escolha a data</label>
+                              <label className="text-[9px] uppercase text-alfredo-muted font-mono font-bold">Escolha a data</label>
                               <input
                                 type="date"
                                 value={calendarSelectedDate}
                                 onChange={(e) => setCalendarSelectedDate(e.target.value)}
-                                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-blue-500 font-mono"
+                                className="w-full bg-alfredo-offwhite border border-alfredo-border rounded-xl py-2 px-3 text-xs text-alfredo-navy focus:outline-none focus:border-alfredo-teal/60 font-mono"
                               />
                             </div>
 
@@ -3470,18 +3470,18 @@ Reunião vinculada ao Google Agenda:
                                 <button
                                   onClick={handleRefreshCalendar}
                                   disabled={isSyncingCalendar}
-                                  className="flex-1 py-2 px-3 rounded-xl border border-zinc-800 hover:border-blue-500/30 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                                  className="flex-1 py-2 px-3 rounded-xl border border-alfredo-border hover:border-alfredo-teal/30 bg-white hover:bg-alfredo-offwhite text-alfredo-graphite font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                                 >
                                   {isSyncingCalendar ? (
-                                    <span className="w-3 h-3 rounded-full border border-zinc-500 border-t-white animate-spin"></span>
+                                    <span className="w-3 h-3 rounded-full border border-alfredo-border border-t-alfredo-teal animate-spin"></span>
                                   ) : (
-                                    <RefreshCw size={12} className="text-blue-400" />
+                                    <RefreshCw size={12} className="text-alfredo-teal-dark" />
                                   )}
                                   Atualizar Agenda
                                 </button>
                                 <button
                                   onClick={handleDisconnectGoogleCalendar}
-                                  className="px-3 py-2 rounded-xl border border-zinc-800 hover:border-red-500/40 text-zinc-400 hover:text-red-300 text-xs cursor-pointer"
+                                  className="px-3 py-2 rounded-xl border border-alfredo-border hover:border-alfredo-coral/40 text-alfredo-graphite hover:text-alfredo-coral text-xs cursor-pointer"
                                   title="Desconectar Google Agenda"
                                 >
                                   <LogOut size={12} />
@@ -3491,25 +3491,25 @@ Reunião vinculada ao Google Agenda:
                               <button
                                 onClick={handleLinkGoogleCalendar}
                                 disabled={isSyncingCalendar}
-                                className="w-full py-2 px-3 rounded-xl border border-blue-500/40 hover:border-blue-400 bg-blue-950/40 hover:bg-blue-900/40 text-blue-100 font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                                className="w-full py-2 px-3 rounded-xl border border-alfredo-teal/40 hover:border-alfredo-teal/60 bg-alfredo-surface-teal hover:bg-alfredo-surface-teal text-alfredo-navy font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                               >
                                 {isSyncingCalendar ? (
-                                  <span className="w-3 h-3 rounded-full border border-zinc-500 border-t-white animate-spin"></span>
+                                  <span className="w-3 h-3 rounded-full border border-alfredo-border border-t-alfredo-teal animate-spin"></span>
                                 ) : (
-                                  <Calendar size={12} className="text-blue-300" />
+                                  <Calendar size={12} className="text-alfredo-teal-dark" />
                                 )}
                                 Conectar Google Agenda
                               </button>
                             )}
 
                             {!googleAccessToken && (
-                              <p className="text-[9px] text-zinc-500 text-center leading-relaxed">
+                              <p className="text-[9px] text-alfredo-muted text-center leading-relaxed">
                                 Autorize o acesso à sua conta Google para ver e criar compromissos na sua própria agenda.
                               </p>
                             )}
 
                             {calendarSyncSuccess && (
-                              <p className="text-[10px] text-emerald-400 font-mono mt-1 bg-emerald-950/20 border border-emerald-500/25 p-1.5 rounded text-center">
+                              <p className="text-[10px] text-alfredo-teal-dark font-mono mt-1 bg-alfredo-surface-teal border border-alfredo-teal/30 p-1.5 rounded text-center">
                                 {calendarSyncSuccess}
                               </p>
                             )}
@@ -3517,9 +3517,9 @@ Reunião vinculada ao Google Agenda:
 
                           {/* Events Display List & Confirmation Panel */}
                           <div className="md:col-span-2 space-y-4">
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-white border-b border-zinc-800 pb-2 flex items-center justify-between">
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-alfredo-navy border-b border-alfredo-border pb-2 flex items-center justify-between">
                               <span>Eventos Encontrados</span>
-                              <span className="text-[10px] text-zinc-500 font-mono">
+                              <span className="text-[10px] text-alfredo-muted font-mono">
                                 Dia: {calendarSelectedDate.split("-").reverse().join("/")}
                               </span>
                             </h3>
@@ -3535,7 +3535,7 @@ Reunião vinculada ao Google Agenda:
 
                               if (filteredEvents.length === 0) {
                                 return (
-                                  <div className="p-8 rounded-xl border border-dashed border-zinc-850 bg-zinc-950/20 text-center text-zinc-500 text-xs">
+                                  <div className="p-8 rounded-xl border border-dashed border-alfredo-border bg-alfredo-offwhite text-center text-alfredo-muted text-xs">
                                     Nenhum compromisso agendado para esta data no Google Agenda.
                                   </div>
                                 );
@@ -3561,17 +3561,17 @@ Reunião vinculada ao Google Agenda:
                                         }}
                                         className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                                           isSelected 
-                                            ? "bg-blue-950/30 border-blue-500 text-white shadow-md shadow-blue-950/10" 
-                                            : "bg-zinc-900/50 border-zinc-850 hover:border-zinc-750 text-zinc-400"
+                                            ? "bg-alfredo-surface-teal border-alfredo-teal/60 text-alfredo-navy shadow-md shadow-none" 
+                                            : "bg-alfredo-offwhite border-alfredo-border hover:border-alfredo-border text-alfredo-graphite"
                                         }`}
                                       >
                                         <div className="flex justify-between items-start mb-1.5">
-                                          <span className="text-[9px] bg-zinc-800 text-zinc-300 font-mono py-0.5 px-2 rounded border border-zinc-700">
+                                          <span className="text-[9px] bg-alfredo-offwhite text-alfredo-graphite font-mono py-0.5 px-2 rounded border border-alfredo-border">
                                             {ev.time}
                                           </span>
                                         </div>
-                                        <h4 className="text-xs font-bold text-white truncate">{ev.title}</h4>
-                                        <p className="text-[9px] text-zinc-500 mt-1 truncate">Part.: {ev.attendees.join(", ")}</p>
+                                        <h4 className="text-xs font-bold text-alfredo-navy truncate">{ev.title}</h4>
+                                        <p className="text-[9px] text-alfredo-muted mt-1 truncate">Part.: {ev.attendees.join(", ")}</p>
                                       </div>
                                     );
                                   })}
@@ -3584,50 +3584,50 @@ Reunião vinculada ao Google Agenda:
                               <motion.div
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="p-5 rounded-2xl border border-blue-500/20 bg-blue-950/10 space-y-4"
+                                className="p-5 rounded-2xl border border-alfredo-teal/25 bg-alfredo-surface-teal space-y-4"
                               >
-                                <div className="flex items-center gap-2 border-b border-blue-500/20 pb-2">
-                                  <AlertCircle size={14} className="text-blue-400" />
-                                  <h4 className="text-xs font-bold uppercase tracking-wider text-white">
+                                <div className="flex items-center gap-2 border-b border-alfredo-teal/25 pb-2">
+                                  <AlertCircle size={14} className="text-alfredo-teal-dark" />
+                                  <h4 className="text-xs font-bold uppercase tracking-wider text-alfredo-navy">
                                     Confirmação dos Dados do Evento
                                   </h4>
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                   <div className="space-y-1 sm:col-span-1">
-                                    <label className="text-[9px] uppercase text-zinc-500 font-mono font-bold">Título Confirmado</label>
+                                    <label className="text-[9px] uppercase text-alfredo-muted font-mono font-bold">Título Confirmado</label>
                                     <input
                                       type="text"
                                       value={meetingConfirmedTitle}
                                       onChange={(e) => setMeetingConfirmedTitle(e.target.value)}
-                                      className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:border-blue-500"
+                                      className="w-full bg-alfredo-offwhite border border-alfredo-border rounded-lg py-1.5 px-2.5 text-xs text-alfredo-navy focus:outline-none focus:border-alfredo-teal/60"
                                     />
                                   </div>
 
                                   <div className="space-y-1">
-                                    <label className="text-[9px] uppercase text-zinc-500 font-mono font-bold">Data Confirmada</label>
+                                    <label className="text-[9px] uppercase text-alfredo-muted font-mono font-bold">Data Confirmada</label>
                                     <input
                                       type="date"
                                       value={meetingConfirmedDate}
                                       onChange={(e) => setMeetingConfirmedDate(e.target.value)}
-                                      className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:border-blue-500 font-mono"
+                                      className="w-full bg-alfredo-offwhite border border-alfredo-border rounded-lg py-1.5 px-2.5 text-xs text-alfredo-navy focus:outline-none focus:border-alfredo-teal/60 font-mono"
                                     />
                                   </div>
 
                                   <div className="space-y-1">
-                                    <label className="text-[9px] uppercase text-zinc-500 font-mono font-bold">Horário Confirmado</label>
+                                    <label className="text-[9px] uppercase text-alfredo-muted font-mono font-bold">Horário Confirmado</label>
                                     <input
                                       type="time"
                                       value={meetingConfirmedTime}
                                       onChange={(e) => setMeetingConfirmedTime(e.target.value)}
-                                      className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-1.5 px-2.5 text-xs text-white focus:outline-none focus:border-blue-500 font-mono"
+                                      className="w-full bg-alfredo-offwhite border border-alfredo-border rounded-lg py-1.5 px-2.5 text-xs text-alfredo-navy focus:outline-none focus:border-alfredo-teal/60 font-mono"
                                     />
                                   </div>
                                 </div>
 
                                 <div className="flex justify-between items-center pt-2">
-                                  <div className="text-[10px] text-zinc-400">
-                                    Participantes Sincronizados: <b className="text-white">
+                                  <div className="text-[10px] text-alfredo-graphite">
+                                    Participantes Sincronizados: <b className="text-alfredo-navy">
                                       {getEventFormatted(selectedCalendarEvent, currentUser).attendees.length} cadastrados
                                     </b>
                                   </div>
@@ -3636,7 +3636,7 @@ Reunião vinculada ao Google Agenda:
                                       setIsAgendaConfirmed(true);
                                       setNewMeetingSubView("custom");
                                     }}
-                                    className="py-1.5 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition-all shadow-md cursor-pointer"
+                                    className="py-1.5 px-4 rounded-lg bg-alfredo-teal hover:bg-alfredo-teal text-alfredo-navy font-bold text-xs transition-all shadow-md cursor-pointer"
                                   >
                                     Confirmar & Seguir
                                   </button>
@@ -3656,11 +3656,11 @@ Reunião vinculada ao Google Agenda:
                             onClick={() => {
                               setNewMeetingSubView(isAgendaConfirmed ? "agenda" : "choose");
                             }}
-                            className="text-xs text-zinc-400 hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
+                            className="text-xs text-alfredo-graphite hover:text-alfredo-navy transition-colors flex items-center gap-1 cursor-pointer"
                           >
                             <ChevronLeft size={14} /> Voltar para opções
                           </button>
-                          <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800">
+                          <span className="text-[10px] font-mono text-alfredo-muted uppercase tracking-widest bg-white px-2 py-0.5 rounded border border-alfredo-border">
                             {isAgendaConfirmed ? "Compromisso Vinculado" : "Sessão Avulsa"}
                           </span>
                         </div>
@@ -3668,70 +3668,70 @@ Reunião vinculada ao Google Agenda:
                         {/* Config and Details Cards */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                           {/* Configuration Sidebar */}
-                          <div className="md:col-span-1 p-5 rounded-2xl border border-zinc-800 bg-zinc-900/30 space-y-4">
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-white border-b border-zinc-800 pb-2 flex items-center gap-1.5">
-                              <Settings size={13} className="text-emerald-400" />
+                          <div className="md:col-span-1 p-5 rounded-2xl border border-alfredo-border bg-alfredo-offwhite space-y-4">
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-alfredo-navy border-b border-alfredo-border pb-2 flex items-center gap-1.5">
+                              <Settings size={13} className="text-alfredo-teal-dark" />
                               Metadados da Sessão
                             </h3>
 
                             {/* Meeting Title Input */}
                             <div className="space-y-1">
-                              <label className="text-[9px] uppercase text-zinc-500 font-mono font-bold">Título da Reunião</label>
+                              <label className="text-[9px] uppercase text-alfredo-muted font-mono font-bold">Título da Reunião</label>
                               <input
                                 id="custom-meeting-title"
                                 type="text"
                                 placeholder="ex: Workshop Recicle ou Alinhamento Geral"
                                 value={meetingConfirmedTitle}
                                 onChange={(e) => setMeetingConfirmedTitle(e.target.value)}
-                                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-emerald-500"
+                                className="w-full bg-alfredo-offwhite border border-alfredo-border rounded-xl py-2 px-3 text-xs text-alfredo-navy focus:outline-none focus:border-alfredo-teal/60"
                               />
                             </div>
 
                             {/* Date Field */}
                             <div className="space-y-1">
-                              <label className="text-[9px] uppercase text-zinc-500 font-mono font-bold">Data da Sessão</label>
+                              <label className="text-[9px] uppercase text-alfredo-muted font-mono font-bold">Data da Sessão</label>
                               <input
                                 type="date"
                                 value={meetingConfirmedDate}
                                 onChange={(e) => setMeetingConfirmedDate(e.target.value)}
-                                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                                className="w-full bg-alfredo-offwhite border border-alfredo-border rounded-xl py-2 px-3 text-xs text-alfredo-navy focus:outline-none focus:border-alfredo-teal/60 font-mono"
                               />
                             </div>
 
                             {/* Time Field */}
                             <div className="space-y-1">
-                              <label className="text-[9px] uppercase text-zinc-500 font-mono font-bold">Horário de Início</label>
+                              <label className="text-[9px] uppercase text-alfredo-muted font-mono font-bold">Horário de Início</label>
                               <input
                                 type="time"
                                 value={meetingConfirmedTime}
                                 onChange={(e) => setMeetingConfirmedTime(e.target.value)}
-                                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                                className="w-full bg-alfredo-offwhite border border-alfredo-border rounded-xl py-2 px-3 text-xs text-alfredo-navy focus:outline-none focus:border-alfredo-teal/60 font-mono"
                               />
                             </div>
                           </div>
 
                           {/* Recording, Upload & Simulation Center */}
                           <div className="md:col-span-2 space-y-4">
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-white border-b border-zinc-800 pb-2">
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-alfredo-navy border-b border-alfredo-border pb-2">
                               Selecione o Método de Registro
                             </h3>
 
                             <div className="grid grid-cols-1 gap-4">
                               {/* 1. REAL MICROPHONE RECORDER */}
-                              <div className="p-5 rounded-2xl border border-zinc-800 bg-zinc-900/10 flex flex-col justify-between">
+                              <div className="p-5 rounded-2xl border border-alfredo-border bg-alfredo-offwhite flex flex-col justify-between">
                                 <div className="flex items-start justify-between gap-4">
                                   <div>
-                                    <h4 className="text-xs font-bold text-white flex items-center gap-1.5 uppercase tracking-wider">
-                                      <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                                    <h4 className="text-xs font-bold text-alfredo-navy flex items-center gap-1.5 uppercase tracking-wider">
+                                      <span className="w-2 h-2 rounded-full bg-alfredo-coral animate-pulse"></span>
                                       Captura de Áudio (Microfone Local)
                                     </h4>
-                                    <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">
-                                      Grave a reunião ao vivo usando o microfone do seu dispositivo. O Plaud Note AI irá processar, transcrever e gerar a ata completa do encontro.
+                                    <p className="text-[11px] text-alfredo-graphite mt-1 leading-relaxed">
+                                      Grave a reunião ao vivo usando o microfone do seu dispositivo. O Alfredo irá processar, transcrever e gerar a ata completa do encontro.
                                     </p>
                                   </div>
 
                                   {isRecording && (
-                                    <span className="text-[10px] font-mono font-bold text-white bg-zinc-950 border border-zinc-800 py-1 px-2.5 rounded flex items-center gap-1.5">
+                                    <span className="text-[10px] font-mono font-bold text-alfredo-navy bg-alfredo-offwhite border border-alfredo-border py-1 px-2.5 rounded flex items-center gap-1.5">
                                       {Math.floor(recordingSeconds / 60).toString().padStart(2, '0')}:
                                       {(recordingSeconds % 60).toString().padStart(2, '0')}
                                     </span>
@@ -3743,7 +3743,7 @@ Reunião vinculada ao Google Agenda:
                                     {/* Waves visualizer */}
                                     <canvas 
                                       ref={canvasRef} 
-                                      className="w-full h-16 bg-zinc-950 rounded-xl border border-zinc-850" 
+                                      className="w-full h-16 bg-alfredo-offwhite rounded-xl border border-alfredo-border" 
                                       width={400} 
                                       height={64} 
                                     />
@@ -3751,14 +3751,14 @@ Reunião vinculada ao Google Agenda:
                                     <div className="flex gap-2">
                                       <button
                                         onClick={pauseRecording}
-                                        className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-zinc-800 hover:bg-zinc-750 text-xs font-semibold text-zinc-200 transition-colors cursor-pointer"
+                                        className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-alfredo-offwhite hover:bg-[#E7EDEF] text-xs font-semibold text-alfredo-navy transition-colors cursor-pointer"
                                       >
                                         {isRecordingPaused ? <Play size={12} /> : <Pause size={12} />}
                                         {isRecordingPaused ? "Retomar" : "Pausar"}
                                       </button>
                                       <button
                                         onClick={stopRecording}
-                                        className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-bold text-white transition-colors cursor-pointer"
+                                        className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-alfredo-coral hover:bg-alfredo-coral text-xs font-bold text-alfredo-navy transition-colors cursor-pointer"
                                       >
                                         <Square size={12} fill="currentColor" />
                                         Salvar e Processar
@@ -3769,7 +3769,7 @@ Reunião vinculada ao Google Agenda:
                                   <div className="mt-4">
                                     <button
                                       onClick={startRecording}
-                                      className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-red-950/20"
+                                      className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-alfredo-coral to-alfredo-coral hover:from-alfredo-coral hover:to-alfredo-coral text-alfredo-navy font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-none"
                                     >
                                       <Mic size={14} />
                                       Iniciar Gravação do Encontro
@@ -3779,25 +3779,25 @@ Reunião vinculada ao Google Agenda:
                               </div>
 
                               {/* 2. FILE ATTACHMENT UPLOADER */}
-                              <div className="p-5 rounded-2xl border border-zinc-800 bg-zinc-900/10">
-                                <h4 className="text-xs font-bold text-white flex items-center gap-1.5 uppercase tracking-wider">
-                                  <Upload size={13} className="text-blue-400" />
+                              <div className="p-5 rounded-2xl border border-alfredo-border bg-alfredo-offwhite">
+                                <h4 className="text-xs font-bold text-alfredo-navy flex items-center gap-1.5 uppercase tracking-wider">
+                                  <Upload size={13} className="text-alfredo-teal-dark" />
                                   Anexar Gravação de Áudio Pronta
                                 </h4>
-                                <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">
-                                  Anexe um áudio pronto (Plaud, celular, etc.). O sistema valida o formato e comprime antes de salvar, para não pesar no armazenamento.
+                                <p className="text-[11px] text-alfredo-graphite mt-1 leading-relaxed">
+                                  Anexe um áudio pronto (gravador, celular, etc.). O sistema valida o formato e comprime antes de salvar, para não pesar no armazenamento.
                                 </p>
 
                                 <div className="mt-4">
                                   <label 
                                     htmlFor="file-upload-input-custom"
-                                    className="border-2 border-dashed border-zinc-800 hover:border-blue-500/50 bg-zinc-950/30 hover:bg-zinc-950/50 rounded-xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 group"
+                                    className="border-2 border-dashed border-alfredo-border hover:border-alfredo-teal/50 bg-alfredo-offwhite hover:bg-white/80 rounded-xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 group"
                                   >
-                                    <Upload size={20} className="text-zinc-500 group-hover:text-blue-400 group-hover:scale-110 transition-all" />
-                                    <span className="text-xs font-semibold text-zinc-300 group-hover:text-white transition-colors">
+                                    <Upload size={20} className="text-alfredo-muted group-hover:text-alfredo-teal-dark group-hover:scale-110 transition-all" />
+                                    <span className="text-xs font-semibold text-alfredo-graphite group-hover:text-alfredo-navy transition-colors">
                                       Clique para selecionar ou arraste o arquivo aqui
                                     </span>
-                                    <span className="text-[9px] text-zinc-500 font-mono">
+                                    <span className="text-[9px] text-alfredo-muted font-mono">
                                       MP3, WAV, M4A, WEBM, OGG, AAC · até 100 MB (comprimido automaticamente)
                                     </span>
                                   </label>
@@ -3823,11 +3823,11 @@ Reunião vinculada ao Google Agenda:
                   <div className="max-w-4xl mx-auto space-y-6 py-4">
                     {/* Header */}
                     <div>
-                      <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-                        <span className="p-1 rounded bg-zinc-800 text-emerald-400"><Users size={14} /></span>
+                      <h2 className="text-lg font-bold text-alfredo-navy tracking-tight flex items-center gap-2">
+                        <span className="p-1 rounded bg-alfredo-offwhite text-alfredo-teal-dark"><Users size={14} /></span>
                         Módulo de Administração Corporativa
                       </h2>
-                      <p className="text-xs text-zinc-400 mt-1">
+                      <p className="text-xs text-alfredo-graphite mt-1">
                         Gerencie colaboradores e cargos. O acesso ao app é só por usuários pré-definidos; aqui você define perfil e permissões.
                       </p>
                     </div>
@@ -3835,8 +3835,8 @@ Reunião vinculada ao Google Agenda:
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       
                       {/* Form Panel */}
-                      <div className="md:col-span-1 p-5 rounded-2xl border border-zinc-800 bg-zinc-900/30">
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-white border-b border-zinc-800 pb-2 mb-4">
+                      <div className="md:col-span-1 p-5 rounded-2xl border border-alfredo-border bg-alfredo-offwhite">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-alfredo-navy border-b border-alfredo-border pb-2 mb-4">
                           Autorizar Novo Usuário
                         </h3>
 
@@ -3879,46 +3879,46 @@ Reunião vinculada ao Google Agenda:
                           className="space-y-4"
                         >
                           <div className="space-y-1">
-                            <label className="text-[9px] uppercase font-mono text-zinc-500 font-bold block">Nome Completo</label>
+                            <label className="text-[9px] uppercase font-mono text-alfredo-muted font-bold block">Nome Completo</label>
                             <input
                               name="name"
                               type="text"
                               required
                               placeholder="Ex: Pedro Henrique"
-                              className="w-full bg-zinc-950 border border-zinc-850 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-emerald-500"
+                              className="w-full bg-alfredo-offwhite border border-alfredo-border rounded-lg py-1.5 px-3 text-xs text-alfredo-navy focus:outline-none focus:border-alfredo-teal/60"
                             />
                           </div>
 
                           <div className="space-y-1">
-                            <label className="text-[9px] uppercase font-mono text-zinc-500 font-bold block">E-mail do Google</label>
+                            <label className="text-[9px] uppercase font-mono text-alfredo-muted font-bold block">E-mail do Google</label>
                             <input
                               name="email"
                               type="email"
                               required
                               placeholder="Ex: consultor@triforceconsultoria.com"
-                              className="w-full bg-zinc-950 border border-zinc-850 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-emerald-500"
+                              className="w-full bg-alfredo-offwhite border border-alfredo-border rounded-lg py-1.5 px-3 text-xs text-alfredo-navy focus:outline-none focus:border-alfredo-teal/60"
                             />
                           </div>
 
                           <div className="space-y-1">
-                            <label className="text-[9px] uppercase font-mono text-zinc-500 font-bold block">Cargo / Função</label>
+                            <label className="text-[9px] uppercase font-mono text-alfredo-muted font-bold block">Cargo / Função</label>
                             <select
                               name="role"
                               required
-                              className="w-full bg-zinc-950 border border-zinc-850 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-emerald-500"
+                              className="w-full bg-alfredo-offwhite border border-alfredo-border rounded-lg py-1.5 px-3 text-xs text-alfredo-navy focus:outline-none focus:border-alfredo-teal/60"
                             >
                               <option value="user">user (Sem acesso à administração e integração Suiter)</option>
                               <option value="Administrador">Administrador (Acesso total)</option>
                             </select>
                           </div>
 
-                          <p className="text-[10px] text-zinc-500 leading-relaxed">
+                          <p className="text-[10px] text-alfredo-muted leading-relaxed">
                             A senha fica só no Supabase Auth. O usuário cria a conta na tela de login; aqui você só define nome/cargo.
                           </p>
 
                           <button
                             type="submit"
-                            className="w-full py-2 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-black font-bold text-xs transition-all cursor-pointer shadow-lg block"
+                            className="w-full py-2 px-4 rounded-xl bg-alfredo-teal hover:bg-alfredo-teal-dark text-alfredo-navy font-bold text-xs transition-all cursor-pointer shadow-lg block"
                           >
                             Autorizar Colaborador
                           </button>
@@ -3926,40 +3926,40 @@ Reunião vinculada ao Google Agenda:
                       </div>
 
                       {/* Users List Grid */}
-                      <div className="md:col-span-2 p-5 rounded-2xl border border-zinc-800 bg-zinc-900/30 flex flex-col">
-                        <div className="flex justify-between items-center border-b border-zinc-800 pb-2 mb-4">
-                          <h3 className="text-xs font-bold uppercase tracking-wider text-white">
+                      <div className="md:col-span-2 p-5 rounded-2xl border border-alfredo-border bg-alfredo-offwhite flex flex-col">
+                        <div className="flex justify-between items-center border-b border-alfredo-border pb-2 mb-4">
+                          <h3 className="text-xs font-bold uppercase tracking-wider text-alfredo-navy">
                             Colaboradores Autorizados ({permittedUsers.length})
                           </h3>
-                          <span className="text-[9px] text-zinc-500 font-mono">Controle Estrito de Ingressos</span>
+                          <span className="text-[9px] text-alfredo-muted font-mono">Controle Estrito de Ingressos</span>
                         </div>
 
                         <div className="space-y-2.5 overflow-y-auto max-h-96 pr-1 custom-scrollbar">
                           {permittedUsers.map((user) => (
                             <div 
                               key={user.email} 
-                              className="p-3 bg-zinc-950/40 border border-zinc-850 rounded-xl flex items-center justify-between gap-3"
+                              className="p-3 bg-white/80 border border-alfredo-border rounded-xl flex items-center justify-between gap-3"
                             >
                               <div className="flex items-center gap-3">
                                 <img
                                   src={user.photoUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80"}
                                   alt={user.name}
-                                  className="w-8 h-8 rounded-full object-cover border border-zinc-850"
+                                  className="w-8 h-8 rounded-full object-cover border border-alfredo-border"
                                 />
                                 <div>
                                   <div className="flex items-center gap-2">
-                                    <h4 className="text-xs font-bold text-white">{user.name}</h4>
-                                    <span className="text-[9px] bg-zinc-850 text-zinc-400 py-0.5 px-1.5 rounded">
+                                    <h4 className="text-xs font-bold text-alfredo-navy">{user.name}</h4>
+                                    <span className="text-[9px] bg-white text-alfredo-graphite py-0.5 px-1.5 rounded">
                                       {user.role}
                                     </span>
                                   </div>
-                                  <p className="text-[10px] text-zinc-500 mt-0.5">{user.email}</p>
+                                  <p className="text-[10px] text-alfredo-muted mt-0.5">{user.email}</p>
                                 </div>
                               </div>
 
                               <div className="flex items-center gap-4">
                                 <div className="text-right">
-                                  <span className="text-[9px] text-zinc-600 uppercase font-mono block">Senha (Auth)</span>
+                                  <span className="text-[9px] text-alfredo-muted uppercase font-mono block">Senha (Auth)</span>
                                   <button
                                     type="button"
                                     onClick={async () => {
@@ -3972,10 +3972,10 @@ Reunião vinculada ao Google Agenda:
                                         );
                                       }
                                     }}
-                                    className="text-[10px] text-emerald-400 font-mono bg-zinc-900 hover:bg-zinc-850 py-0.5 px-1.5 rounded border border-zinc-850 flex items-center gap-1 cursor-pointer transition-colors mt-0.5"
+                                    className="text-[10px] text-alfredo-teal-dark font-mono bg-white hover:bg-white py-0.5 px-1.5 rounded border border-alfredo-border flex items-center gap-1 cursor-pointer transition-colors mt-0.5"
                                     title="Envia e-mail para o usuário confirmar e trocar a senha"
                                   >
-                                    <Lock size={9} className="text-emerald-500" />
+                                    <Lock size={9} className="text-alfredo-teal-dark" />
                                     <span>Enviar link</span>
                                   </button>
                                 </div>
@@ -3998,7 +3998,7 @@ Reunião vinculada ao Google Agenda:
 
                                     setUserToDeleteEmail(user.email);
                                   }}
-                                  className="p-1.5 hover:bg-zinc-900 rounded text-zinc-500 hover:text-red-400 transition-colors cursor-pointer"
+                                  className="p-1.5 hover:bg-white rounded text-alfredo-muted hover:text-alfredo-coral transition-colors cursor-pointer"
                                   title="Remover Autorização"
                                 >
                                   <Trash2 size={13} />
@@ -4015,19 +4015,19 @@ Reunião vinculada ao Google Agenda:
 
                 {activeView === "suiter" && (
                   <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center px-6 py-16 text-center">
-                    <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-500/25 bg-emerald-500/10 text-emerald-400">
+                    <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-alfredo-teal/30 bg-alfredo-teal/10 text-alfredo-teal-dark">
                       <Database size={24} />
                     </div>
-                    <p className="mb-2 font-mono text-[10px] font-bold tracking-[0.2em] text-emerald-400/90 uppercase">
+                    <p className="mb-2 font-mono text-[10px] font-bold tracking-[0.2em] text-alfredo-teal-dark/90 uppercase">
                       Integração Suiter
                     </p>
-                    <h2 className="font-display text-2xl font-bold tracking-tight text-white sm:text-3xl">
+                    <h2 className="font-display text-2xl font-bold tracking-tight text-alfredo-navy sm:text-3xl">
                       Implementação futura
                     </h2>
-                    <p className="mt-4 max-w-md text-sm leading-relaxed text-zinc-400">
+                    <p className="mt-4 max-w-md text-sm leading-relaxed text-alfredo-graphite">
                       O módulo de integração com o ecossistema Suiter (webhook, exportação automática e logs de sincronização) será disponibilizado em uma próxima versão. Por enquanto, nenhuma ação está habilitada nesta tela.
                     </p>
-                    <div className="mt-8 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-[11px] text-zinc-500">
+                    <div className="mt-8 rounded-xl border border-alfredo-border bg-alfredo-offwhite px-4 py-3 text-[11px] text-alfredo-muted">
                       Em breve: conexão com API Suiter · exportação corporativa · auditoria de sync
                     </div>
                   </div>
@@ -4048,19 +4048,19 @@ Reunião vinculada ao Google Agenda:
 
                 {activeView === "backups" && (
                   <div className="max-w-4xl mx-auto space-y-6 py-4 px-4 sm:px-6">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-800 pb-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-alfredo-border pb-4">
                       <div>
-                        <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-                          <span className="p-1 rounded bg-zinc-800 text-emerald-400"><HardDrive size={14} /></span>
+                        <h2 className="text-lg font-bold text-alfredo-navy tracking-tight flex items-center gap-2">
+                          <span className="p-1 rounded bg-alfredo-offwhite text-alfredo-teal-dark"><HardDrive size={14} /></span>
                           Backup de Áudios
                         </h2>
-                        <p className="text-xs text-zinc-400 mt-1">
+                        <p className="text-xs text-alfredo-graphite mt-1">
                           Áudios salvos neste navegador. Ouça, baixe ou reprocesse a transcrição com IA.
                         </p>
                       </div>
                       <button
                         onClick={loadBackups}
-                        className="py-1.5 px-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white text-xs font-medium border border-zinc-800 hover:border-zinc-750 transition-all flex items-center gap-1.5 cursor-pointer"
+                        className="py-1.5 px-3 rounded-lg bg-white hover:bg-alfredo-offwhite text-alfredo-graphite hover:text-alfredo-navy text-xs font-medium border border-alfredo-border hover:border-alfredo-border transition-all flex items-center gap-1.5 cursor-pointer"
                       >
                         <RefreshCw size={12} />
                         Atualizar
@@ -4111,10 +4111,10 @@ Reunião vinculada ao Google Agenda:
 
                       if (summaries.length === 0) {
                         return (
-                          <div className="p-12 text-center border border-dashed border-zinc-800 rounded-2xl bg-zinc-900/10">
-                            <HardDrive className="mx-auto text-zinc-600 mb-3" size={32} />
-                            <h3 className="text-sm font-bold text-zinc-300">Nenhum backup de áudio neste navegador</h3>
-                            <p className="text-xs text-zinc-500 max-w-md mx-auto mt-1">
+                          <div className="p-12 text-center border border-dashed border-alfredo-border rounded-2xl bg-alfredo-offwhite">
+                            <HardDrive className="mx-auto text-alfredo-muted mb-3" size={32} />
+                            <h3 className="text-sm font-bold text-alfredo-graphite">Nenhum backup de áudio neste navegador</h3>
+                            <p className="text-xs text-alfredo-muted max-w-md mx-auto mt-1">
                               Grave ou anexe um áudio em Nova Reunião. Os arquivos ficam salvos localmente aqui para ouvir e reprocessar com IA.
                             </p>
                             <button
@@ -4123,7 +4123,7 @@ Reunião vinculada ao Google Agenda:
                                 setActiveView("new_meeting");
                                 setNewMeetingSubView("choose");
                               }}
-                              className="mt-4 py-2 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold cursor-pointer"
+                              className="mt-4 py-2 px-4 rounded-lg bg-alfredo-teal hover:bg-alfredo-teal text-alfredo-navy text-xs font-bold cursor-pointer"
                             >
                               Ir para Nova reunião
                             </button>
@@ -4133,8 +4133,8 @@ Reunião vinculada ao Google Agenda:
 
                       return (
                         <div className="space-y-3">
-                          <div className="bg-zinc-900/40 border border-zinc-800 text-zinc-400 p-3 rounded-xl text-xs leading-relaxed flex gap-2">
-                            <Info size={14} className="shrink-0 mt-0.5 text-emerald-400" />
+                          <div className="bg-alfredo-offwhite border border-alfredo-border text-alfredo-graphite p-3 rounded-xl text-xs leading-relaxed flex gap-2">
+                            <Info size={14} className="shrink-0 mt-0.5 text-alfredo-teal-dark" />
                             Áudios são validados e comprimidos antes de salvar (mono 16 kHz / Opus) para não pesar no armazenamento do cliente.
                           </div>
 
@@ -4143,19 +4143,19 @@ Reunião vinculada ao Google Agenda:
                             return (
                               <div
                                 key={item.key}
-                                className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/30 hover:bg-zinc-900/50 transition-all space-y-3"
+                                className="p-4 rounded-xl border border-alfredo-border bg-alfredo-offwhite hover:bg-alfredo-offwhite transition-all space-y-3"
                               >
                                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
                                   <div className="min-w-0 space-y-1.5">
                                     <div className="flex flex-wrap items-center gap-2">
-                                      <h3 className="text-sm font-bold text-white tracking-tight truncate">{item.title}</h3>
+                                      <h3 className="text-sm font-bold text-alfredo-navy tracking-tight truncate">{item.title}</h3>
                                       <span
                                         className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded uppercase border ${
                                           item.status === "completed"
-                                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                            ? "bg-alfredo-teal/10 text-alfredo-teal-dark border-alfredo-teal/25"
                                             : item.status === "failed"
-                                              ? "bg-red-500/10 text-red-400 border-red-500/20"
-                                              : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                                              ? "bg-alfredo-coral/10 text-alfredo-coral border-alfredo-coral/25"
+                                              : "bg-alfredo-warning/10 text-alfredo-warning border-alfredo-warning/25"
                                         }`}
                                       >
                                         {item.status === "completed"
@@ -4165,10 +4165,10 @@ Reunião vinculada ao Google Agenda:
                                             : "Pendente"}
                                       </span>
                                     </div>
-                                    <p className="text-xs text-zinc-400 leading-relaxed line-clamp-2">
+                                    <p className="text-xs text-alfredo-graphite leading-relaxed line-clamp-2">
                                       {item.overview || "Sem resumo disponível."}
                                     </p>
-                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-500">
+                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-alfredo-muted">
                                       <span className="flex items-center gap-1">
                                         <Clock size={11} />
                                         {Math.floor(item.duration / 60)}m {item.duration % 60}s
@@ -4188,7 +4188,7 @@ Reunião vinculada ao Google Agenda:
                                           setActiveView("history");
                                           setActiveTab("summary");
                                         }}
-                                        className="py-1.5 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold border border-zinc-700 cursor-pointer"
+                                        className="py-1.5 px-3 rounded-lg bg-alfredo-offwhite hover:bg-[#E1E8EB] text-alfredo-navy text-xs font-bold border border-alfredo-border cursor-pointer"
                                       >
                                         Ver ata
                                       </button>
@@ -4210,7 +4210,7 @@ Reunião vinculada ao Google Agenda:
                                             },
                                           );
                                         }}
-                                        className="py-1.5 px-3 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-black text-xs font-bold cursor-pointer flex items-center gap-1.5"
+                                        className="py-1.5 px-3 rounded-lg bg-alfredo-teal hover:bg-alfredo-teal-dark text-alfredo-navy text-xs font-bold cursor-pointer flex items-center gap-1.5"
                                       >
                                         <RefreshCw size={12} />
                                         Reprocessar IA
@@ -4238,7 +4238,7 @@ Reunião vinculada ao Google Agenda:
                                           };
                                           audio.play().catch(() => setPlayingBackupId(null));
                                         }}
-                                        className="py-1.5 px-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-xs font-medium border border-zinc-800 cursor-pointer flex items-center gap-1.5"
+                                        className="py-1.5 px-3 rounded-lg bg-white hover:bg-alfredo-offwhite text-alfredo-graphite text-xs font-medium border border-alfredo-border cursor-pointer flex items-center gap-1.5"
                                       >
                                         {playingBackupId === item.backup.id ? <Pause size={12} /> : <Play size={12} />}
                                         {playingBackupId === item.backup.id ? "Pausar" : "Ouvir"}
@@ -4256,7 +4256,7 @@ Reunião vinculada ao Google Agenda:
                                             await loadBackups();
                                           }
                                         }}
-                                        className="p-2 rounded-lg bg-zinc-900 hover:bg-red-950/30 text-zinc-500 hover:text-red-400 border border-zinc-800 cursor-pointer"
+                                        className="p-2 rounded-lg bg-white hover:bg-[#FFF0ED] text-alfredo-muted hover:text-alfredo-coral border border-alfredo-border cursor-pointer"
                                         title="Apagar áudio local"
                                       >
                                         <Trash2 size={12} />
@@ -4285,32 +4285,32 @@ Reunião vinculada ao Google Agenda:
               <>
                 {/* Mobile Backdrop */}
                 <div 
-                  className="fixed inset-0 bg-black/60 backdrop-blur-sm z-35 md:hidden"
+                  className="fixed inset-0 bg-alfredo-navy/55 backdrop-blur-sm z-35 md:hidden"
                   onClick={() => setShowSmartSearch(false)}
                 />
                 <motion.div 
                   initial={{ x: 300, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   exit={{ x: 300, opacity: 0 }}
-                  className="fixed inset-y-0 right-0 z-40 w-80 md:relative md:inset-auto border-l border-zinc-800 bg-zinc-950 flex flex-col shrink-0 h-full overflow-hidden shadow-2xl md:shadow-none"
+                  className="fixed inset-y-0 right-0 z-40 w-80 md:relative md:inset-auto border-l border-alfredo-border bg-alfredo-offwhite flex flex-col shrink-0 h-full overflow-hidden shadow-2xl md:shadow-none"
                 >
-                <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+                <div className="p-4 border-b border-alfredo-border flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    <Sparkles size={14} className="text-emerald-400" />
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-white">
+                    <Sparkles size={14} className="text-alfredo-teal-dark" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-alfredo-navy">
                       Busca Inteligente (IA)
                     </h3>
                   </div>
                   <button 
                     onClick={() => setShowSmartSearch(false)}
-                    className="p-1 hover:bg-zinc-900 rounded text-zinc-500 hover:text-white cursor-pointer"
+                    className="p-1 hover:bg-white rounded text-alfredo-muted hover:text-alfredo-navy cursor-pointer"
                   >
                     <X size={14} />
                   </button>
                 </div>
 
-                <div className="p-4 bg-zinc-900/50 border-b border-zinc-800 text-[11px] text-zinc-400 leading-relaxed flex items-start gap-2">
-                  <Info size={14} className="text-emerald-400 shrink-0 mt-0.5" />
+                <div className="p-4 bg-alfredo-offwhite border-b border-alfredo-border text-[11px] text-alfredo-graphite leading-relaxed flex items-start gap-2">
+                  <Info size={14} className="text-alfredo-teal-dark shrink-0 mt-0.5" />
                   <span>
                     Consulte todo o histórico de reuniões usando linguagem natural. O Gemini buscará a resposta unificando todas as transcrições salvas.
                   </span>
@@ -4320,57 +4320,57 @@ Reunião vinculada ao Google Agenda:
                 <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
                   {smartAnswer ? (
                     <div className="space-y-3">
-                      <div className="text-[10px] text-zinc-500 font-mono flex items-center gap-1 uppercase">
-                        <Check size={11} className="text-emerald-400" />
+                      <div className="text-[10px] text-alfredo-muted font-mono flex items-center gap-1 uppercase">
+                        <Check size={11} className="text-alfredo-teal-dark" />
                         <span>Pergunta:</span>
                       </div>
-                      <p className="text-xs text-white bg-zinc-900 p-2.5 rounded-lg border border-zinc-800">
+                      <p className="text-xs text-alfredo-navy bg-white p-2.5 rounded-lg border border-alfredo-border">
                         {smartQuery}
                       </p>
                       
-                      <div className="text-[10px] text-zinc-500 font-mono flex items-center gap-1 uppercase">
-                        <Sparkles size={11} className="text-emerald-400" />
+                      <div className="text-[10px] text-alfredo-muted font-mono flex items-center gap-1 uppercase">
+                        <Sparkles size={11} className="text-alfredo-teal-dark" />
                         <span>Resposta do Gemini:</span>
                       </div>
-                      <div className="text-xs text-zinc-300 bg-zinc-900/50 p-3 rounded-xl border border-zinc-800 leading-relaxed whitespace-pre-wrap">
+                      <div className="text-xs text-alfredo-graphite bg-alfredo-offwhite p-3 rounded-xl border border-alfredo-border leading-relaxed whitespace-pre-wrap">
                         {smartAnswer}
                       </div>
 
                       <button
                         onClick={() => { setSmartAnswer(null); setSmartQuery(""); }}
-                        className="w-full text-center py-2 border border-dashed border-zinc-800 hover:border-emerald-500/40 text-[10px] text-emerald-400 rounded-lg transition-colors"
+                        className="w-full text-center py-2 border border-dashed border-alfredo-border hover:border-alfredo-teal/40 text-[10px] text-alfredo-teal-dark rounded-lg transition-colors"
                       >
                         Fazer Nova Pergunta
                       </button>
                     </div>
                   ) : (
-                    <div className="py-8 text-center text-xs text-zinc-600">
+                    <div className="py-8 text-center text-xs text-alfredo-muted">
                       Pronto para buscar informações em {meetings.length} reunião(ões) do histórico.
                     </div>
                   )}
 
                   {isSearchingSmart && (
                     <div className="flex flex-col items-center justify-center py-8 text-center">
-                      <div className="w-6 h-6 border-2 border-emerald-500/20 border-t-emerald-400 rounded-full animate-spin mb-2"></div>
-                      <span className="text-[10px] font-mono text-zinc-500">Consultando o banco de transcrições...</span>
+                      <div className="w-6 h-6 border-2 border-alfredo-teal/25 border-t-alfredo-teal rounded-full animate-spin mb-2"></div>
+                      <span className="text-[10px] font-mono text-alfredo-muted">Consultando o banco de transcrições...</span>
                     </div>
                   )}
                 </div>
 
                 {/* Input Query form */}
                 {!smartAnswer && !isSearchingSmart && (
-                  <form onSubmit={handleSmartSearchQuery} className="p-4 border-t border-zinc-800">
+                  <form onSubmit={handleSmartSearchQuery} className="p-4 border-t border-alfredo-border">
                     <div className="relative">
                       <input
                         type="text"
                         placeholder="Ex: Qual foi a tarefa da Sofia?"
                         value={smartQuery}
                         onChange={(e) => setSmartQuery(e.target.value)}
-                        className="w-full pl-3 pr-10 py-2.5 text-xs bg-zinc-900 border border-zinc-800 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
+                        className="w-full pl-3 pr-10 py-2.5 text-xs bg-white border border-alfredo-border rounded-lg text-alfredo-navy placeholder-alfredo-muted focus:outline-none focus:border-alfredo-teal/60"
                       />
                       <button
                         type="submit"
-                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-emerald-500 hover:text-emerald-400 cursor-pointer"
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-alfredo-teal-dark hover:text-alfredo-teal-dark cursor-pointer"
                       >
                         <Send size={14} />
                       </button>
@@ -4389,25 +4389,25 @@ Reunião vinculada ao Google Agenda:
               <>
                 {/* Mobile Backdrop */}
                 <div 
-                  className="fixed inset-0 bg-black/60 backdrop-blur-sm z-35 md:hidden"
+                  className="fixed inset-0 bg-alfredo-navy/55 backdrop-blur-sm z-35 md:hidden"
                   onClick={() => setShowSuiterPanel(false)}
                 />
                 <motion.div
                   initial={{ x: 300, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   exit={{ x: 300, opacity: 0 }}
-                  className="fixed inset-y-0 right-0 z-40 w-80 md:relative md:inset-auto border-l border-zinc-800 bg-zinc-950 flex flex-col shrink-0 h-full overflow-hidden shadow-2xl md:shadow-none"
+                  className="fixed inset-y-0 right-0 z-40 w-80 md:relative md:inset-auto border-l border-alfredo-border bg-alfredo-offwhite flex flex-col shrink-0 h-full overflow-hidden shadow-2xl md:shadow-none"
                 >
-                <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+                <div className="p-4 border-b border-alfredo-border flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    <Database size={14} className="text-emerald-400" />
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-white">
+                    <Database size={14} className="text-alfredo-teal-dark" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-alfredo-navy">
                       Integração Suiter
                     </h3>
                   </div>
                   <button 
                     onClick={() => setShowSuiterPanel(false)}
-                    className="p-1 hover:bg-zinc-900 rounded text-zinc-500 hover:text-white cursor-pointer"
+                    className="p-1 hover:bg-white rounded text-alfredo-muted hover:text-alfredo-navy cursor-pointer"
                   >
                     <X size={14} />
                   </button>
@@ -4415,58 +4415,58 @@ Reunião vinculada ao Google Agenda:
 
                 <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
                   {/* Explanation card */}
-                  <div className="p-3 bg-zinc-900 border border-zinc-800 rounded-xl text-[11px] text-zinc-400 leading-relaxed">
+                  <div className="p-3 bg-white border border-alfredo-border rounded-xl text-[11px] text-alfredo-graphite leading-relaxed">
                     Mapeie a sincronização de dados estruturados com o sistema <b>Suiter</b>. Quando você clicar em <i>"Exportar Suiter"</i>, o app enviará o payload no padrão JSON para o banco do sistema.
                   </div>
 
                   {/* Form configuration fields */}
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-[10px] uppercase font-bold text-zinc-500 mb-1">
+                      <label className="block text-[10px] uppercase font-bold text-alfredo-muted mb-1">
                         Endpoint da API (POST)
                       </label>
                       <input
                         type="text"
                         value={suiterConfig.apiUrl}
                         onChange={(e) => setSuiterConfig({ ...suiterConfig, apiUrl: e.target.value })}
-                        className="w-full p-2 bg-zinc-900 border border-zinc-800 rounded text-xs text-white focus:outline-none focus:border-emerald-500"
+                        className="w-full p-2 bg-white border border-alfredo-border rounded text-xs text-alfredo-navy focus:outline-none focus:border-alfredo-teal/60"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[10px] uppercase font-bold text-zinc-500 mb-1">
+                      <label className="block text-[10px] uppercase font-bold text-alfredo-muted mb-1">
                         Token de Autenticação (Bearer)
                       </label>
                       <input
                         type="password"
                         value={suiterConfig.token}
                         onChange={(e) => setSuiterConfig({ ...suiterConfig, token: e.target.value })}
-                        className="w-full p-2 bg-zinc-900 border border-zinc-800 rounded text-xs text-white focus:outline-none focus:border-emerald-500"
+                        className="w-full p-2 bg-white border border-alfredo-border rounded text-xs text-alfredo-navy focus:outline-none focus:border-alfredo-teal/60"
                       />
                     </div>
 
-                    <div className="flex items-center justify-between p-2.5 bg-zinc-900 rounded border border-zinc-800">
+                    <div className="flex items-center justify-between p-2.5 bg-white rounded border border-alfredo-border">
                       <div className="flex flex-col">
-                        <span className="text-[11px] font-semibold text-white">Modo Simulador</span>
-                        <span className="text-[9px] text-zinc-500">Simular resposta local de sucesso</span>
+                        <span className="text-[11px] font-semibold text-alfredo-navy">Modo Simulador</span>
+                        <span className="text-[9px] text-alfredo-muted">Simular resposta local de sucesso</span>
                       </div>
                       <input
                         type="checkbox"
                         checked={suiterConfig.isMock}
                         onChange={(e) => setSuiterConfig({ ...suiterConfig, isMock: e.target.checked })}
-                        className="w-4 h-4 rounded text-emerald-500 accent-emerald-500 cursor-pointer"
+                        className="w-4 h-4 rounded text-alfredo-teal-dark accent-alfredo-teal cursor-pointer"
                       />
                     </div>
                   </div>
 
                   {/* API REQUEST LOGGER (Aesthetic developer console debug) */}
                   <div className="pt-2">
-                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block mb-2">
+                    <span className="text-[10px] font-bold text-alfredo-muted uppercase tracking-wider block mb-2">
                       Logs de Envio Recentes
                     </span>
                     
                     {suiterLogs.length === 0 ? (
-                      <div className="p-4 text-center border border-dashed border-zinc-800 text-zinc-600 text-xs rounded-lg">
+                      <div className="p-4 text-center border border-dashed border-alfredo-border text-alfredo-muted text-xs rounded-lg">
                         Nenhum log de API disponível.
                       </div>
                     ) : (
@@ -4475,17 +4475,17 @@ Reunião vinculada ao Google Agenda:
                           <div 
                             key={idx} 
                             onClick={() => { setLatestExportLog(log); }}
-                            className="p-2.5 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-lg text-[10px] cursor-pointer transition-colors"
+                            className="p-2.5 bg-white border border-alfredo-border hover:border-alfredo-border rounded-lg text-[10px] cursor-pointer transition-colors"
                           >
                             <div className="flex items-center justify-between">
-                              <span className="font-semibold text-white truncate max-w-36">{log.meetingTitle}</span>
+                              <span className="font-semibold text-alfredo-navy truncate max-w-36">{log.meetingTitle}</span>
                               <span className={`font-mono px-1 rounded ${
-                                log.status === "success" ? "bg-emerald-950/40 text-emerald-400" : "bg-rose-950/40 text-rose-400"
+                                log.status === "success" ? "bg-alfredo-surface-teal text-alfredo-teal-dark" : "bg-[#FFF0ED] text-alfredo-coral"
                               }`}>
                                 {log.status === "success" ? "HTTP 201" : "FALHA"}
                               </span>
                             </div>
-                            <div className="flex justify-between text-zinc-500 text-[9px] mt-1">
+                            <div className="flex justify-between text-alfredo-muted text-[9px] mt-1">
                               <span>{log.timestamp}</span>
                               <span>{log.simulated ? "Simulado" : "Conexão Direta"}</span>
                             </div>
@@ -4498,12 +4498,12 @@ Reunião vinculada ao Google Agenda:
 
                 {/* Sub-panel debugger output drawer */}
                 {latestExportLog && (
-                  <div className="p-4 border-t border-zinc-800 bg-zinc-950 max-h-60 overflow-y-auto custom-scrollbar">
+                  <div className="p-4 border-t border-alfredo-border bg-alfredo-offwhite max-h-60 overflow-y-auto custom-scrollbar">
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-[10px] font-mono text-emerald-400 font-bold">API PAYLOAD DEBUGGER</span>
+                      <span className="text-[10px] font-mono text-alfredo-teal-dark font-bold">API PAYLOAD DEBUGGER</span>
                       <button 
                         onClick={() => setLatestExportLog(null)}
-                        className="text-zinc-500 hover:text-white"
+                        className="text-alfredo-muted hover:text-alfredo-navy"
                       >
                         <X size={10} />
                       </button>
@@ -4511,22 +4511,22 @@ Reunião vinculada ao Google Agenda:
                     
                     <div className="space-y-2 font-mono text-[9px]">
                       <div>
-                        <span className="text-zinc-500">REQUEST URL:</span>
-                        <div className="text-zinc-300 break-all">{latestExportLog.request.url}</div>
+                        <span className="text-alfredo-muted">REQUEST URL:</span>
+                        <div className="text-alfredo-graphite break-all">{latestExportLog.request.url}</div>
                       </div>
                       <div>
-                        <span className="text-zinc-500">METHOD:</span>
-                        <div className="text-emerald-400 font-bold">{latestExportLog.request.method}</div>
+                        <span className="text-alfredo-muted">METHOD:</span>
+                        <div className="text-alfredo-teal-dark font-bold">{latestExportLog.request.method}</div>
                       </div>
                       <div>
-                        <span className="text-zinc-500">MAPPED JSON BODY:</span>
-                        <pre className="bg-zinc-900 p-2 rounded text-emerald-400 overflow-x-auto border border-zinc-800 max-h-24">
+                        <span className="text-alfredo-muted">MAPPED JSON BODY:</span>
+                        <pre className="bg-white p-2 rounded text-alfredo-teal-dark overflow-x-auto border border-alfredo-border max-h-24">
                           {JSON.stringify(latestExportLog.request.body, null, 2)}
                         </pre>
                       </div>
                       <div>
-                        <span className="text-zinc-500">SERVER RESPONSE:</span>
-                        <pre className="bg-zinc-900 p-2 rounded text-emerald-400 overflow-x-auto border border-zinc-800 max-h-24">
+                        <span className="text-alfredo-muted">SERVER RESPONSE:</span>
+                        <pre className="bg-white p-2 rounded text-alfredo-teal-dark overflow-x-auto border border-alfredo-border max-h-24">
                           {JSON.stringify(latestExportLog.response.body, null, 2)}
                         </pre>
                       </div>
@@ -4543,15 +4543,15 @@ Reunião vinculada ao Google Agenda:
 
         {/* BOTTOM REAL-TIME RECORDING CANVAS VISUALIZER */}
         {isRecording && !isRecordingPaused && (
-          <div className="h-20 bg-zinc-950 border-t border-zinc-800 flex items-center justify-center relative px-6 shrink-0">
+          <div className="h-20 bg-alfredo-offwhite border-t border-alfredo-border flex items-center justify-center relative px-6 shrink-0">
             <canvas 
               ref={canvasRef} 
               width={600} 
               height={50} 
               className="w-full max-w-xl h-10 object-contain opacity-80"
             />
-            <div className="absolute right-6 text-[10px] text-zinc-500 font-mono tracking-wider flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+            <div className="absolute right-6 text-[10px] text-alfredo-muted font-mono tracking-wider flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-alfredo-teal animate-ping"></span>
               <span>Análise Espectral de Voz</span>
             </div>
           </div>
@@ -4560,24 +4560,24 @@ Reunião vinculada ao Google Agenda:
         {/* Custom Confirmation Modals for Deletion and Alert */}
         <AnimatePresence>
           {meetingToDeleteId && (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-alfredo-navy/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-left"
+                className="bg-alfredo-offwhite border border-alfredo-border rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-left"
               >
-                <div className="flex items-center gap-2 text-red-400">
+                <div className="flex items-center gap-2 text-alfredo-coral">
                   <Trash2 size={18} />
-                  <h3 className="font-bold text-sm uppercase tracking-wider text-white">Confirmar Exclusão</h3>
+                  <h3 className="font-bold text-sm uppercase tracking-wider text-alfredo-navy">Confirmar Exclusão</h3>
                 </div>
-                <p className="text-xs text-zinc-400 leading-relaxed">
+                <p className="text-xs text-alfredo-graphite leading-relaxed">
                   Tem certeza de que deseja apagar permanentemente esta reunião? Esta ação é irreversível e removerá todos os dados e transcrições do sistema local.
                 </p>
                 <div className="flex gap-2 justify-end">
                   <button
                     onClick={() => setMeetingToDeleteId(null)}
-                    className="px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 hover:text-white transition-all cursor-pointer font-medium"
+                    className="px-3 py-1.5 rounded-lg bg-white border border-alfredo-border text-xs text-alfredo-graphite hover:text-alfredo-navy transition-all cursor-pointer font-medium"
                   >
                     Cancelar
                   </button>
@@ -4597,7 +4597,7 @@ Reunião vinculada ao Google Agenda:
                       }
                       setMeetingToDeleteId(null);
                     }}
-                    className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-xs text-white transition-all cursor-pointer font-bold"
+                    className="px-3 py-1.5 rounded-lg bg-alfredo-coral hover:bg-alfredo-coral text-xs text-alfredo-navy transition-all cursor-pointer font-bold"
                   >
                     Confirmar Exclusão
                   </button>
@@ -4607,24 +4607,24 @@ Reunião vinculada ao Google Agenda:
           )}
 
           {userToDeleteEmail && (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-alfredo-navy/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-left"
+                className="bg-alfredo-offwhite border border-alfredo-border rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-left"
               >
-                <div className="flex items-center gap-2 text-red-400">
+                <div className="flex items-center gap-2 text-alfredo-coral">
                   <Trash2 size={18} />
-                  <h3 className="font-bold text-sm uppercase tracking-wider text-white">Remover Colaborador</h3>
+                  <h3 className="font-bold text-sm uppercase tracking-wider text-alfredo-navy">Remover Colaborador</h3>
                 </div>
-                <p className="text-xs text-zinc-400 leading-relaxed">
-                  Tem certeza de que deseja remover a autorização de acesso do e-mail <b className="text-zinc-200">{userToDeleteEmail}</b>? Ele não poderá mais fazer login no sistema.
+                <p className="text-xs text-alfredo-graphite leading-relaxed">
+                  Tem certeza de que deseja remover a autorização de acesso do e-mail <b className="text-alfredo-navy">{userToDeleteEmail}</b>? Ele não poderá mais fazer login no sistema.
                 </p>
                 <div className="flex gap-2 justify-end">
                   <button
                     onClick={() => setUserToDeleteEmail(null)}
-                    className="px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 hover:text-white transition-all cursor-pointer font-medium"
+                    className="px-3 py-1.5 rounded-lg bg-white border border-alfredo-border text-xs text-alfredo-graphite hover:text-alfredo-navy transition-all cursor-pointer font-medium"
                   >
                     Cancelar
                   </button>
@@ -4633,7 +4633,7 @@ Reunião vinculada ao Google Agenda:
                       setPermittedUsers(prev => prev.filter(u => u.email !== userToDeleteEmail));
                       setUserToDeleteEmail(null);
                     }}
-                    className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-xs text-white transition-all cursor-pointer font-bold"
+                    className="px-3 py-1.5 rounded-lg bg-alfredo-coral hover:bg-alfredo-coral text-xs text-alfredo-navy transition-all cursor-pointer font-bold"
                   >
                     Remover Acesso
                   </button>
@@ -4643,24 +4643,24 @@ Reunião vinculada ao Google Agenda:
           )}
 
           {customAlertMessage && (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-alfredo-navy/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-left"
+                className="bg-alfredo-offwhite border border-alfredo-border rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl text-left"
               >
-                <div className="flex items-center gap-2 text-emerald-400">
+                <div className="flex items-center gap-2 text-alfredo-teal-dark">
                   <AlertCircle size={18} />
-                  <h3 className="font-bold text-sm uppercase tracking-wider text-white">Alerta do Sistema</h3>
+                  <h3 className="font-bold text-sm uppercase tracking-wider text-alfredo-navy">Alerta do Sistema</h3>
                 </div>
-                <p className="text-xs text-zinc-400 leading-relaxed">
+                <p className="text-xs text-alfredo-graphite leading-relaxed">
                   {customAlertMessage}
                 </p>
                 <div className="flex justify-end">
                   <button
                     onClick={() => setCustomAlertMessage(null)}
-                    className="px-4 py-1.5 rounded-lg bg-emerald-500 text-black font-bold text-xs hover:bg-emerald-400 transition-all cursor-pointer"
+                    className="px-4 py-1.5 rounded-lg bg-alfredo-teal text-alfredo-navy font-bold text-xs hover:bg-alfredo-teal transition-all cursor-pointer"
                   >
                     OK
                   </button>
@@ -4670,34 +4670,34 @@ Reunião vinculada ao Google Agenda:
           )}
 
           {isParticipantsModalOpen && (
-            <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-alfredo-navy/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl text-left"
+                className="bg-alfredo-offwhite border border-alfredo-border rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl text-left"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-emerald-400">
+                  <div className="flex items-center gap-2 text-alfredo-teal-dark">
                     <Users size={16} />
-                    <h3 className="font-bold text-sm uppercase tracking-wider text-white">Editar Participantes</h3>
+                    <h3 className="font-bold text-sm uppercase tracking-wider text-alfredo-navy">Editar Participantes</h3>
                   </div>
                   <button
                     onClick={() => setIsParticipantsModalOpen(false)}
-                    className="text-zinc-500 hover:text-white transition-colors cursor-pointer"
+                    className="text-alfredo-muted hover:text-alfredo-navy transition-colors cursor-pointer"
                   >
                     <X size={16} />
                   </button>
                 </div>
                 
-                <p className="text-xs text-zinc-400 leading-relaxed">
+                <p className="text-xs text-alfredo-graphite leading-relaxed">
                   Insira a lista de participantes presentes nesta reunião física. Digite <b>um nome por linha (aperte Enter)</b> para organizar os membros participantes de forma clara e simples.
                 </p>
 
                 <div className="space-y-4 max-h-[380px] overflow-y-auto pr-1 custom-scrollbar">
                   {/* Triforce Section */}
                   <div className="space-y-1.5">
-                    <label className="block text-[10px] uppercase font-mono text-emerald-400 font-bold">
+                    <label className="block text-[10px] uppercase font-mono text-alfredo-teal-dark font-bold">
                       Membros Triforce (Consultores) • Um por linha
                     </label>
                     <textarea
@@ -4705,13 +4705,13 @@ Reunião vinculada ao Google Agenda:
                       onChange={(e) => setEditTriforceMembers(e.target.value)}
                       rows={5}
                       placeholder="Exemplo:&#10;Rodolfo&#10;Sofia"
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl py-2.5 px-3 text-xs text-white placeholder-zinc-700 focus:outline-none focus:border-emerald-500 resize-none font-sans leading-relaxed"
+                      className="w-full bg-white border border-alfredo-border rounded-xl py-2.5 px-3 text-xs text-alfredo-navy placeholder-alfredo-muted focus:outline-none focus:border-alfredo-teal/60 resize-none font-sans leading-relaxed"
                     />
                   </div>
 
                   {/* Client Section */}
                   <div className="space-y-1.5">
-                    <label className="block text-[10px] uppercase font-mono text-blue-400 font-bold">
+                    <label className="block text-[10px] uppercase font-mono text-alfredo-teal-dark font-bold">
                       Clientes & Parceiros • Um por linha
                     </label>
                     <textarea
@@ -4719,15 +4719,15 @@ Reunião vinculada ao Google Agenda:
                       onChange={(e) => setEditClientMembers(e.target.value)}
                       rows={5}
                       placeholder="Exemplo:&#10;Vitor&#10;Carlos Eduardo"
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl py-2.5 px-3 text-xs text-white placeholder-zinc-700 focus:outline-none focus:border-blue-500 resize-none font-sans leading-relaxed"
+                      className="w-full bg-white border border-alfredo-border rounded-xl py-2.5 px-3 text-xs text-alfredo-navy placeholder-alfredo-muted focus:outline-none focus:border-alfredo-teal/60 resize-none font-sans leading-relaxed"
                     />
                   </div>
                 </div>
 
-                <div className="flex gap-2 justify-end pt-2 border-t border-zinc-900">
+                <div className="flex gap-2 justify-end pt-2 border-t border-alfredo-border">
                   <button
                     onClick={() => setIsParticipantsModalOpen(false)}
-                    className="px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 hover:text-white transition-all cursor-pointer font-medium"
+                    className="px-3 py-1.5 rounded-lg bg-white border border-alfredo-border text-xs text-alfredo-graphite hover:text-alfredo-navy transition-all cursor-pointer font-medium"
                   >
                     Cancelar
                   </button>
@@ -4756,7 +4756,7 @@ Reunião vinculada ao Google Agenda:
                       }));
                       setIsParticipantsModalOpen(false);
                     }}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition-all cursor-pointer"
+                    className="px-3 py-1.5 rounded-lg bg-alfredo-teal hover:bg-alfredo-teal text-alfredo-navy font-bold text-xs transition-all cursor-pointer"
                   >
                     Salvar Alterações
                   </button>
@@ -4766,23 +4766,23 @@ Reunião vinculada ao Google Agenda:
           )}
 
           {isTaskModalOpen && (
-            <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-alfredo-navy/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl text-left"
+                className="bg-alfredo-offwhite border border-alfredo-border rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl text-left"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-emerald-400">
+                  <div className="flex items-center gap-2 text-alfredo-teal-dark">
                     <CheckSquare size={16} />
-                    <h3 className="font-bold text-sm uppercase tracking-wider text-white">
+                    <h3 className="font-bold text-sm uppercase tracking-wider text-alfredo-navy">
                       {editingTaskIdx !== null ? "Editar Tarefa" : "Nova Tarefa"}
                     </h3>
                   </div>
                   <button
                     onClick={() => setIsTaskModalOpen(false)}
-                    className="text-zinc-500 hover:text-white transition-colors cursor-pointer"
+                    className="text-alfredo-muted hover:text-alfredo-navy transition-colors cursor-pointer"
                   >
                     <X size={16} />
                   </button>
@@ -4790,23 +4790,23 @@ Reunião vinculada ao Google Agenda:
 
                 <div className="space-y-3.5">
                   <div className="space-y-1.5">
-                    <label className="block text-[10px] uppercase font-mono text-zinc-400 font-bold">Descrição da Tarefa</label>
+                    <label className="block text-[10px] uppercase font-mono text-alfredo-graphite font-bold">Descrição da Tarefa</label>
                     <textarea
                       value={taskAction}
                       onChange={(e) => setTaskAction(e.target.value)}
                       placeholder="Digite a ação ou tarefa pendente..."
                       rows={3}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl py-2 px-3 text-xs text-white placeholder-zinc-700 focus:outline-none focus:border-emerald-500 resize-none"
+                      className="w-full bg-white border border-alfredo-border rounded-xl py-2 px-3 text-xs text-alfredo-navy placeholder-alfredo-muted focus:outline-none focus:border-alfredo-teal/60 resize-none"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <label className="block text-[10px] uppercase font-mono text-zinc-400 font-bold">Responsável</label>
+                      <label className="block text-[10px] uppercase font-mono text-alfredo-graphite font-bold">Responsável</label>
                       <select
                         value={taskAssignee}
                         onChange={(e) => setTaskAssignee(e.target.value)}
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer"
+                        className="w-full bg-white border border-alfredo-border rounded-xl py-2 px-3 text-xs text-alfredo-navy focus:outline-none focus:border-alfredo-teal/60 cursor-pointer"
                       >
                         <optgroup label="Consultores Triforce">
                           {getMeetingParticipantsList(selectedMeeting, permittedUsers).membersTriforce.map((p, i) => (
@@ -4825,11 +4825,11 @@ Reunião vinculada ao Google Agenda:
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="block text-[10px] uppercase font-mono text-zinc-400 font-bold">Prioridade</label>
+                      <label className="block text-[10px] uppercase font-mono text-alfredo-graphite font-bold">Prioridade</label>
                       <select
                         value={taskPriority}
                         onChange={(e) => setTaskPriority(e.target.value)}
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl py-2 px-3 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer"
+                        className="w-full bg-white border border-alfredo-border rounded-xl py-2 px-3 text-xs text-alfredo-navy focus:outline-none focus:border-alfredo-teal/60 cursor-pointer"
                       >
                         <option value="Alta">Alta</option>
                         <option value="Média">Média</option>
@@ -4842,7 +4842,7 @@ Reunião vinculada ao Google Agenda:
                 <div className="flex gap-2 justify-end pt-2">
                   <button
                     onClick={() => setIsTaskModalOpen(false)}
-                    className="px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 hover:text-white transition-all cursor-pointer font-medium"
+                    className="px-3 py-1.5 rounded-lg bg-white border border-alfredo-border text-xs text-alfredo-graphite hover:text-alfredo-navy transition-all cursor-pointer font-medium"
                   >
                     Cancelar
                   </button>
@@ -4874,7 +4874,7 @@ Reunião vinculada ao Google Agenda:
                       }));
                       setIsTaskModalOpen(false);
                     }}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition-all cursor-pointer"
+                    className="px-3 py-1.5 rounded-lg bg-alfredo-teal hover:bg-alfredo-teal text-alfredo-navy font-bold text-xs transition-all cursor-pointer"
                   >
                     Confirmar
                   </button>
@@ -4892,18 +4892,18 @@ Reunião vinculada ao Google Agenda:
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            className="fixed bottom-24 right-4 z-[10000] max-w-sm w-[calc(100%-2rem)] bg-zinc-900 border border-zinc-800 rounded-2xl p-4 shadow-2xl flex gap-3 items-start md:bottom-6 md:right-6 md:w-full"
+            className="fixed bottom-24 right-4 z-[10000] max-w-sm w-[calc(100%-2rem)] bg-white border border-alfredo-border rounded-2xl p-4 shadow-2xl flex gap-3 items-start md:bottom-6 md:right-6 md:w-full"
             >
-              <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shrink-0">
+              <div className="p-2 rounded-xl bg-alfredo-teal/10 border border-alfredo-teal/25 text-alfredo-teal-dark shrink-0">
                 <BellRing size={16} className="animate-pulse" />
               </div>
               <div className="flex-1 min-w-0">
-                <h4 className="text-xs font-bold text-white tracking-wide uppercase">{appToast.title}</h4>
-                <p className="text-xs text-zinc-400 mt-1 leading-relaxed">{appToast.body}</p>
+                <h4 className="text-xs font-bold text-alfredo-navy tracking-wide uppercase">{appToast.title}</h4>
+                <p className="text-xs text-alfredo-graphite mt-1 leading-relaxed">{appToast.body}</p>
               </div>
               <button
                 onClick={() => setAppToast(prev => ({ ...prev, show: false }))}
-                className="text-zinc-500 hover:text-white transition-colors p-1 cursor-pointer"
+                className="text-alfredo-muted hover:text-alfredo-navy transition-colors p-1 cursor-pointer"
                 title="Fechar Alerta"
               >
                 <X size={14} />

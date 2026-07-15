@@ -383,7 +383,7 @@ Atribua ações apenas a participantes reais.`;
       userPrompt += `\n\nCONTEXTO REAL DA REUNIÃO:\n${context}\n\nUse este contexto para título, participantes e responsáveis das ações.`;
     }
 
-    const systemPrompt = `Você é o assistente de produtividade do Suiter Record.
+    const systemPrompt = `Você é o assistente de produtividade do Alfredo.
 Responda APENAS com um objeto JSON válido (sem markdown) neste formato:
 ${MEETING_JSON_SCHEMA_HINT}
 Todos os campos obrigatórios devem existir. Use português brasileiro.`;
@@ -558,7 +558,7 @@ Resumo: ${m.overview}
       .join("\n\n");
 
     const systemPrompt =
-      "Você é o assistente inteligente de busca do Suiter Record. Responda em português de forma clara e objetiva.";
+      "Você é o assistente inteligente de busca do Alfredo. Responda em português de forma clara e objetiva.";
     const userPrompt = `O usuário fez a seguinte pergunta sobre o histórico de reuniões gravadas:
 "${query}"
 
@@ -624,7 +624,7 @@ app.post("/api/export-suiter", authenticateRequest, async (req, res) => {
     })),
     metadata: {
       tags: summaryData.tags || [],
-      source: "Suiter Recorder AI Studio",
+      source: "Alfredo",
       file_length_sec: summaryData.duration || 0,
     },
   };
@@ -632,7 +632,7 @@ app.post("/api/export-suiter", authenticateRequest, async (req, res) => {
   const headers = {
     "Content-Type": "application/json",
     "Authorization": token ? `Bearer ${token}` : "None",
-    "X-System-Source": "Suiter-Recorder-AI-Studio",
+    "X-System-Source": "Alfredo",
   };
 
   const requestDetails = {
@@ -969,7 +969,7 @@ function renderOAuthResultPage(opts: {
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>Google Agenda — Suiter Record</title>
+  <title>Google Agenda — Alfredo</title>
   <style>
     body { font-family: system-ui, sans-serif; background:#090b0e; color:#e4e4e7; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; }
     .card { background:#18181b; border:1px solid #27272a; border-radius:16px; padding:24px; max-width:420px; text-align:center; }

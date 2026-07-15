@@ -41,7 +41,7 @@ export default function MobileMoreSheet({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[70] bg-black/55 backdrop-blur-sm md:hidden"
+            className="fixed inset-0 z-[70] bg-alfredo-navy/45 backdrop-blur-sm md:hidden"
             onClick={onClose}
           />
           <motion.div
@@ -49,29 +49,29 @@ export default function MobileMoreSheet({
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", stiffness: 380, damping: 34 }}
-            className="fixed inset-x-0 bottom-0 z-[80] rounded-t-3xl border border-white/[0.08] border-b-0 bg-[#0c0e11]/96 px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-[0_-20px_60px_-20px_rgba(0,0,0,0.8)] backdrop-blur-2xl md:hidden"
+            className="fixed inset-x-0 bottom-0 z-[80] rounded-t-3xl border border-alfredo-border border-b-0 bg-white px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-[0_-20px_60px_-20px_rgba(13,27,42,0.28)] md:hidden"
           >
-            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/15" />
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-alfredo-border" />
 
-            <div className="mb-4 flex items-center gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.03] p-3">
+            <div className="mb-4 flex items-center gap-3 rounded-2xl border border-alfredo-border bg-alfredo-offwhite p-3">
               <img
                 src={
                   userPhotoUrl ||
                   `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(userName)}`
                 }
                 alt={userName}
-                className="h-11 w-11 rounded-xl border border-white/[0.08] object-cover"
+                className="h-11 w-11 rounded-xl border border-alfredo-border object-cover"
               />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-white">
+                <p className="truncate text-sm font-semibold text-alfredo-navy">
                   {userName}
                 </p>
-                <p className="truncate text-[11px] text-zinc-500">{userRole}</p>
+                <p className="truncate text-[11px] text-alfredo-muted">{userRole}</p>
               </div>
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-xl p-2 text-zinc-500 hover:bg-white/[0.05] hover:text-white"
+                className="rounded-xl p-2 text-alfredo-muted hover:bg-alfredo-navy/5 hover:text-alfredo-navy"
               >
                 <X size={16} />
               </button>
@@ -84,9 +84,9 @@ export default function MobileMoreSheet({
                   onOpenSmartSearch();
                   onClose();
                 }}
-                className="flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-left text-sm font-medium text-zinc-200 transition-colors hover:bg-white/[0.04]"
+                className="flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-left text-sm font-medium text-alfredo-graphite transition-colors hover:bg-alfredo-surface-teal"
               >
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-alfredo-surface-teal text-alfredo-teal-dark">
                   <Sparkles size={16} />
                 </span>
                 Busca inteligente
@@ -98,9 +98,9 @@ export default function MobileMoreSheet({
                   onNavigate("suiter");
                   onClose();
                 }}
-                className="flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-left text-sm font-medium text-zinc-200 transition-colors hover:bg-white/[0.04]"
+                className="flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-left text-sm font-medium text-alfredo-graphite transition-colors hover:bg-alfredo-surface-teal"
               >
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.05] text-zinc-300">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-alfredo-offwhite text-alfredo-graphite">
                   <Database size={16} />
                 </span>
                 Integração Suiter
@@ -113,9 +113,9 @@ export default function MobileMoreSheet({
                     onNavigate("admin");
                     onClose();
                   }}
-                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-left text-sm font-medium text-zinc-200 transition-colors hover:bg-white/[0.04]"
+                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-left text-sm font-medium text-alfredo-graphite transition-colors hover:bg-alfredo-surface-teal"
                 >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.05] text-zinc-300">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-alfredo-offwhite text-alfredo-graphite">
                     <Shield size={16} />
                   </span>
                   Equipe
@@ -128,9 +128,9 @@ export default function MobileMoreSheet({
                   onClose();
                   onLogout();
                 }}
-                className="flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-left text-sm font-medium text-red-300 transition-colors hover:bg-red-500/10"
+                className="flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-left text-sm font-medium text-alfredo-coral transition-colors hover:bg-alfredo-coral/10"
               >
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-500/10 text-red-300">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-alfredo-coral/10 text-alfredo-coral">
                   <LogOut size={16} />
                 </span>
                 Sair da conta

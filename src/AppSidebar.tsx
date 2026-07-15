@@ -24,6 +24,7 @@ import {
   X,
 } from "lucide-react";
 import type { Meeting } from "./types";
+import { AlfredoMark } from "./components/brand/AlfredoMark";
 
 export type AppView =
   | "history"
@@ -194,21 +195,16 @@ export default function AppSidebar({
         }`}
       >
         <div className={`flex min-w-0 items-center ${compact ? "justify-center" : "gap-3"}`}>
-          <div className="relative shrink-0">
-            <div className="absolute inset-0 rounded-xl bg-emerald-400/20 blur-md" />
-            <img
-              src={logoSrc}
-              alt="Suiter Record"
-              className="relative h-10 w-10 rounded-xl border border-white/[0.08] object-cover"
-            />
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.06] ring-1 ring-white/[0.08]">
+            <AlfredoMark size={26} variant="light" />
           </div>
           {expanded && (
             <div className="min-w-0">
-              <h1 className="font-display truncate text-[15px] font-bold tracking-tight text-white">
-                Suiter <span className="text-emerald-400">Record</span>
+              <h1 className="alfredo-wordmark alfredo-wordmark--on-dark text-[23px] leading-none">
+                Alfredo<span className="alfredo-wordmark__dot">.</span>
               </h1>
-              <p className="truncate text-[10px] font-medium text-zinc-500">
-                Workspace de reuniões
+              <p className="mt-1 text-[9.5px] font-medium tracking-wide text-[#7c8a94]">
+                Escuta. Entende. Organiza.
               </p>
             </div>
           )}
@@ -240,7 +236,7 @@ export default function AppSidebar({
             "nav-item",
             item.cta && !active ? "nav-item-cta" : "",
             active && !item.cta ? "nav-item-active" : "",
-            active && item.cta ? "nav-item-cta ring-2 ring-emerald-300/40" : "",
+            active && item.cta ? "nav-item-cta ring-2 ring-alfredo-teal/40" : "",
             compact ? "justify-center px-0" : "",
           ]
             .filter(Boolean)
@@ -363,13 +359,13 @@ export default function AppSidebar({
                   value={searchQuery}
                   onChange={(e) => onSearchChange(e.target.value)}
                   placeholder="Buscar reuniões..."
-                  className="w-full rounded-xl border border-white/[0.06] bg-black/30 py-2 pr-3 pl-8 text-xs text-white outline-none placeholder:text-zinc-600 focus:border-emerald-500/30"
+                  className="w-full rounded-xl border border-white/[0.06] bg-black/30 py-2 pr-3 pl-8 text-xs text-white outline-none placeholder:text-zinc-600 focus:border-alfredo-teal/30"
                 />
               </div>
               <button
                 type="button"
                 onClick={onOpenSmartSearch}
-                className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-2 text-emerald-300 transition-colors hover:bg-emerald-500/20"
+                className="rounded-xl border border-alfredo-teal/20 bg-alfredo-teal/10 p-2 text-alfredo-teal transition-colors hover:bg-alfredo-teal/20"
                 title="Busca IA"
               >
                 <Sparkles size={14} />
@@ -383,7 +379,7 @@ export default function AppSidebar({
                   onClick={() => onTagFilterChange(null)}
                   className={`rounded-lg px-2 py-1 text-[10px] font-semibold ${
                     !selectedTagFilter
-                      ? "bg-emerald-500/15 text-emerald-300"
+                      ? "bg-alfredo-teal/15 text-alfredo-teal"
                       : "bg-white/[0.03] text-zinc-500"
                   }`}
                 >
@@ -398,7 +394,7 @@ export default function AppSidebar({
                     }
                     className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold ${
                       selectedTagFilter === tag
-                        ? "bg-emerald-500/15 text-emerald-300"
+                        ? "bg-alfredo-teal/15 text-alfredo-teal"
                         : "bg-white/[0.03] text-zinc-500"
                     }`}
                   >
@@ -434,7 +430,7 @@ export default function AppSidebar({
                             {m.title}
                           </p>
                           {m.hasAudio && (
-                            <span className="mt-0.5 shrink-0 text-emerald-400/80">
+                            <span className="mt-0.5 shrink-0 text-alfredo-teal/80">
                               <Mic size={11} />
                             </span>
                           )}
@@ -478,7 +474,7 @@ export default function AppSidebar({
         ) : (
           expanded && (
             <div className="flex flex-1 flex-col items-center justify-center px-5 text-center">
-              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-400">
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-alfredo-teal/20 bg-alfredo-teal/10 text-alfredo-teal">
                 {activeView === "dashboard" && <BarChart2 size={20} />}
                 {activeView === "new_meeting" && <Mic size={20} />}
                 {activeView === "backups" && <HardDrive size={20} />}

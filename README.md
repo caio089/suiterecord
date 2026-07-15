@@ -1,6 +1,8 @@
-# Suiter Record
+# Alfredo
 
-Extensão corporativa do ecossistema Suiter: gravação, transcrição com IA, atas e Google Agenda.
+> **Escuta. Entende. Organiza.**
+
+Assistente de reuniões da Triforce Consultoria (extensão do ecossistema Suiter): gravação, transcrição com IA, atas, decisões, ações e Google Agenda.
 
 ## Local (monolítico)
 
