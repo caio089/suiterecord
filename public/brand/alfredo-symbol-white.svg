@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" role="img" aria-label="Símbolo Alfredo">
+  <path
+    d="M42 188 L93 61 Q106 28 119 61 L170 188"
+    fill="none"
+    stroke="#F7F8FA"
+    stroke-width="40"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <circle cx="106" cy="164" r="13" fill="#1BA6B6"/>
+</svg>

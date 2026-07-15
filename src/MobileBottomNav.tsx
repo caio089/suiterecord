@@ -61,8 +61,8 @@ export default function MobileBottomNav({
                     isRecording
                       ? "bg-red-500 text-white"
                       : activeView === "new_meeting"
-                        ? "bg-emerald-400 text-black"
-                        : "bg-gradient-to-br from-emerald-400 to-emerald-600 text-black"
+                        ? "bg-alfredo-teal text-black"
+                        : "bg-gradient-to-br from-alfredo-teal to-alfredo-teal text-black"
                   }`}
                 >
                   {isRecording ? (
@@ -77,7 +77,7 @@ export default function MobileBottomNav({
                 <span
                   className={`mt-1 text-[10px] font-semibold ${
                     activeView === "new_meeting"
-                      ? "text-emerald-300"
+                      ? "text-alfredo-teal"
                       : "text-zinc-500"
                   }`}
                 >
@@ -101,7 +101,7 @@ export default function MobileBottomNav({
                 whileTap={{ scale: 0.9 }}
                 className={`relative flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${
                   active
-                    ? "bg-emerald-500/15 text-emerald-300"
+                    ? "bg-alfredo-teal/15 text-alfredo-teal"
                     : "text-zinc-500"
                 }`}
               >
@@ -112,7 +112,7 @@ export default function MobileBottomNav({
               </motion.span>
               <span
                 className={`text-[10px] font-semibold tracking-tight ${
-                  active ? "text-emerald-300" : "text-zinc-500"
+                  active ? "text-alfredo-teal" : "text-zinc-500"
                 }`}
               >
                 {tab.label}
@@ -120,7 +120,7 @@ export default function MobileBottomNav({
               {active && (
                 <motion.span
                   layoutId="mobile-tab-indicator"
-                  className="absolute -bottom-0.5 h-0.5 w-5 rounded-full bg-emerald-400"
+                  className="absolute -bottom-0.5 h-0.5 w-5 rounded-full bg-alfredo-teal"
                 />
               )}
             </button>

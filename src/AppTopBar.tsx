@@ -48,7 +48,7 @@ export default function AppTopBar({
         <button
           type="button"
           onClick={onToggleMobileSidebar}
-          className="hidden rounded-xl p-2.5 text-zinc-400 transition-colors hover:bg-white/[0.05] hover:text-white"
+          className="hidden rounded-xl p-2.5 text-alfredo-muted transition-colors hover:bg-alfredo-navy/[0.05] hover:text-alfredo-navy"
           title="Expandir ou recolher menu"
         >
           <Menu size={18} />
@@ -57,7 +57,7 @@ export default function AppTopBar({
         <button
           type="button"
           onClick={onToggleSidebarCollapsed}
-          className="hidden rounded-xl p-2 text-zinc-400 transition-colors hover:bg-white/[0.05] hover:text-white md:flex"
+          className="hidden rounded-xl p-2 text-alfredo-muted transition-colors hover:bg-alfredo-navy/[0.05] hover:text-alfredo-navy md:flex"
           title={sidebarCollapsed ? "Abrir menu" : "Fechar menu (tela cheia)"}
         >
           {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
@@ -65,19 +65,19 @@ export default function AppTopBar({
 
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <p className="font-display truncate text-sm font-semibold tracking-tight text-white sm:text-[15px]">
+            <p className="truncate text-sm font-semibold tracking-tight text-alfredo-navy sm:text-[15px]">
               {selectedMeeting ? selectedMeeting.title : VIEW_LABELS[activeView]}
             </p>
             {selectedMeeting && (
-              <span className="hidden rounded-md border border-white/[0.06] bg-white/[0.03] px-1.5 py-0.5 font-mono text-[10px] text-zinc-400 sm:inline">
+              <span className="hidden rounded-md border border-alfredo-border bg-alfredo-offwhite px-1.5 py-0.5 font-mono text-[10px] text-alfredo-muted sm:inline">
                 {selectedMeeting.date}
               </span>
             )}
           </div>
-          <p className="truncate text-[11px] text-zinc-500">
+          <p className="truncate text-[11px] text-alfredo-muted">
             {selectedMeeting
               ? "Detalhes da reunião"
-              : "Suiter Record · workspace"}
+              : "Alfredo · workspace"}
           </p>
         </div>
       </div>
@@ -88,8 +88,8 @@ export default function AppTopBar({
           onClick={onToggleSmartSearch}
           className={`inline-flex min-h-10 items-center gap-1.5 rounded-xl px-2.5 py-2 text-xs font-semibold transition-all sm:px-3 ${
             showSmartSearch
-              ? "bg-emerald-500 text-black shadow-[0_8px_20px_-10px_rgba(16,185,129,0.7)]"
-              : "border border-white/[0.06] bg-white/[0.03] text-emerald-300 hover:bg-white/[0.06] hover:text-emerald-200"
+              ? "bg-alfredo-teal text-alfredo-navy shadow-[0_8px_20px_-12px_rgba(27,166,182,0.8)]"
+              : "border border-alfredo-border bg-white text-alfredo-teal-dark hover:bg-alfredo-surface-teal"
           }`}
         >
           <Sparkles size={13} />
@@ -98,18 +98,18 @@ export default function AppTopBar({
 
         {userName && (
           <>
-            <div className="hidden items-center gap-2 border-l border-white/[0.06] pl-3 sm:flex">
+            <div className="hidden items-center gap-2 border-l border-alfredo-border pl-3 sm:flex">
               <div className="hidden text-right lg:block">
-                <p className="text-xs leading-none font-semibold text-white">
+                <p className="text-xs leading-none font-semibold text-alfredo-navy">
                   {userName}
                 </p>
-                <p className="mt-1 text-[10px] text-zinc-500">{userRole}</p>
+                <p className="mt-1 text-[10px] text-alfredo-muted">{userRole}</p>
               </div>
             </div>
             <button
               type="button"
               onClick={onLogout}
-              className="rounded-xl p-2.5 text-zinc-400 transition-colors hover:bg-red-500/10 hover:text-red-300"
+              className="rounded-xl p-2.5 text-alfredo-muted transition-colors hover:bg-alfredo-coral/10 hover:text-alfredo-coral"
               title="Sair"
             >
               <LogOut size={15} />

@@ -33,6 +33,7 @@ import {
   X,
   ChevronDown,
 } from "lucide-react";
+import { AlfredoMark } from "./components/brand/AlfredoMark";
 
 type LandingPageProps = {
   logoSrc: string;
@@ -41,7 +42,7 @@ type LandingPageProps = {
 
 type IntroPhase = "brand" | "fade" | "dawn" | "done";
 
-const BRAND_LETTERS = "Suiter Record".split("");
+const BRAND_LETTERS = "Alfredo".split("");
 
 const PLANS = [
   {
@@ -247,11 +248,11 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
   return (
     <div
       ref={pageRef}
-      className="landing-page relative min-h-[100svh] w-full overflow-x-hidden bg-[#070809] text-white font-sans antialiased selection:bg-emerald-500/30"
+      className="landing-page relative min-h-[100svh] w-full overflow-x-hidden bg-alfredo-navy text-white font-sans antialiased selection:bg-alfredo-teal/30"
     >
       {contentReady && (
         <motion.div
-          className="fixed top-0 right-0 left-0 z-[60] h-[2px] origin-left bg-emerald-400"
+          className="fixed top-0 right-0 left-0 z-[60] h-[2px] origin-left bg-alfredo-teal"
           style={{ scaleX: progressScale }}
         />
       )}
@@ -286,7 +287,7 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
                       letter === " "
                         ? "inline-block w-[0.28em] shrink-0"
                         : i > 6
-                          ? "shrink-0 text-emerald-400"
+                          ? "shrink-0 text-alfredo-teal"
                           : "shrink-0 text-white"
                     }
                     initial={{ opacity: 0, y: 18, filter: "blur(6px)" }}
@@ -323,7 +324,7 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
 
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <motion.div
-          className="absolute h-[55vmax] w-[55vmax] -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-500/[0.09] blur-[110px]"
+          className="absolute h-[55vmax] w-[55vmax] -translate-x-1/2 -translate-y-1/2 rounded-full bg-alfredo-teal/[0.09] blur-[110px]"
           style={{ left: glowLeft, top: glowTop }}
         />
         <div
@@ -345,17 +346,15 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
           y: contentReady ? 0 : -12,
         }}
         transition={{ duration: 0.45, delay: 0.05, ease }}
-        className="sticky top-0 z-40 border-b border-white/[0.05] bg-[#070809]/75 pt-[env(safe-area-inset-top)] backdrop-blur-xl"
+        className="sticky top-0 z-40 border-b border-white/[0.05] bg-alfredo-navy/80 pt-[env(safe-area-inset-top)] backdrop-blur-xl"
       >
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:h-16 sm:px-8">
           <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
-            <img
-              src={logoSrc}
-              alt="Suiter Record"
-              className="h-8 w-8 shrink-0 rounded-lg border border-white/[0.08] object-cover sm:h-9 sm:w-9 sm:rounded-xl"
-            />
-            <span className="font-display truncate text-sm font-semibold tracking-tight">
-              Suiter <span className="text-emerald-400">Record</span>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] ring-1 ring-white/[0.08] sm:h-9 sm:w-9 sm:rounded-xl">
+              <AlfredoMark size={22} variant="light" />
+            </span>
+            <span className="alfredo-wordmark alfredo-wordmark--on-dark truncate text-lg leading-none">
+              Alfredo<span className="alfredo-wordmark__dot">.</span>
             </span>
           </div>
 
@@ -410,7 +409,7 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
                     setMobileMenuOpen(false);
                     onEnter();
                   }}
-                  className="mt-1 rounded-xl bg-emerald-500 px-3 py-3 text-sm font-bold text-black"
+                  className="mt-1 rounded-xl bg-alfredo-teal px-3 py-3 text-sm font-bold text-black"
                 >
                   Entrar no workspace
                 </button>
@@ -439,7 +438,7 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
           style={{ scale: waveScale }}
         >
           {contentReady && <WaveformHero reduceMotion={!!reduceMotion} />}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#070809] via-[#070809]/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-alfredo-navy via-alfredo-navy/60 to-transparent" />
         </motion.div>
 
         <motion.div
@@ -456,7 +455,7 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
               transition={{ duration: 0.45, delay: 0.02, ease }}
               className="mb-3 font-display text-[clamp(1.85rem,7.2vw,4.5rem)] font-bold leading-[0.95] tracking-tight text-white whitespace-nowrap sm:mb-4"
             >
-              Suiter <span className="text-emerald-400">Record</span>
+              Alfredo<span className="text-alfredo-teal">.</span>
             </motion.p>
 
             <motion.h1
@@ -520,7 +519,7 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
             Explorar
             <ChevronDown
               size={14}
-              className="animate-bounce text-emerald-400/80"
+              className="animate-bounce text-alfredo-teal/80"
             />
           </motion.button>
         </motion.div>
@@ -533,12 +532,12 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
       >
         <div className="mx-auto max-w-6xl px-4 sm:px-8">
           <Reveal>
-            <p className="mb-3 font-mono text-[10px] font-bold tracking-[0.22em] text-emerald-400/90 uppercase">
-              Por que Suiter Record
+            <p className="mb-3 font-mono text-[10px] font-bold tracking-[0.22em] text-alfredo-teal/90 uppercase">
+              Por que Alfredo
             </p>
             <h2 className="font-display max-w-2xl text-[1.75rem] font-bold tracking-tight text-white sm:text-5xl">
               Do áudio à decisão —{" "}
-              <span className="text-emerald-400">sem atrito</span>.
+              <span className="text-alfredo-teal">sem atrito</span>.
             </h2>
             <p className="mt-4 max-w-xl text-sm leading-relaxed text-zinc-400 sm:mt-5 sm:text-base">
               Feito para times que vivem de reunião e precisam de registro
@@ -550,9 +549,9 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
             {FLOW.map((item, i) => (
               <div key={item.step}>
                 <Reveal delay={i * 0.08}>
-                  <div className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 transition-colors hover:border-emerald-500/25 hover:bg-emerald-500/[0.04] sm:p-6">
+                  <div className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 transition-colors hover:border-alfredo-teal/25 hover:bg-alfredo-teal/[0.04] sm:p-6">
                     <motion.span
-                      className="font-display block text-4xl font-bold text-emerald-500/15 transition-colors group-hover:text-emerald-500/30 sm:text-5xl"
+                      className="font-display block text-4xl font-bold text-alfredo-teal/15 transition-colors group-hover:text-alfredo-teal/30 sm:text-5xl"
                       whileInView={{ x: [12, 0], opacity: [0, 1] }}
                       viewport={{ once: true }}
                       transition={{ duration: 0.5, delay: i * 0.08 }}
@@ -576,7 +575,7 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
               <div key={item.title}>
                 <Reveal delay={i * 0.05}>
                   <div className="border-t border-white/[0.07] pt-4 sm:pt-5">
-                    <item.icon size={18} className="mb-3 text-emerald-400" />
+                    <item.icon size={18} className="mb-3 text-alfredo-teal" />
                     <h3 className="text-sm font-semibold text-white">
                       {item.title}
                     </h3>
@@ -612,7 +611,7 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
                 key={`${copy}-${label}`}
                 className="inline-flex items-center gap-8 sm:gap-10"
               >
-                <span className="text-emerald-500/50">◆</span>
+                <span className="text-alfredo-teal/50">◆</span>
                 {label}
               </span>
             )),
@@ -627,7 +626,7 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
       >
         <div className="mx-auto max-w-6xl px-4 sm:px-8">
           <Reveal>
-            <p className="mb-3 font-mono text-[10px] font-bold tracking-[0.22em] text-emerald-400/90 uppercase">
+            <p className="mb-3 font-mono text-[10px] font-bold tracking-[0.22em] text-alfredo-teal/90 uppercase">
               Planos
             </p>
             <h2 className="font-display text-[1.75rem] font-bold tracking-tight text-white sm:text-5xl">
@@ -654,25 +653,25 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
                     transition={{ type: "spring", stiffness: 300, damping: 22 }}
                     className={`relative flex h-full flex-col rounded-2xl border p-5 sm:p-7 ${
                       plan.highlighted
-                        ? "border-emerald-500/35 bg-emerald-500/[0.06] shadow-[0_0_60px_-20px_rgba(16,185,129,0.4)]"
+                        ? "border-alfredo-teal/35 bg-alfredo-teal/[0.06] shadow-[0_0_60px_-20px_rgba(16,185,129,0.4)]"
                         : "border-white/[0.07] bg-[#0a0c0e]/80"
                     }`}
                   >
                     {plan.highlighted && (
-                      <span className="absolute -top-3 left-5 rounded-full bg-emerald-500 px-2.5 py-0.5 text-[10px] font-bold tracking-wide text-black sm:left-6">
+                      <span className="absolute -top-3 left-5 rounded-full bg-alfredo-teal px-2.5 py-0.5 text-[10px] font-bold tracking-wide text-black sm:left-6">
                         Recomendado
                       </span>
                     )}
                     <plan.icon
                       size={20}
                       className={
-                        plan.highlighted ? "text-emerald-400" : "text-zinc-400"
+                        plan.highlighted ? "text-alfredo-teal" : "text-zinc-400"
                       }
                     />
                     <h3 className="mt-4 font-display text-lg font-semibold text-white">
                       {plan.name}
                     </h3>
-                    <p className="mt-1 text-2xl font-semibold tracking-tight text-emerald-400">
+                    <p className="mt-1 text-2xl font-semibold tracking-tight text-alfredo-teal">
                       {plan.price}
                     </p>
                     <p className="mt-3 text-sm leading-relaxed text-zinc-400">
@@ -686,7 +685,7 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
                         >
                           <Check
                             size={15}
-                            className="mt-0.5 shrink-0 text-emerald-400"
+                            className="mt-0.5 shrink-0 text-alfredo-teal"
                           />
                           {feature}
                         </li>
@@ -697,7 +696,7 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
                       onClick={() => scrollTo(contactRef)}
                       className={`mt-8 min-h-11 w-full rounded-xl py-2.5 text-sm font-semibold transition-all ${
                         plan.highlighted
-                          ? "bg-emerald-500 text-black hover:bg-emerald-400"
+                          ? "bg-alfredo-teal text-black hover:bg-alfredo-teal"
                           : "border border-zinc-700 text-zinc-200 hover:border-zinc-500 hover:bg-zinc-900"
                       }`}
                     >
@@ -719,11 +718,11 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_20%_80%,rgba(16,185,129,0.12),transparent)]" />
         <div className="relative mx-auto max-w-6xl px-4 sm:px-8">
           <Reveal>
-            <p className="mb-3 font-mono text-[10px] font-bold tracking-[0.22em] text-emerald-400/90 uppercase">
+            <p className="mb-3 font-mono text-[10px] font-bold tracking-[0.22em] text-alfredo-teal/90 uppercase">
               Contato
             </p>
             <h2 className="font-display max-w-xl text-[1.75rem] font-bold tracking-tight text-white sm:text-5xl">
-              Pronto para levar o Record ao seu time?
+              Pronto para levar o Alfredo ao seu time?
             </h2>
             <p className="mt-4 max-w-lg text-sm leading-relaxed text-zinc-400">
               Acesso restrito a usuários cadastrados. Solicite liberação, planos
@@ -733,7 +732,7 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
             <div className="mt-8 space-y-3 text-sm text-zinc-300">
               <a
                 href="mailto:atendimento@triforceconsultoria.com"
-                className="inline-flex min-h-11 items-center gap-2 break-all text-emerald-400 transition-colors hover:text-emerald-300"
+                className="inline-flex min-h-11 items-center gap-2 break-all text-alfredo-teal transition-colors hover:text-alfredo-teal"
               >
                 <Mail size={16} className="shrink-0" />
                 atendimento@triforceconsultoria.com
@@ -749,7 +748,7 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
                 <ArrowRight size={16} />
               </MagneticButton>
               <a
-                href="mailto:atendimento@triforceconsultoria.com?subject=Interesse%20em%20Suiter%20Record"
+                href="mailto:atendimento@triforceconsultoria.com?subject=Interesse%20em%20Alfredo"
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-zinc-700 px-5 py-3 text-sm font-semibold text-zinc-300 transition-all hover:border-zinc-500 hover:text-white"
               >
                 Solicitar proposta
@@ -760,7 +759,7 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
       </section>
 
       <footer className="relative z-10 border-t border-white/[0.05] px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-center text-[10px] text-zinc-600">
-        © {new Date().getFullYear()} Suiter Record · Triforce Consultoria
+        © {new Date().getFullYear()} Alfredo · Triforce Consultoria
       </footer>
 
       <AnimatePresence>
@@ -770,13 +769,13 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 80, opacity: 0 }}
             transition={{ duration: 0.28, ease }}
-            className="fixed inset-x-0 bottom-0 z-50 border-t border-white/[0.08] bg-[#070809]/92 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:hidden"
+            className="fixed inset-x-0 bottom-0 z-50 border-t border-white/[0.08] bg-alfredo-navy/92 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:hidden"
           >
             <div className="mx-auto flex max-w-lg gap-2">
               <button
                 type="button"
                 onClick={onEnter}
-                className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-500 text-sm font-bold text-black"
+                className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-alfredo-teal text-sm font-bold text-black"
               >
                 Entrar
                 <ArrowRight size={15} />
@@ -843,10 +842,10 @@ function MagneticButton({
 
   const base =
     variant === "primary"
-      ? "min-h-11 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-bold text-black shadow-[0_10px_30px_-12px_rgba(16,185,129,0.55)] hover:bg-emerald-400"
+      ? "min-h-11 rounded-xl bg-alfredo-teal px-5 py-3 text-sm font-bold text-black shadow-[0_10px_30px_-12px_rgba(16,185,129,0.55)] hover:bg-alfredo-teal"
       : variant === "secondary"
         ? "min-h-11 rounded-xl border border-zinc-700/90 bg-zinc-900/50 px-5 py-3 text-sm font-semibold text-white backdrop-blur hover:border-zinc-500 hover:bg-zinc-800/80"
-        : "min-h-10 rounded-xl border border-zinc-700/80 bg-zinc-900/60 px-3.5 py-2 text-xs font-semibold text-white hover:border-emerald-500/40 hover:bg-zinc-800/80";
+        : "min-h-10 rounded-xl border border-zinc-700/80 bg-zinc-900/60 px-3.5 py-2 text-xs font-semibold text-white hover:border-alfredo-teal/40 hover:bg-zinc-800/80";
 
   return (
     <motion.button
@@ -901,7 +900,7 @@ function WaveformHero({ reduceMotion }: { reduceMotion: boolean }) {
       {bars.map((h, i) => (
         <motion.div
           key={`${barCount}-${i}`}
-          className="w-[2.5px] rounded-full bg-emerald-400/60 sm:w-1"
+          className="w-[2.5px] rounded-full bg-alfredo-teal/60 sm:w-1"
           initial={{ height: "8%", opacity: 0 }}
           animate={
             reduceMotion

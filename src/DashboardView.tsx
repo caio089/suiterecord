@@ -360,13 +360,13 @@ export default function DashboardView({
     <div className="custom-scrollbar mx-auto h-full max-w-6xl space-y-5 overflow-y-auto px-3 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:space-y-6 sm:px-6 sm:py-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="font-display flex items-center gap-2 text-xl font-bold tracking-tight text-white">
-            <span className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-1.5 text-emerald-400">
+          <h2 className="font-display flex items-center gap-2 text-xl font-bold tracking-tight text-alfredo-navy">
+            <span className="rounded-lg border border-alfredo-teal/25 bg-alfredo-teal/10 p-1.5 text-alfredo-teal-dark">
               <BarChart2 size={16} />
             </span>
             Dashboard
           </h2>
-          <p className="mt-1 text-sm text-zinc-400">
+          <p className="mt-1 text-sm text-alfredo-graphite">
             {scope === "team"
               ? "Visão da equipe — todas as reuniões acessíveis."
               : `Métricas da sua conta · ${currentUserEmail}`}
@@ -377,21 +377,21 @@ export default function DashboardView({
             <button
               type="button"
               onClick={onStartRecording}
-              className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-xs font-bold text-black shadow-[0_8px_24px_-10px_rgba(16,185,129,0.55)] transition-all hover:bg-emerald-400 active:scale-[0.98]"
+              className="inline-flex items-center gap-2 rounded-xl bg-alfredo-teal px-4 py-2.5 text-xs font-bold text-alfredo-navy shadow-[0_8px_24px_-10px_rgba(16,185,129,0.55)] transition-all hover:bg-alfredo-teal active:scale-[0.98]"
             >
               <Mic2 size={15} />
               Iniciar gravação
             </button>
           )}
           {isAdmin && (
-            <div className="inline-flex rounded-xl border border-white/[0.06] bg-black/30 p-1">
+            <div className="inline-flex rounded-xl border border-alfredo-border bg-alfredo-offwhite p-1">
               <button
                 type="button"
                 onClick={() => setScope("mine")}
                 className={`rounded-lg px-3 py-1.5 text-[11px] font-semibold transition-colors ${
                   scope === "mine"
-                    ? "bg-emerald-500 text-black"
-                    : "text-zinc-400 hover:text-white"
+                    ? "bg-alfredo-teal text-alfredo-navy"
+                    : "text-alfredo-graphite hover:text-alfredo-navy"
                 }`}
               >
                 Meus dados
@@ -401,16 +401,16 @@ export default function DashboardView({
                 onClick={() => setScope("team")}
                 className={`rounded-lg px-3 py-1.5 text-[11px] font-semibold transition-colors ${
                   scope === "team"
-                    ? "bg-emerald-500 text-black"
-                    : "text-zinc-400 hover:text-white"
+                    ? "bg-alfredo-teal text-alfredo-navy"
+                    : "text-alfredo-graphite hover:text-alfredo-navy"
                 }`}
               >
                 Equipe
               </button>
             </div>
           )}
-          <div className="inline-flex items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-[11px] text-zinc-400">
-            <TrendingUp size={13} className="text-emerald-400" />
+          <div className="inline-flex items-center gap-2 rounded-xl border border-alfredo-border bg-alfredo-offwhite px-3 py-2 text-[11px] text-alfredo-graphite">
+            <TrendingUp size={13} className="text-alfredo-teal-dark" />
             {stats.last30Meetings} reuniões · últimos 30 dias
           </div>
         </div>
@@ -421,25 +421,25 @@ export default function DashboardView({
         {kpis.map((kpi) => (
           <div
             key={kpi.label}
-            className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4 transition-colors hover:border-emerald-500/20 hover:bg-emerald-500/[0.03]"
+            className="rounded-2xl border border-alfredo-border bg-alfredo-offwhite p-4 transition-colors hover:border-alfredo-teal/25 hover:bg-alfredo-teal/[0.06]"
           >
             <div className="mb-3 flex items-center justify-between">
-              <span className="text-[10px] font-semibold tracking-wider text-zinc-500 uppercase">
+              <span className="text-[10px] font-semibold tracking-wider text-alfredo-muted uppercase">
                 {kpi.label}
               </span>
               <kpi.icon
                 size={14}
-                className={kpi.accent ? "text-emerald-400" : "text-zinc-500"}
+                className={kpi.accent ? "text-alfredo-teal-dark" : "text-alfredo-muted"}
               />
             </div>
             <p
               className={`font-display text-2xl font-bold tracking-tight ${
-                kpi.accent ? "text-emerald-400" : "text-white"
+                kpi.accent ? "text-alfredo-teal-dark" : "text-alfredo-navy"
               }`}
             >
               {kpi.value}
             </p>
-            <p className="mt-1 text-[11px] text-zinc-500">{kpi.hint}</p>
+            <p className="mt-1 text-[11px] text-alfredo-muted">{kpi.hint}</p>
           </div>
         ))}
       </div>
@@ -626,33 +626,33 @@ export default function DashboardView({
           )}
         </ChartCard>
 
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
-          <h4 className="text-xs font-bold tracking-wider text-white uppercase">
+        <div className="rounded-2xl border border-alfredo-border bg-alfredo-offwhite p-5">
+          <h4 className="text-xs font-bold tracking-wider text-alfredo-navy uppercase">
             Responsáveis com pendências
           </h4>
-          <p className="mt-0.5 text-[10px] text-zinc-500">
+          <p className="mt-0.5 text-[10px] text-alfredo-muted">
             Quem ainda tem ações em aberto
           </p>
           <div className="mt-4 space-y-2.5">
             {stats.topAssignees.length === 0 ? (
-              <p className="py-8 text-center text-xs text-zinc-500">
+              <p className="py-8 text-center text-xs text-alfredo-muted">
                 Nenhuma tarefa atribuída ainda.
               </p>
             ) : (
               stats.topAssignees.map((person) => (
                 <div
                   key={person.fullName}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.04] bg-black/20 px-3 py-2.5"
+                  className="flex items-center justify-between gap-3 rounded-xl border border-alfredo-border bg-alfredo-offwhite px-3 py-2.5"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-xs font-semibold text-zinc-200">
+                    <p className="truncate text-xs font-semibold text-alfredo-navy">
                       {person.fullName}
                     </p>
-                    <p className="text-[10px] text-zinc-500">
+                    <p className="text-[10px] text-alfredo-muted">
                       {person.done} feitas · {person.total} no total
                     </p>
                   </div>
-                  <span className="rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 font-mono text-[11px] font-bold text-amber-300">
+                  <span className="rounded-md border border-alfredo-warning/25 bg-alfredo-warning/10 px-2 py-0.5 font-mono text-[11px] font-bold text-alfredo-warning">
                     {person.pending}
                   </span>
                 </div>
@@ -661,26 +661,26 @@ export default function DashboardView({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
-          <h4 className="text-xs font-bold tracking-wider text-white uppercase">
+        <div className="rounded-2xl border border-alfredo-border bg-alfredo-offwhite p-5">
+          <h4 className="text-xs font-bold tracking-wider text-alfredo-navy uppercase">
             Reuniões recentes
           </h4>
-          <p className="mt-0.5 text-[10px] text-zinc-500">Últimas atas do workspace</p>
+          <p className="mt-0.5 text-[10px] text-alfredo-muted">Últimas atas do workspace</p>
           <div className="mt-4 space-y-2.5">
             {stats.recent.length === 0 ? (
-              <p className="py-8 text-center text-xs text-zinc-500">
+              <p className="py-8 text-center text-xs text-alfredo-muted">
                 Nenhuma reunião registrada.
               </p>
             ) : (
               stats.recent.map((m) => (
                 <div
                   key={m.id}
-                  className="rounded-xl border border-white/[0.04] bg-black/20 px-3 py-2.5"
+                  className="rounded-xl border border-alfredo-border bg-alfredo-offwhite px-3 py-2.5"
                 >
-                  <p className="line-clamp-1 text-xs font-semibold text-zinc-200">
+                  <p className="line-clamp-1 text-xs font-semibold text-alfredo-navy">
                     {m.title}
                   </p>
-                  <div className="mt-1 flex items-center gap-2 font-mono text-[10px] text-zinc-500">
+                  <div className="mt-1 flex items-center gap-2 font-mono text-[10px] text-alfredo-muted">
                     <span>{m.date || "—"}</span>
                     <span>·</span>
                     <span>{Math.round((m.duration || 0) / 60)} min</span>
@@ -694,9 +694,9 @@ export default function DashboardView({
         </div>
       </div>
 
-      <div className="flex flex-col items-center justify-center border-t border-white/[0.05] pt-6 pb-2 opacity-50">
-        <p className="font-mono text-[9px] tracking-wider text-zinc-500 uppercase">
-          Suiter Record · Triforce Consultoria
+      <div className="flex flex-col items-center justify-center border-t border-alfredo-border pt-6 pb-2 opacity-50">
+        <p className="font-mono text-[9px] tracking-wider text-alfredo-muted uppercase">
+          Alfredo · Triforce Consultoria
         </p>
       </div>
     </div>
@@ -718,13 +718,13 @@ function ChartCard({
 }) {
   return (
     <div
-      className={`rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 ${className}`}
+      className={`rounded-2xl border border-alfredo-border bg-alfredo-offwhite p-5 ${className}`}
     >
       <div className="mb-3">
-        <h4 className="text-xs font-bold tracking-wider text-white uppercase">
+        <h4 className="text-xs font-bold tracking-wider text-alfredo-navy uppercase">
           {title}
         </h4>
-        <p className="mt-0.5 text-[10px] text-zinc-500">{subtitle}</p>
+        <p className="mt-0.5 text-[10px] text-alfredo-muted">{subtitle}</p>
       </div>
       <div className={`w-full ${height}`}>{children}</div>
     </div>
@@ -733,7 +733,7 @@ function ChartCard({
 
 function EmptyChart() {
   return (
-    <div className="flex h-full items-center justify-center text-xs text-zinc-500">
+    <div className="flex h-full items-center justify-center text-xs text-alfredo-muted">
       Sem dados suficientes ainda.
     </div>
   );
