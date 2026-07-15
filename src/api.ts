@@ -1,14 +1,9 @@
 /**
  * Base URL da API (backend).
- * - Local monolítico: vazio → usa o mesmo origin (`/api/...`)
- * - Produção (Render Static + API): `VITE_API_URL=https://seu-api.onrender.com`
+ * - Vercel / local monolítico: vazio → usa o mesmo origin (`/api/...`)
+ * - API em domínio separado (raro): `VITE_API_URL=https://sua-api.exemplo.com`
  */
 const API_URL_STORAGE_KEY = "suiter_api_url";
-
-/** Mapa conhecido Static → API (fallback se VITE_API_URL faltar no build do Render) */
-const KNOWN_STATIC_TO_API: Record<string, string> = {
-  "suiterecord-1.onrender.com": "https://suiterecord.onrender.com",
-};
 
 function readStoredApiUrl(): string {
   try {
@@ -45,11 +40,6 @@ export function getApiBaseUrl(): string {
   const stored = readStoredApiUrl();
   if (stored) return stored;
 
-  if (typeof window !== "undefined") {
-    const known = KNOWN_STATIC_TO_API[window.location.hostname];
-    if (known) return known;
-  }
-
   return "";
 }
 
@@ -74,13 +64,8 @@ export function getApiOrigin(): string {
 }
 
 /**
- * Sem VITE_API_URL configurado, `apiUrl()` já devolve caminhos relativos
- * (`/api/...`), que funcionam em qualquer deploy onde front e API dividem o
- * mesmo domínio — é o caso padrão na Vercel (função serverless em /api no
- * mesmo projeto) e no Docker monolítico. VITE_API_URL só é necessário quando
- * a API mora num domínio separado do front (ex.: setup antigo de 2 serviços
- * no Render). Por isso não há mais checagem obrigatória aqui — travar o app
- * exigindo essa variável quebraria o deploy same-origin na Vercel.
+ * Na Vercel, front e API compartilham o mesmo domínio — `apiUrl()` usa `/api/...`
+ * relativo e não precisa de `VITE_API_URL`.
  */
 export function assertApiConfigured(): void {
   // no-op — mantido por compatibilidade com chamadas existentes.
@@ -92,8 +77,8 @@ export async function readApiJson<T = unknown>(response: Response): Promise<T> {
   if (!text || !text.trim()) {
     throw new Error(
       `A API retornou resposta vazia (HTTP ${response.status}). ` +
-        "Confira se VITE_API_URL aponta para o Web Service (não o Static), " +
-        "se a API está no ar e se FRONTEND_URL/CORS_ORIGINS incluem este site.",
+        "Confira se o deploy na Vercel está ativo, se as variáveis de ambiente " +
+        "(GROQ_API_KEY, SUPABASE_*) estão definidas e se FRONTEND_URL bate com a URL do app.",
     );
   }
   try {
@@ -106,7 +91,7 @@ export async function readApiJson<T = unknown>(response: Response): Promise<T> {
   }
 }
 
-/** fetch + validação de API + parse JSON com erros legíveis */
+/** fetch + parse JSON com erros legíveis */
 export async function apiFetchJson<T = unknown>(
   path: string,
   init?: RequestInit,

@@ -5,7 +5,7 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_ANON_KEY: string;
   readonly VITE_SUPABASE_PUBLISHABLE_KEY?: string;
   readonly VITE_GOOGLE_CLIENT_ID?: string;
-  /** URL do backend (ex: https://suiterecord-api.onrender.com). Vazio = mesmo origin. */
+  /** URL do backend separado (opcional). Vazio = mesmo origin (padrão na Vercel). */
   readonly VITE_API_URL?: string;
   readonly API_GOOGLE_CALENDAR_TOKEN?: string;
   readonly NEXT_PUBLIC_SUPABASE_URL?: string;

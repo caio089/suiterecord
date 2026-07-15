@@ -16,7 +16,7 @@ if (!isSupabaseConfigured && !PREVIEW_MODE) {
         <h1 style="font-size:1.15rem;margin:0 0 12px;color:#0D1B2A">Configuração incompleta</h1>
         <p style="margin:0;color:#63717B;line-height:1.55">
           Defina <code>VITE_SUPABASE_URL</code> e <code>VITE_SUPABASE_ANON_KEY</code>
-          nas variáveis de ambiente do projeto (Vercel) e faça um novo deploy.
+          nas variáveis de ambiente do projeto na Vercel e faça um novo deploy.
         </p>
       </div>
     </div>
