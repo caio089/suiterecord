@@ -36,7 +36,7 @@ async function startServer() {
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(
-      `Suiter Record API em http://0.0.0.0:${PORT} (${process.env.NODE_ENV || "development"}${apiOnly ? ", API_ONLY" : ""})`
+      `Alfredo API em http://0.0.0.0:${PORT} (${process.env.NODE_ENV || "development"}${apiOnly ? ", API_ONLY" : ""})`
     );
   });
 }
