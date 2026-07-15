@@ -73,26 +73,17 @@ export function getApiOrigin(): string {
   }
 }
 
-function isLocalHost(): boolean {
-  if (typeof window === "undefined") return true;
-  const host = window.location.hostname;
-  return host === "localhost" || host === "127.0.0.1" || host === "";
-}
-
 /**
- * Em produção (Static + API separados), precisa de URL da API
- * (env de build, localStorage ou mapa conhecido).
+ * Sem VITE_API_URL configurado, `apiUrl()` já devolve caminhos relativos
+ * (`/api/...`), que funcionam em qualquer deploy onde front e API dividem o
+ * mesmo domínio — é o caso padrão na Vercel (função serverless em /api no
+ * mesmo projeto) e no Docker monolítico. VITE_API_URL só é necessário quando
+ * a API mora num domínio separado do front (ex.: setup antigo de 2 serviços
+ * no Render). Por isso não há mais checagem obrigatória aqui — travar o app
+ * exigindo essa variável quebraria o deploy same-origin na Vercel.
  */
 export function assertApiConfigured(): void {
-  if (!getApiBaseUrl() && !isLocalHost()) {
-    throw new Error(
-      "URL da API não configurada.\n\n" +
-        "No Render → Static Site → Environment:\n" +
-        "VITE_API_URL=https://suiterecord.onrender.com\n" +
-        "(sem barra no final)\n\n" +
-        "Depois: Clear cache & deploy.",
-    );
-  }
+  // no-op — mantido por compatibilidade com chamadas existentes.
 }
 
 /** Lê JSON de forma segura — nunca estoura com corpo vazio / HTML de proxy. */

@@ -125,24 +125,16 @@ export async function getAudioDurationSeconds(blob: Blob): Promise<number> {
   }
 }
 
-function pickRecorderMime(): string {
-  const candidates = [
-    "audio/webm;codecs=opus",
-    "audio/webm",
-    "audio/ogg;codecs=opus",
-    "audio/mp4",
-  ];
-  for (const c of candidates) {
-    if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(c)) {
-      return c;
-    }
-  }
-  return "audio/webm";
-}
-
 /**
- * Reamostra para mono 16 kHz e reencode com Opus (bitrate baixo).
- * Se o browser não suportar MediaRecorder/AudioContext, devolve o blob original.
+ * Valida a duração do áudio e devolve o blob original pronto para subir.
+ *
+ * Versões anteriores reencodavam para mono 16 kHz/Opus reproduzindo o áudio em
+ * tempo real (MediaRecorder ligado a um AudioContext "ao vivo" e aguardando o
+ * evento `onended`) — ou seja, comprimir um áudio de 40 minutos levava ~40
+ * minutos de execução no navegador antes mesmo do upload começar, e nada era
+ * salvo localmente nesse meio-tempo. `decodeAudioData` já é suficiente (e
+ * rápido, não depende da duração do áudio) para validar o arquivo e obter a
+ * duração real; o reencode fica a cargo do Groq Whisper no servidor.
  */
 export async function compressAudioBlob(
   input: Blob,
@@ -151,134 +143,50 @@ export async function compressAudioBlob(
   const originalBytes = input.size;
   const inputMime = input.type || "audio/webm";
 
+  const asIs = (durationSeconds: number): CompressedAudio => ({
+    blob: input,
+    mimeType: inputMime,
+    durationSeconds,
+    originalBytes,
+    compressedBytes: originalBytes,
+    compressionRatio: 1,
+  });
+
   if (typeof AudioContext === "undefined" && typeof webkitAudioContext === "undefined") {
     const durationSeconds = await getAudioDurationSeconds(input).catch(() => 60);
-    return {
-      blob: input,
-      mimeType: inputMime,
-      durationSeconds,
-      originalBytes,
-      compressedBytes: originalBytes,
-      compressionRatio: 1,
-    };
+    return asIs(durationSeconds);
   }
 
-  onProgress?.("Validando e decodificando áudio...");
+  onProgress?.("Validando áudio...");
   const arrayBuffer = await input.arrayBuffer();
   const AudioCtx =
     window.AudioContext ||
     (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
   const audioCtx = new AudioCtx();
 
-  let decoded: AudioBuffer;
+  let decoded: AudioBuffer | null = null;
   try {
     decoded = await audioCtx.decodeAudioData(arrayBuffer.slice(0));
   } catch {
+    // decoded fica null — tratado abaixo
+  } finally {
     await audioCtx.close().catch(() => undefined);
+  }
+
+  if (!decoded) {
     const durationSeconds = await getAudioDurationSeconds(input).catch(() => 60);
-    return {
-      blob: input,
-      mimeType: inputMime,
-      durationSeconds,
-      originalBytes,
-      compressedBytes: originalBytes,
-      compressionRatio: 1,
-    };
+    return asIs(durationSeconds);
   }
 
   const durationSeconds = Math.max(1, Math.round(decoded.duration));
   if (durationSeconds > MAX_DURATION_SECONDS) {
-    await audioCtx.close().catch(() => undefined);
     throw new Error(
       `Áudio muito longo (${Math.round(durationSeconds / 60)} min). Máximo: ${MAX_DURATION_SECONDS / 3600}h.`
     );
   }
 
-  onProgress?.("Comprimindo áudio (mono 16 kHz / Opus)...");
-
-  const targetRate = 16000;
-  const offline = new OfflineAudioContext(1, Math.ceil(decoded.duration * targetRate), targetRate);
-  const source = offline.createBufferSource();
-
-  // Mix para mono se necessário
-  let monoBuffer = decoded;
-  if (decoded.numberOfChannels > 1) {
-    const mixed = audioCtx.createBuffer(1, decoded.length, decoded.sampleRate);
-    const out = mixed.getChannelData(0);
-    const ch0 = decoded.getChannelData(0);
-    const ch1 = decoded.getChannelData(1);
-    for (let i = 0; i < decoded.length; i++) {
-      out[i] = (ch0[i] + ch1[i]) * 0.5;
-    }
-    monoBuffer = mixed;
-  }
-
-  source.buffer = monoBuffer;
-  source.connect(offline.destination);
-  source.start(0);
-  const rendered = await offline.startRendering();
-  await audioCtx.close().catch(() => undefined);
-
-  // Toca o buffer renderizado via MediaStreamDestination + MediaRecorder
-  const playCtx = new AudioCtx({ sampleRate: targetRate });
-  const playBuffer = playCtx.createBuffer(1, rendered.length, targetRate);
-  playBuffer.copyToChannel(rendered.getChannelData(0), 0);
-
-  const playSource = playCtx.createBufferSource();
-  playSource.buffer = playBuffer;
-  const dest = playCtx.createMediaStreamDestination();
-  playSource.connect(dest);
-
-  const mimeType = pickRecorderMime();
-  const recorder = new MediaRecorder(dest.stream, {
-    mimeType,
-    audioBitsPerSecond: 24_000,
-  });
-
-  const chunks: BlobPart[] = [];
-  const recorded = new Promise<Blob>((resolve, reject) => {
-    recorder.ondataavailable = (e) => {
-      if (e.data.size > 0) chunks.push(e.data);
-    };
-    recorder.onerror = () => reject(new Error("Falha ao comprimir o áudio."));
-    recorder.onstop = () => resolve(new Blob(chunks, { type: mimeType.split(";")[0] }));
-  });
-
-  recorder.start(250);
-  playSource.start(0);
-
-  await new Promise<void>((resolve) => {
-    playSource.onended = () => resolve();
-  });
-
-  // Pequeno buffer para o recorder flushar
-  await new Promise((r) => setTimeout(r, 150));
-  recorder.stop();
-  const compressedBlob = await recorded;
-  await playCtx.close().catch(() => undefined);
-
-  // Se a compressão piorou (raro), mantém o menor
-  const finalBlob =
-    compressedBlob.size > 0 && compressedBlob.size < originalBytes
-      ? compressedBlob
-      : compressedBlob.size > 0
-        ? compressedBlob
-        : input;
-
-  const compressedBytes = finalBlob.size;
-  onProgress?.(
-    `Áudio otimizado: ${(originalBytes / (1024 * 1024)).toFixed(2)} MB → ${(compressedBytes / (1024 * 1024)).toFixed(2)} MB`
-  );
-
-  return {
-    blob: finalBlob,
-    mimeType: finalBlob.type || mimeType.split(";")[0],
-    durationSeconds,
-    originalBytes,
-    compressedBytes,
-    compressionRatio:
-      originalBytes > 0 ? Number((originalBytes / Math.max(1, compressedBytes)).toFixed(2)) : 1,
-  };
+  onProgress?.("Áudio validado, preparando envio...");
+  return asIs(durationSeconds);
 }
 
 export async function prepareAudioForStorage(
