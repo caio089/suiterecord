@@ -32,6 +32,8 @@ export interface Meeting {
   hasAudio?: boolean;
   /** Referência ao backup local IndexedDB */
   audioRecordingId?: string;
+  /** Caminho do áudio no Supabase Storage */
+  audioStoragePath?: string;
   /** Tamanho do áudio comprimido em bytes */
   audioSizeBytes?: number;
 }

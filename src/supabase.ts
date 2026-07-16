@@ -34,6 +34,9 @@ function handleDbError(error: unknown, operation: string, path: string): never {
 // --- Mappers (DB snake_case ↔ app camelCase) ---
 
 function meetingFromRow(row: Record<string, unknown>): Meeting {
+  const audioStoragePath = row.audio_storage_path
+    ? String(row.audio_storage_path)
+    : "";
   return {
     id: String(row.id),
     title: String(row.title ?? ""),
@@ -51,8 +54,12 @@ function meetingFromRow(row: Record<string, unknown>): Meeting {
       ? String(row.google_calendar_event_id)
       : undefined,
     hasAudio: Boolean(row.has_audio),
-    audioRecordingId: row.audio_storage_path
-      ? String(row.audio_storage_path)
+    audioRecordingId:
+      audioStoragePath && !audioStoragePath.includes("/")
+        ? audioStoragePath
+        : undefined,
+    audioStoragePath: audioStoragePath.includes("/")
+      ? audioStoragePath
       : undefined,
     audioSizeBytes: row.audio_size_bytes
       ? Number(row.audio_size_bytes)
@@ -76,7 +83,9 @@ function meetingToRow(meeting: Meeting) {
     created_by: meeting.createdBy ?? null,
     google_calendar_event_id: meeting.googleCalendarEventId ?? null,
     has_audio: meeting.hasAudio ?? false,
-    audio_storage_path: meeting.audioRecordingId ?? null,
+    audio_storage_path:
+      meeting.audioStoragePath ??
+      (meeting.audioRecordingId?.includes("/") ? meeting.audioRecordingId : null),
     audio_size_bytes: meeting.audioSizeBytes ?? null,
   };
 }

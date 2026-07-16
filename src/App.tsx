@@ -81,6 +81,42 @@ const getLocalDateString = (dateObj: Date | string) => {
   return `${year}-${month}-${day}`;
 };
 
+const mimeFromStoragePath = (storagePath: string): string => {
+  const ext = storagePath.split("?")[0].split(".").pop()?.toLowerCase() || "";
+  switch (ext) {
+    case "mp3":
+    case "mpeg":
+      return "audio/mpeg";
+    case "wav":
+      return "audio/wav";
+    case "m4a":
+    case "mp4":
+      return "audio/mp4";
+    case "ogg":
+      return "audio/ogg";
+    case "aac":
+      return "audio/aac";
+    case "flac":
+      return "audio/flac";
+    case "webm":
+    default:
+      return "audio/webm";
+  }
+};
+
+const resolveMeetingStoragePath = (
+  meeting?: Meeting | null,
+  backup?: LocalRecording | null,
+): string | undefined => {
+  if (backup?.storagePath) return backup.storagePath;
+  if (meeting?.audioStoragePath) return meeting.audioStoragePath;
+  if (meeting?.audioRecordingId?.includes("/")) return meeting.audioRecordingId;
+  if (meeting?.audioRecordingId?.startsWith("rec_") && meeting.createdBy) {
+    return buildAudioStoragePath(meeting.createdBy, meeting.audioRecordingId, "audio/webm");
+  }
+  return undefined;
+};
+
 // PASSWORD VALIDATOR: minimum 8 characters, uppercase, lowercase, special character
 const validatePasswordStrength = (password: string): { isValid: boolean; message: string } => {
   if (password.length < 8) {
@@ -1174,7 +1210,7 @@ export default function App() {
 
       const mediaRecorder = new MediaRecorder(stream, { 
         mimeType,
-        audioBitsPerSecond: 32000 // Compress audio on the fly for long sessions (e.g. 2 hours) safely
+        audioBitsPerSecond: 16000 // Mantém reuniões longas abaixo do limite de upload do Whisper.
       });
       mediaRecorderRef.current = mediaRecorder;
 
@@ -1458,13 +1494,15 @@ Reunião vinculada ao Google Agenda:
       );
 
       let aiResult: any;
+      let transcriptionStoragePath = existingBackup?.storagePath;
       if (started.status === "completed") {
         aiResult = started.result;
       } else {
+        transcriptionStoragePath = started.storagePath || transcriptionStoragePath;
         await saveLocalRecording({
           ...offlineRecording,
           jobId: started.jobId,
-          storagePath: started.storagePath || existingBackup?.storagePath,
+          storagePath: transcriptionStoragePath,
         });
         setProcessingStatus("Iniciando Transcrição por Inteligência Artificial...");
         aiResult = await pollTranscriptionJob(started.jobId, (msg) => {
@@ -1515,6 +1553,7 @@ Reunião vinculada ao Google Agenda:
           "atendimento@triforceconsultoria.com",
         hasAudio: true,
         audioRecordingId: localRecordingId,
+        audioStoragePath: transcriptionStoragePath,
         audioSizeBytes: prepared.compressedBytes,
       };
 
@@ -1629,13 +1668,15 @@ Reunião vinculada ao Google Agenda:
         const started = await startOrResumeTranscription(localRecordingId, prepared.blob, prepared.mimeType, contextText);
 
         let aiResult: any;
+        let transcriptionStoragePath: string | undefined;
         if (started.status === "completed") {
           aiResult = started.result;
         } else {
+          transcriptionStoragePath = started.storagePath;
           await saveLocalRecording({
             ...offlineRecording,
             jobId: started.jobId,
-            storagePath: started.storagePath,
+            storagePath: transcriptionStoragePath,
           });
           aiResult = await pollTranscriptionJob(started.jobId, (msg) => {
             setProcessingStatus(msg);
@@ -1675,6 +1716,7 @@ Reunião vinculada ao Google Agenda:
           createdBy: currentUser?.email || "atendimento@triforceconsultoria.com",
           hasAudio: true,
           audioRecordingId: localRecordingId,
+          audioStoragePath: transcriptionStoragePath,
           audioSizeBytes: prepared.compressedBytes,
         };
 
@@ -1771,6 +1813,53 @@ Reunião vinculada ao Google Agenda:
     return { status: "started", jobId: startResult.jobId, storagePath };
   };
 
+  const startTranscriptionFromStorage = async (
+    storagePath: string,
+    mimeType: string,
+    contextText: string,
+    existingJobId?: string,
+  ): Promise<
+    | { status: "completed"; result: any }
+    | { status: "started" | "resumed"; jobId: string; storagePath?: string }
+  > => {
+    if (existingJobId) {
+      try {
+        const statusResponse = await fetch(apiUrl(`/api/transcribe/status/${existingJobId}`), {
+          headers: await getApiAuthHeaders(),
+        });
+        if (statusResponse.ok) {
+          const job = await readApiJson<{ status?: string; result?: unknown }>(statusResponse);
+          if (job.status === "completed") {
+            return { status: "completed", result: job.result };
+          }
+          if (job.status && job.status !== "failed") {
+            return { status: "resumed", jobId: existingJobId, storagePath };
+          }
+        }
+      } catch {
+        // Se o job antigo não puder ser consultado, cria um novo usando o mesmo áudio no Storage.
+      }
+    }
+
+    const response = await fetch(apiUrl("/api/transcribe"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(await getApiAuthHeaders()),
+      },
+      body: JSON.stringify({ storagePath, mimeType, context: contextText }),
+    });
+
+    const startResult = await readApiJson<{ jobId?: string; error?: string }>(response);
+    if (!response.ok) {
+      throw new Error(startResult.error || `Erro ${response.status} no servidor durante a transcrição`);
+    }
+    if (!startResult.jobId) {
+      throw new Error("O servidor não retornou um ID de tarefa de transcrição válido.");
+    }
+    return { status: "started", jobId: startResult.jobId, storagePath };
+  };
+
   // Consulta o status de um job de transcrição até ele terminar. O estado do job
   // vive no Supabase (não em memória do servidor), então sobrevive a refresh da
   // página e a troca de instância do servidor — só a espera no cliente é reiniciada.
@@ -1830,6 +1919,107 @@ Reunião vinculada ao Google Agenda:
       "O tempo limite de acompanhamento no navegador foi excedido (20 minutos). " +
         "O processamento pode continuar no servidor — confira em Backup de Áudios em alguns minutos e clique em Reprocessar IA para retomar.",
     );
+  };
+
+  const reprocessStoredMeetingAudio = async (
+    meeting: Meeting,
+    storagePath: string,
+    backup?: LocalRecording | null,
+  ) => {
+    setIsProcessingAudio(true);
+    setProcessingProgress(20);
+    setProcessingStatus("Reprocessando áudio salvo na nuvem...");
+
+    try {
+      const mimeType = backup?.mimeType || mimeFromStoragePath(storagePath);
+      const contextText = `
+Usuário que solicitou o reprocessamento: ${currentUser?.name} (${currentUser?.email})
+Título atual da reunião: ${meeting.title}
+Data da reunião: ${meeting.date}
+Origem do áudio: Supabase Storage (${storagePath})
+      `.trim();
+
+      const started = await startTranscriptionFromStorage(
+        storagePath,
+        mimeType,
+        contextText,
+        backup?.jobId,
+      );
+
+      let aiResult: any;
+      if (started.status === "completed") {
+        aiResult = started.result;
+      } else {
+        if (backup) {
+          await saveLocalRecording({
+            ...backup,
+            status: "pending",
+            jobId: started.jobId,
+            storagePath,
+          });
+        }
+        setProcessingStatus("Iniciando transcrição do áudio salvo...");
+        aiResult = await pollTranscriptionJob(started.jobId, (msg) => {
+          setProcessingStatus(msg);
+        });
+      }
+
+      const updatedMeeting: Meeting = {
+        ...meeting,
+        title: meeting.title || aiResult.title || "Reunião reprocessada",
+        transcript: aiResult.transcript || meeting.transcript,
+        overview: aiResult.overview || meeting.overview,
+        topics: aiResult.topics || meeting.topics || [],
+        decisions: aiResult.decisions || meeting.decisions || [],
+        actions: aiResult.actions || meeting.actions || [],
+        tags: aiResult.suggestedTags || meeting.tags || ["Geral"],
+        participants: {
+          membersTriforce:
+            aiResult.participants?.membersTriforce?.length > 0
+              ? aiResult.participants.membersTriforce
+              : meeting.participants?.membersTriforce || [currentUser?.name || "Consultor Triforce"],
+          membersClient:
+            aiResult.participants?.membersClient?.length > 0
+              ? aiResult.participants.membersClient
+              : meeting.participants?.membersClient || [],
+        },
+        hasAudio: true,
+        audioRecordingId: backup?.id || meeting.audioRecordingId,
+        audioStoragePath: storagePath,
+        audioSizeBytes:
+          meeting.audioSizeBytes ||
+          backup?.compressedBytes ||
+          backup?.audioBlob?.size,
+      };
+
+      setMeetings((prev) =>
+        prev.map((m) => (m.id === meeting.id ? updatedMeeting : m)),
+      );
+      setSelectedMeetingId(updatedMeeting.id);
+      setActiveTab("summary");
+      setActiveView("history");
+      setProcessingProgress(100);
+
+      if (backup) {
+        await updateLocalRecordingStatus(backup.id, "completed", {
+          meetingId: meeting.id,
+          overview: updatedMeeting.overview,
+          title: updatedMeeting.title,
+        });
+        await loadBackups();
+      }
+    } catch (err: any) {
+      console.error("Falha ao reprocessar áudio salvo no Storage:", err);
+      if (backup) {
+        await updateLocalRecordingStatus(backup.id, "failed").catch(() => undefined);
+        await loadBackups();
+      }
+      setActiveView("backups");
+      alert(`Falha ao reprocessar áudio salvo no banco: ${err.message || err}`);
+    } finally {
+      setIsProcessingAudio(false);
+      setProcessingStatus("");
+    }
   };
 
   // EXPORT TO PDF (jspdf) with executive-level premium layout
@@ -4221,11 +4411,18 @@ Reunião vinculada ao Google Agenda:
 
                       const summaries = [
                         ...meetings
-                          .filter((m) => m.hasAudio || m.audioRecordingId || byMeetingId.has(m.id) || byMeetingId.has(m.audioRecordingId || ""))
+                          .filter((m) =>
+                            m.hasAudio ||
+                            m.audioRecordingId ||
+                            m.audioStoragePath ||
+                            byMeetingId.has(m.id) ||
+                            byMeetingId.has(m.audioRecordingId || "")
+                          )
                           .map((m) => {
                             const backup =
                               (m.audioRecordingId && localBackups.find((b) => b.id === m.audioRecordingId)) ||
                               localBackups.find((b) => b.meetingId === m.id);
+                            const storagePath = resolveMeetingStoragePath(m, backup);
                             return {
                               key: m.id,
                               title: m.title,
@@ -4236,10 +4433,18 @@ Reunião vinculada ao Google Agenda:
                               sizeBytes: m.audioSizeBytes || backup?.compressedBytes || backup?.audioBlob?.size || 0,
                               backup,
                               meeting: m,
+                              storagePath,
                             };
                           }),
                         ...localBackups
-                          .filter((b) => !meetings.some((m) => m.id === b.meetingId || m.audioRecordingId === b.id))
+                          .filter((b) =>
+                            !meetings.some(
+                              (m) =>
+                                m.id === b.meetingId ||
+                                m.audioRecordingId === b.id ||
+                                (b.storagePath && m.audioStoragePath === b.storagePath),
+                            )
+                          )
                           .map((b) => ({
                             key: b.id,
                             title: b.title,
@@ -4250,6 +4455,7 @@ Reunião vinculada ao Google Agenda:
                             sizeBytes: b.compressedBytes || b.audioBlob.size,
                             backup: b,
                             meeting: null as Meeting | null,
+                            storagePath: b.storagePath,
                           })),
                       ].sort((a, b) => b.date.localeCompare(a.date) || b.key.localeCompare(a.key));
 
@@ -4338,21 +4544,31 @@ Reunião vinculada ao Google Agenda:
                                       </button>
                                     )}
 
-                                    {item.backup && (item.backup.status === "failed" || item.backup.status === "pending") && (
+                                    {(item.backup?.audioBlob || (item.meeting && item.storagePath)) && (
                                       <button
                                         onClick={async () => {
-                                          await processRecordedAudio(
-                                            item.backup!.mimeType,
-                                            item.backup!.audioBlob,
-                                            item.backup!.duration,
-                                            item.backup!.title,
-                                            {
-                                              isReprocess: true,
-                                              existingBackupId: item.backup!.id,
-                                              existingMeetingId:
-                                                item.backup!.meetingId || item.meeting?.id,
-                                            },
-                                          );
+                                          if (item.backup?.audioBlob) {
+                                            await processRecordedAudio(
+                                              item.backup.mimeType,
+                                              item.backup.audioBlob,
+                                              item.backup.duration,
+                                              item.backup.title,
+                                              {
+                                                isReprocess: true,
+                                                existingBackupId: item.backup.id,
+                                                existingMeetingId:
+                                                  item.backup.meetingId || item.meeting?.id,
+                                              },
+                                            );
+                                            return;
+                                          }
+                                          if (item.meeting && item.storagePath) {
+                                            await reprocessStoredMeetingAudio(
+                                              item.meeting,
+                                              item.storagePath,
+                                              item.backup,
+                                            );
+                                          }
                                         }}
                                         className="py-1.5 px-3 rounded-lg bg-alfredo-teal hover:bg-alfredo-teal-dark text-alfredo-navy text-xs font-bold cursor-pointer flex items-center gap-1.5"
                                       >
