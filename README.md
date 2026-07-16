@@ -31,7 +31,7 @@ API/banco é feita.
 
 ## Deploy na Vercel (1 projeto — front + API)
 
-Front (Vite) e API (Express em `api/index.ts` → `src/server/app.ts`) sobem juntos no **mesmo domínio**. Não precisa de `VITE_API_URL`.
+Front (Vite) e API (Express em `api/[...path].ts` → `src/server/app.ts`) sobem juntos no **mesmo domínio**. Não precisa de `VITE_API_URL`.
 
 ### Passo a passo
 

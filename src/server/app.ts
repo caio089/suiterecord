@@ -736,9 +736,11 @@ app.get("/api/google-client-id", (_req, res) => {
 });
 
 function resolveApiPublicUrl(req?: express.Request): string {
+  // Domínio ESTÁVEL primeiro. VERCEL_URL é efêmero (muda a cada deploy) e
+  // quebraria o redirect_uri registrado no Google — por isso não entra aqui.
   const configured = (
     process.env.API_PUBLIC_URL ||
-    process.env.VERCEL_URL ||
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ||
     process.env.RENDER_EXTERNAL_URL ||
     ""
   )
@@ -747,6 +749,7 @@ function resolveApiPublicUrl(req?: express.Request): string {
   if (configured) {
     return configured.startsWith("http") ? configured : `https://${configured}`;
   }
+  // Deriva do host da requisição (na Vercel de produção = o domínio real acessado).
   if (req) {
     const proto = (req.get("x-forwarded-proto") || req.protocol || "https")
       .split(",")[0]
@@ -754,6 +757,9 @@ function resolveApiPublicUrl(req?: express.Request): string {
     const host = req.get("x-forwarded-host") || req.get("host") || "localhost:3000";
     return `${proto}://${host}`.replace(/\/$/, "");
   }
+  // Último recurso (sem request): URL efêmera da Vercel, só pra não quebrar.
+  const vercelUrl = (process.env.VERCEL_URL || "").trim().replace(/\/$/, "");
+  if (vercelUrl) return `https://${vercelUrl}`;
   return "http://localhost:3000";
 }
 
@@ -1006,5 +1012,25 @@ function renderOAuthResultPage(opts: {
 </body>
 </html>`;
 }
+
+// 404 em JSON para rotas /api não encontradas (evita HTML/erro opaco no cliente).
+app.use("/api", (_req, res) => {
+  res.status(404).json({ error: "Rota de API não encontrada." });
+});
+
+// Handler de erro global — garante resposta JSON em vez de 500 opaco da plataforma.
+app.use(
+  (
+    err: unknown,
+    _req: express.Request,
+    res: express.Response,
+    _next: express.NextFunction,
+  ) => {
+    console.error("Erro não tratado no handler Express:", err);
+    if (res.headersSent) return;
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: "Erro interno no servidor.", details: message });
+  },
+);
 
 export default app;

@@ -4,14 +4,12 @@
   "outputDirectory": "dist",
   "installCommand": "npm ci --include=dev",
   "functions": {
-    "api/index.ts": {
+    "api/*.ts": {
       "maxDuration": 60
     }
   },
   "rewrites": [
-    { "source": "/health", "destination": "/api" },
-    { "source": "/api/:path*", "destination": "/api" },
-    { "source": "/((?!assets/).*)", "destination": "/index.html" }
+    { "source": "/((?!assets/|api/).*)", "destination": "/index.html" }
   ],
   "headers": [
     {
