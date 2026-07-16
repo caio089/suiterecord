@@ -4,6 +4,7 @@ import {
   LogOut,
   Menu,
   Sparkles,
+  Settings,
 } from "lucide-react";
 import type { Meeting } from "./types";
 import type { AppView } from "./AppSidebar";
@@ -14,7 +15,7 @@ const VIEW_LABELS: Record<AppView, string> = {
   dashboard: "Dashboard",
   backups: "Backup de Áudios",
   admin: "Equipe",
-  suiter: "Integração",
+  integrations: "Integrações",
 };
 
 type AppTopBarProps = {
@@ -28,6 +29,7 @@ type AppTopBarProps = {
   onToggleSidebarCollapsed: () => void;
   onToggleSmartSearch: () => void;
   onLogout: () => void;
+  onOpenProfile: () => void;
 };
 
 export default function AppTopBar({
@@ -41,6 +43,7 @@ export default function AppTopBar({
   onToggleSidebarCollapsed,
   onToggleSmartSearch,
   onLogout,
+  onOpenProfile,
 }: AppTopBarProps) {
   return (
     <header className="app-topbar flex h-14 shrink-0 items-center justify-between gap-2 px-3 pt-[env(safe-area-inset-top)] sm:h-16 sm:gap-3 sm:px-5">
@@ -106,6 +109,14 @@ export default function AppTopBar({
                 <p className="mt-1 text-[10px] text-alfredo-muted">{userRole}</p>
               </div>
             </div>
+            <button
+              type="button"
+              onClick={onOpenProfile}
+              className="rounded-xl p-2.5 text-alfredo-muted transition-colors hover:bg-alfredo-teal/10 hover:text-alfredo-teal-dark"
+              title="Configurações do perfil"
+            >
+              <Settings size={15} />
+            </button>
             <button
               type="button"
               onClick={onLogout}

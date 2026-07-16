@@ -9,7 +9,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { jsPDF } from "jspdf";
 import triforceLogo from "./assets/brand/alfredo-symbol-white-512.png";
-import { Meeting, SuiterConfig, SuiterLog, PermittedUser, GoogleCalendarEvent } from "./types";
+import { Meeting, IntegrationConfig, IntegrationLog, PermittedUser, GoogleCalendarEvent } from "./types";
 import LandingPage from "./LandingPage";
 import LoginPage from "./LoginPage";
 import AppSidebar from "./AppSidebar";
@@ -24,10 +24,10 @@ import {
   savePermittedUserInCloud,
   deletePermittedUserFromCloud,
   loadPermittedUsersFromCloud,
-  saveSuiterConfigInCloud,
-  loadSuiterConfigFromCloud,
-  saveSuiterLogsInCloud,
-  loadSuiterLogsFromCloud,
+  saveIntegrationConfigInCloud,
+  loadIntegrationConfigFromCloud,
+  saveIntegrationLogsInCloud,
+  loadIntegrationLogsFromCloud,
   signInWithEmail,
   signOutAuth,
   getAuthSessionProfile,
@@ -36,6 +36,12 @@ import {
   updatePasswordAfterRecovery,
   onAuthStateChange,
   uploadAudioToStorage,
+  uploadAudioChunkToStorage,
+  createRecordingSession,
+  confirmRecordingChunk,
+  finishRecordingSession,
+  getApiAuthHeaders,
+  updateOwnProfileName,
   buildAudioStoragePath,
   deleteAudioFromStorage,
 } from "./supabase";
@@ -57,6 +63,10 @@ import {
   getLocalRecordings,
   deleteLocalRecording,
   updateLocalRecordingStatus,
+  saveRecordingChunk,
+  getPendingRecordingChunks,
+  getRecordingChunks,
+  deleteRecordingChunks,
 } from "./indexedDb";
 import { prepareAudioForStorage, validateAudioFile } from "./audioProcessing";
 import { PREVIEW_MODE, PREVIEW_USER, PREVIEW_MEETINGS } from "./previewData";
@@ -297,13 +307,15 @@ export default function App() {
   // NEW MEETING SUB-VIEWS
   const [newMeetingSubView, setNewMeetingSubView] = useState<"choose" | "agenda" | "custom">("choose");
   const [calendarSelectedDate, setCalendarSelectedDate] = useState(() => getLocalDateString(new Date()));
-  const [recordingFormat, setRecordingFormat] = useState<"record" | "import">("record");
-
   // Date and Time confirmation state
   const [meetingConfirmedDate, setMeetingConfirmedDate] = useState("");
   const [meetingConfirmedTime, setMeetingConfirmedTime] = useState("");
   const [meetingConfirmedTitle, setMeetingConfirmedTitle] = useState("");
+  const [meetingInternalParticipants, setMeetingInternalParticipants] = useState("");
+  const [meetingExternalParticipants, setMeetingExternalParticipants] = useState("");
   const [isAgendaConfirmed, setIsAgendaConfirmed] = useState(false);
+  const [isProfileSettingsOpen, setIsProfileSettingsOpen] = useState(false);
+  const [profileName, setProfileName] = useState("");
 
   // File upload / Recording progress states
   const [processingProgress, setProcessingProgress] = useState(0);
@@ -435,11 +447,11 @@ export default function App() {
     localStorage.removeItem("plaud_authenticated");
     localStorage.removeItem("plaud_current_user");
     localStorage.removeItem("plaud_meetings");
-    localStorage.removeItem("suiter_permitted_users");
+    localStorage.removeItem("integration_permitted_users");
   };
 
   // MULTI-VIEW NAVIGATION STATE
-  const [activeView, setActiveView] = useState<"history" | "new_meeting" | "admin" | "suiter" | "dashboard" | "backups">("dashboard");
+  const [activeView, setActiveView] = useState<"history" | "new_meeting" | "admin" | "integrations" | "dashboard" | "backups">("dashboard");
 
   // LOCAL RECORDINGS BACKUP STATES
   const [localBackups, setLocalBackups] = useState<LocalRecording[]>([]);
@@ -747,6 +759,8 @@ export default function App() {
   const [isRecording, setIsRecording] = useState(false);
   const [isRecordingPaused, setIsRecordingPaused] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [localProtectedChunks, setLocalProtectedChunks] = useState(0);
+  const [cloudProtectedChunks, setCloudProtectedChunks] = useState(0);
   const [isProcessingAudio, setIsProcessingAudio] = useState(false);
   const [processingStatus, setProcessingStatus] = useState("");
   
@@ -766,18 +780,43 @@ export default function App() {
   // navegador (o job em si continua no servidor, mas o usuário perde a barra de
   // progresso e precisa ir manualmente em Backup de Áudios reprocessar).
   useEffect(() => {
-    if (!isProcessingAudio) return;
+    if (!isProcessingAudio && !isRecording) return;
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = "";
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [isProcessingAudio]);
+  }, [isProcessingAudio, isRecording]);
   
   // MediaRecorder refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const recordingSessionIdRef = useRef<string>("");
+  const recordingChunkSequenceRef = useRef(0);
+  const pendingChunkUploadsRef = useRef<Promise<void>[]>([]);
+  const cloudProtectedChunksRef = useRef(0);
+
+  useEffect(() => {
+    if (!currentUser?.email) return;
+    const retryPending = async () => {
+      if (!navigator.onLine) return;
+      const pending = await getPendingRecordingChunks().catch(() => []);
+      for (const chunk of pending) {
+        try {
+          const storagePath = await uploadAudioChunkToStorage(
+            currentUser.email, chunk.sessionId, chunk.sequence, chunk.blob, chunk.mimeType,
+          );
+          await saveRecordingChunk({ ...chunk, uploaded: true, storagePath });
+        } catch {
+          break;
+        }
+      }
+    };
+    void retryPending();
+    window.addEventListener("online", retryPending);
+    return () => window.removeEventListener("online", retryPending);
+  }, [currentUser?.email]);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Evita timer/stream vazando se o usuário sair da tela gravando
@@ -794,6 +833,7 @@ export default function App() {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const wakeLockRef = useRef<any>(null);
 
   // Smart Search Chat State
   const [showSmartSearch, setShowSmartSearch] = useState(false);
@@ -801,19 +841,20 @@ export default function App() {
   const [smartAnswer, setSmartAnswer] = useState<string | null>(null);
   const [isSearchingSmart, setIsSearchingSmart] = useState(false);
 
-  // Suiter Integration Configuration State
-  const [suiterConfig, setSuiterConfig] = useState<SuiterConfig>({
-    apiUrl: "https://api.suiter.interno/v1/meetings",
-    token: "suiter_token_live_2026_94f83b2a",
+  // destino externo Integration Configuration State
+  const [integrationConfig, setIntegrationConfig] = useState<IntegrationConfig>({
+    apiUrl: "",
+    token: "",
     isMock: true,
     mapping: "standard"
   });
 
-  const [suiterLogs, setSuiterLogs] = useState<SuiterLog[]>([]);
+  const [integrationLogs, setIntegrationLogs] = useState<IntegrationLog[]>([]);
 
-  const [showSuiterPanel, setShowSuiterPanel] = useState(false);
-  const [isExportingToSuiter, setIsExportingToSuiter] = useState(false);
-  const [latestExportLog, setLatestExportLog] = useState<SuiterLog | null>(null);
+  const [showIntegrationPanel, setShowIntegrationPanel] = useState(false);
+  const [isExportingIntegration, setIsExportingIntegration] = useState(false);
+  const [latestIntegrationLog, setLatestIntegrationLog] = useState<IntegrationLog | null>(null);
+  const [generatedApiKey, setGeneratedApiKey] = useState<string | null>(null);
 
   // DETAILS COLLAPSIBLE STATE
   const [isDetailsCollapsed, setIsDetailsCollapsed] = useState(false);
@@ -931,15 +972,15 @@ export default function App() {
         setPermittedUsers(pUsers);
 
         if (currentUser.role === "Administrador") {
-          const loadedConfig = await loadSuiterConfigFromCloud();
+          const loadedConfig = await loadIntegrationConfigFromCloud();
           if (cancelled) return;
           if (loadedConfig) {
-            setSuiterConfig(loadedConfig);
+            setIntegrationConfig(loadedConfig);
           }
 
-          const loadedLogs = await loadSuiterLogsFromCloud();
+          const loadedLogs = await loadIntegrationLogsFromCloud();
           if (cancelled) return;
-          setSuiterLogs(loadedLogs);
+          setIntegrationLogs(loadedLogs);
         }
 
         setIsDbLoaded(true);
@@ -1053,17 +1094,17 @@ export default function App() {
 
   useEffect(() => {
     if (!isDbLoaded || currentUser?.role !== "Administrador") return;
-    saveSuiterConfigInCloud(suiterConfig).catch((err) =>
-      console.error("Failed to sync suiter config:", err)
+    saveIntegrationConfigInCloud(integrationConfig).catch((err) =>
+      console.error("Failed to sync integration config:", err)
     );
-  }, [suiterConfig, isDbLoaded, currentUser?.role]);
+  }, [integrationConfig, isDbLoaded, currentUser?.role]);
 
   useEffect(() => {
     if (!isDbLoaded || currentUser?.role !== "Administrador") return;
-    saveSuiterLogsInCloud(suiterLogs).catch((err) =>
-      console.error("Failed to sync suiter logs:", err)
+    saveIntegrationLogsInCloud(integrationLogs).catch((err) =>
+      console.error("Failed to sync integration logs:", err)
     );
-  }, [suiterLogs, isDbLoaded, currentUser?.role]);
+  }, [integrationLogs, isDbLoaded, currentUser?.role]);
 
   useEffect(() => {
     if (selectedMeetingId) {
@@ -1093,7 +1134,17 @@ export default function App() {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if ("wakeLock" in navigator) {
+        wakeLockRef.current = await (navigator as any).wakeLock.request("screen").catch(() => null);
+      }
       audioChunksRef.current = [];
+      recordingSessionIdRef.current = `session_${Date.now()}_${crypto.randomUUID()}`;
+      recordingChunkSequenceRef.current = 0;
+      pendingChunkUploadsRef.current = [];
+      setLocalProtectedChunks(0);
+      setCloudProtectedChunks(0);
+      cloudProtectedChunksRef.current = 0;
+      await createRecordingSession(recordingSessionIdRef.current, meetingConfirmedTitle || "Reunião em andamento");
       setRecordingSeconds(0);
       recordingSecondsRef.current = 0;
       setIsRecording(true);
@@ -1129,7 +1180,32 @@ export default function App() {
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
+          const sequence = recordingChunkSequenceRef.current++;
+          const sessionId = recordingSessionIdRef.current;
+          const ownerEmail = currentUser?.email || "atendimento@triforceconsultoria.com";
+          const task = (async () => {
+            const localChunk = {
+              id: `${sessionId}_${sequence}`,
+              sessionId,
+              sequence,
+              blob: event.data,
+              mimeType,
+              uploaded: false,
+              createdAt: Date.now(),
+            };
+            await saveRecordingChunk(localChunk);
+            setLocalProtectedChunks((count) => count + 1);
+            try {
+              const storagePath = await uploadAudioChunkToStorage(ownerEmail, sessionId, sequence, event.data, mimeType);
+              await saveRecordingChunk({ ...localChunk, uploaded: true, storagePath });
+              await confirmRecordingChunk({ sessionId, sequence, sizeBytes: event.data.size, storagePath });
+              setCloudProtectedChunks((count) => count + 1);
+              cloudProtectedChunksRef.current += 1;
+            } catch (error) {
+              console.warn(`Chunk ${sequence} protegido localmente; upload será retomado depois.`, error);
+            }
+          })();
+          pendingChunkUploadsRef.current.push(task);
         }
       };
 
@@ -1139,10 +1215,32 @@ export default function App() {
         if (audioCtx.state !== "closed") {
           audioCtx.close();
         }
-        await processRecordedAudio(mimeType);
+        await wakeLockRef.current?.release?.().catch(() => undefined);
+        wakeLockRef.current = null;
+        await Promise.allSettled(pendingChunkUploadsRef.current);
+        const chunks = await getRecordingChunks(recordingSessionIdRef.current);
+        const completeBlob = new Blob(chunks.map((chunk) => chunk.blob), { type: mimeType });
+        audioChunksRef.current = [];
+        await finishRecordingSession(
+          recordingSessionIdRef.current,
+          recordingSecondsRef.current,
+          recordingChunkSequenceRef.current,
+          cloudProtectedChunksRef.current,
+        ).catch(() => undefined);
+        await processRecordedAudio(mimeType, completeBlob);
       };
 
-      mediaRecorder.start(250); // Slice every 250ms
+      mediaRecorder.onerror = (event) => {
+        console.error("Falha no MediaRecorder:", event);
+        setCustomAlertMessage("A captura de áudio foi interrompida. Os fragmentos já capturados permanecem protegidos no dispositivo.");
+      };
+      stream.getAudioTracks().forEach((track) => {
+        track.onended = () => {
+          if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
+        };
+      });
+
+      mediaRecorder.start(10_000); // fragmentos recuperáveis de 10 segundos
 
       // Start duration counter
       recordingTimerRef.current = setInterval(() => {
@@ -1340,6 +1438,8 @@ export default function App() {
       const contextText = `
 Usuário que gravou a reunião (Triforce): ${currentUser?.name} (${currentUser?.email})
 Título definido pelo usuário: ${meetingTitle}
+Participantes internos confirmados: ${meetingInternalParticipants || "Não informados"}
+Clientes e parceiros confirmados: ${meetingExternalParticipants || "Não informados"}
 ${selectedCalendarEvent ? `
 Reunião vinculada ao Google Agenda:
 - Título do Evento: ${selectedCalendarEvent.summary}
@@ -1396,13 +1496,17 @@ Reunião vinculada ao Google Agenda:
         actions: aiResult.actions || [],
         decisions: aiResult.decisions || [],
         participants: {
-          membersTriforce: (aiResult.participants?.membersTriforce && aiResult.participants.membersTriforce.length > 0)
+          membersTriforce: meetingInternalParticipants.split(/[\n,;]/).map((p) => p.trim()).filter(Boolean).length
+            ? meetingInternalParticipants.split(/[\n,;]/).map((p) => p.trim()).filter(Boolean)
+            : (aiResult.participants?.membersTriforce && aiResult.participants.membersTriforce.length > 0)
             ? aiResult.participants.membersTriforce
             : [currentUser?.name || "Consultor Triforce"],
-          membersClient: (aiResult.participants?.membersClient && aiResult.participants.membersClient.length > 0)
+          membersClient: meetingExternalParticipants.split(/[\n,;]/).map((p) => p.trim()).filter(Boolean).length
+            ? meetingExternalParticipants.split(/[\n,;]/).map((p) => p.trim()).filter(Boolean)
+            : (aiResult.participants?.membersClient && aiResult.participants.membersClient.length > 0)
             ? aiResult.participants.membersClient
             : selectedCalendarEvent 
-              ? (selectedCalendarEvent.attendees?.map(a => a.displayName || a.email.split("@")[0]).filter(name => name && !name.toLowerCase().includes("suiter") && !name.toLowerCase().includes("atendimento@triforce")) || [])
+              ? (selectedCalendarEvent.attendees?.map(a => a.displayName || a.email.split("@")[0]).filter(name => name && !name.toLowerCase().includes("integrations") && !name.toLowerCase().includes("atendimento@triforce")) || [])
               : []
         },
         createdBy:
@@ -1432,6 +1536,7 @@ Reunião vinculada ao Google Agenda:
         overview: meetingPayload.overview,
         title: meetingPayload.title,
       });
+      await deleteRecordingChunks(recordingSessionIdRef.current).catch(() => undefined);
       await loadBackups();
     } catch (err: any) {
       console.error("Falha ao transcrever gravação:", err);
@@ -1562,7 +1667,7 @@ Reunião vinculada ao Google Agenda:
                       .filter(
                         (name) =>
                           name &&
-                          !name.toLowerCase().includes("suiter") &&
+                          !name.toLowerCase().includes("integrations") &&
                           !name.toLowerCase().includes("atendimento@triforce")
                       ) || []
                   : [],
@@ -1627,7 +1732,7 @@ Reunião vinculada ao Google Agenda:
     if (existingJobId) {
       try {
         const statusResponse = await fetch(apiUrl(`/api/transcribe/status/${existingJobId}`), {
-          headers: { "X-User-Email": ownerEmail },
+          headers: await getApiAuthHeaders(),
         });
         if (statusResponse.ok) {
           const job = await readApiJson<{ status?: string; result?: unknown }>(statusResponse);
@@ -1651,7 +1756,7 @@ Reunião vinculada ao Google Agenda:
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-User-Email": ownerEmail,
+        ...(await getApiAuthHeaders()),
       },
       body: JSON.stringify({ storagePath, mimeType, context: contextText }),
     });
@@ -1679,7 +1784,7 @@ Reunião vinculada ao Google Agenda:
       let job: { status?: string; result?: unknown; error?: string; progressMessage?: string };
       try {
         const response = await fetch(apiUrl(`/api/transcribe/status/${jobId}`), {
-          headers: { "X-User-Email": currentUser?.email || "" },
+          headers: await getApiAuthHeaders(),
         });
         job = await readApiJson<typeof job>(response);
         if (!response.ok) {
@@ -1748,7 +1853,7 @@ Reunião vinculada ao Google Agenda:
     doc.setTextColor(255, 255, 255);
     doc.setFont("Helvetica", "bold");
     doc.setFontSize(15);
-    doc.text("SUITER RECORDER - ATA DE REUNIÃO CORPORATIVA", 44, 15);
+    doc.text("ALFREDO - ATA DE REUNIÃO CORPORATIVA", 44, 15);
     
     doc.setFont("Helvetica", "normal");
     doc.setFontSize(8.5);
@@ -1770,7 +1875,7 @@ Reunião vinculada ao Google Agenda:
         doc.setTextColor(255, 255, 255);
         doc.setFont("Helvetica", "bold");
         doc.setFontSize(8);
-        doc.text("SUITER RECORDER", 15, 10);
+        doc.text("ALFREDO", 15, 10);
         
         doc.setFont("Helvetica", "normal");
         doc.setFontSize(7.5);
@@ -1991,7 +2096,7 @@ Reunião vinculada ao Google Agenda:
     doc.setTextColor(156, 163, 175);
     doc.text("Ata corporativa oficial emitida via Alfredo pelo ecossistema Triforce Consultoria.", 15, currentY + 8);
 
-    doc.save(`${meeting.title.toLowerCase().replace(/\s+/g, "_")}_relatorio_suiter.pdf`);
+    doc.save(`${meeting.title.toLowerCase().replace(/\s+/g, "_")}_relatorio_integration.pdf`);
   };
 
   // EXPORT TO DOCX with Executive, Premium Presentation mirroring PDF style
@@ -2044,7 +2149,7 @@ Reunião vinculada ao Google Agenda:
               <img src="${logoBase64}" width="72" height="72" style="border-radius: 8px; display: block;" />
             </td>` : ""}
             <td style="border: none; padding: 0; padding-left: 20px; vertical-align: middle;">
-              <div class="header-title">SUITER RECORDER - ATA DE REUNIÃO CORPORATIVA</div>
+              <div class="header-title">ALFREDO - ATA DE REUNIÃO CORPORATIVA</div>
               <div class="header-subtitle">Triforce Consultoria - Inteligência e Otimização de Processos</div>
               <div class="header-date">Gerado em ${new Date().toLocaleDateString()} às ${new Date().toLocaleTimeString()}</div>
             </td>
@@ -2148,27 +2253,27 @@ Reunião vinculada ao Google Agenda:
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${meeting.title.toLowerCase().replace(/\s+/g, "_")}_relatorio_suiter.doc`;
+    link.download = `${meeting.title.toLowerCase().replace(/\s+/g, "_")}_relatorio_integration.doc`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
 
-  // EXPORT TO SUITER SYSTEM API
-  const exportMeetingToSuiter = async (meeting: Meeting) => {
-    setIsExportingToSuiter(true);
-    setLatestExportLog(null);
+  // EXPORT TO GENERIC INTEGRATION API
+  const exportMeetingToIntegration = async (meeting: Meeting) => {
+    setIsExportingIntegration(true);
+    setLatestIntegrationLog(null);
 
     try {
-      const response = await fetch(apiUrl("/api/export-suiter"), {
+      const response = await fetch(apiUrl("/api/export-integration"), {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          "X-User-Email": currentUser?.email || ""
+          ...(await getApiAuthHeaders())
         },
         body: JSON.stringify({
-          suiterConfig: suiterConfig,
+          integrationConfig: integrationConfig,
           summaryData: {
             title: meeting.title,
             overview: meeting.overview,
@@ -2182,7 +2287,7 @@ Reunião vinculada ao Google Agenda:
 
       const logResult = await response.json();
 
-      const newLog: SuiterLog = {
+      const newLog: IntegrationLog = {
         timestamp: new Date().toLocaleTimeString(),
         meetingTitle: meeting.title,
         status: logResult.success ? "success" : "error",
@@ -2191,20 +2296,20 @@ Reunião vinculada ao Google Agenda:
         response: logResult.response
       };
 
-      setSuiterLogs(prev => [newLog, ...prev]);
-      setLatestExportLog(newLog);
-      setShowSuiterPanel(true); // Open debugger console to see log immediately!
+      setIntegrationLogs(prev => [newLog, ...prev]);
+      setLatestIntegrationLog(newLog);
+      setShowIntegrationPanel(true); // Open debugger console to see log immediately!
 
       if (logResult.success) {
         // Option to alert success in a subtle banner
       } else {
-        alert("A API do Suiter retornou um status de erro. Revise as conexões do console de depuração.");
+        alert("A API do destino externo retornou um status de erro. Revise as conexões do console de depuração.");
       }
     } catch (err: any) {
-      console.error("Falha ao exportar para o Suiter:", err);
-      alert(`Erro na conexão com a API do Suiter: ${err.message || err}`);
+      console.error("Falha ao exportar para o destino externo:", err);
+      alert(`Erro na conexão com a API do destino externo: ${err.message || err}`);
     } finally {
-      setIsExportingToSuiter(false);
+      setIsExportingIntegration(false);
     }
   };
 
@@ -2221,7 +2326,7 @@ Reunião vinculada ao Google Agenda:
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          "X-User-Email": currentUser?.email || ""
+          ...(await getApiAuthHeaders())
         },
         body: JSON.stringify({
           query: smartQuery,
@@ -2440,6 +2545,10 @@ Reunião vinculada ao Google Agenda:
           onToggleMobileSidebar={() => setIsMobileSidebarOpen((v) => !v)}
           onToggleSidebarCollapsed={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           onToggleSmartSearch={() => setShowSmartSearch(!showSmartSearch)}
+          onOpenProfile={() => {
+            setProfileName(currentUser?.name || "");
+            setIsProfileSettingsOpen(true);
+          }}
           onLogout={handleLogout}
         />
 
@@ -2539,12 +2648,12 @@ Reunião vinculada ao Google Agenda:
                         </button>
                         {currentUser?.role === "Administrador" && (
                           <button
-                            onClick={() => exportMeetingToSuiter(selectedMeeting)}
-                            disabled={isExportingToSuiter}
+                            onClick={() => exportMeetingToIntegration(selectedMeeting)}
+                            disabled={isExportingIntegration}
                             className="px-2 py-1 rounded bg-alfredo-teal hover:bg-alfredo-teal-dark disabled:bg-alfredo-offwhite text-alfredo-navy font-bold text-[10px] transition-colors"
-                            title="Exportar Suiter"
+                            title="Exportar"
                           >
-                            Suiter
+                            destino externo
                           </button>
                         )}
                         <button
@@ -2584,7 +2693,7 @@ Reunião vinculada ao Google Agenda:
                           </div>
                         </div>
 
-                        {/* ACTIONS BAR (EXPORT PDF/WORD/SUITER) */}
+                        {/* ACTIONS BAR (EXPORT PDF/WORD/INTEGRATION) */}
                         <div className="flex flex-wrap items-center gap-1.5 shrink-0">
                           {currentUser?.role === "Administrador" && (
                             <button
@@ -2629,21 +2738,21 @@ Reunião vinculada ao Google Agenda:
                           
                           {currentUser?.role === "Administrador" && (
                             <button
-                              onClick={() => exportMeetingToSuiter(selectedMeeting)}
-                              disabled={isExportingToSuiter}
+                              onClick={() => exportMeetingToIntegration(selectedMeeting)}
+                              disabled={isExportingIntegration}
                               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold shadow-md transition-all cursor-pointer ${
-                                isExportingToSuiter 
+                                isExportingIntegration
                                   ? "bg-alfredo-offwhite text-alfredo-muted border border-alfredo-border cursor-not-allowed" 
                                   : "bg-alfredo-teal hover:bg-alfredo-teal-dark text-alfredo-navy border border-transparent"
                               }`}
-                              title="Exportar para Base de Dados Suiter"
+                              title="Exportar para Base de Dados destino externo"
                             >
-                              {isExportingToSuiter ? (
+                              {isExportingIntegration ? (
                                 <RefreshCw size={12} className="animate-spin" />
                               ) : (
                                 <Database size={12} />
                               )}
-                              Exportar Suiter
+                              Exportar
                             </button>
                           )}
 
@@ -3713,6 +3822,14 @@ Reunião vinculada ao Google Agenda:
                                 className="w-full bg-alfredo-offwhite border border-alfredo-border rounded-xl py-2 px-3 text-xs text-alfredo-navy focus:outline-none focus:border-alfredo-teal/60 font-mono"
                               />
                             </div>
+                            <div className="space-y-1">
+                              <label className="text-[9px] uppercase text-alfredo-muted font-mono font-bold">Participantes internos</label>
+                              <textarea rows={3} value={meetingInternalParticipants} onChange={(e) => setMeetingInternalParticipants(e.target.value)} placeholder="Um nome por linha ou separados por vírgula" className="w-full resize-none bg-alfredo-offwhite border border-alfredo-border rounded-xl py-2 px-3 text-xs text-alfredo-navy focus:outline-none focus:border-alfredo-teal/60" />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[9px] uppercase text-alfredo-muted font-mono font-bold">Clientes e parceiros</label>
+                              <textarea rows={3} value={meetingExternalParticipants} onChange={(e) => setMeetingExternalParticipants(e.target.value)} placeholder="Um nome por linha ou separados por vírgula" className="w-full resize-none bg-alfredo-offwhite border border-alfredo-border rounded-xl py-2 px-3 text-xs text-alfredo-navy focus:outline-none focus:border-alfredo-teal/60" />
+                            </div>
                           </div>
 
                           {/* Recording, Upload & Simulation Center */}
@@ -3752,6 +3869,11 @@ Reunião vinculada ao Google Agenda:
                                       width={400} 
                                       height={64} 
                                     />
+                                    <div className="flex flex-wrap gap-2 text-[10px]">
+                                      <span className="rounded-lg bg-alfredo-surface-teal px-2 py-1 text-alfredo-teal-dark">Protegidos no dispositivo: {localProtectedChunks}</span>
+                                      <span className="rounded-lg bg-alfredo-surface-teal px-2 py-1 text-alfredo-teal-dark">Confirmados na nuvem: {cloudProtectedChunks}</span>
+                                      {!navigator.onLine && <span className="rounded-lg bg-alfredo-coral/15 px-2 py-1">Sem internet — a gravação continua localmente</span>}
+                                    </div>
                                     
                                     <div className="flex gap-2">
                                       <button
@@ -3912,7 +4034,7 @@ Reunião vinculada ao Google Agenda:
                               required
                               className="w-full bg-alfredo-offwhite border border-alfredo-border rounded-lg py-1.5 px-3 text-xs text-alfredo-navy focus:outline-none focus:border-alfredo-teal/60"
                             >
-                              <option value="user">user (Sem acesso à administração e integração Suiter)</option>
+                              <option value="user">user (Sem acesso à administração e integrações)</option>
                               <option value="Administrador">Administrador (Acesso total)</option>
                             </select>
                           </div>
@@ -4018,22 +4140,39 @@ Reunião vinculada ao Google Agenda:
                   </div>
                 )}
 
-                {activeView === "suiter" && (
+                {activeView === "integrations" && (
                   <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center px-6 py-16 text-center">
                     <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-alfredo-teal/30 bg-alfredo-teal/10 text-alfredo-teal-dark">
                       <Database size={24} />
                     </div>
                     <p className="mb-2 font-mono text-[10px] font-bold tracking-[0.2em] text-alfredo-teal-dark/90 uppercase">
-                      Integração Suiter
+                      Integrações
                     </p>
                     <h2 className="font-display text-2xl font-bold tracking-tight text-alfredo-navy sm:text-3xl">
-                      Implementação futura
+                      Integrações do Alfredo
                     </h2>
                     <p className="mt-4 max-w-md text-sm leading-relaxed text-alfredo-graphite">
-                      O módulo de integração com o ecossistema Suiter (webhook, exportação automática e logs de sincronização) será disponibilizado em uma próxima versão. Por enquanto, nenhuma ação está habilitada nesta tela.
+                      Gere uma chave para conexões externas e exporte resumos, relatórios e ações por API ou webhook.
                     </p>
-                    <div className="mt-8 rounded-xl border border-alfredo-border bg-alfredo-offwhite px-4 py-3 text-[11px] text-alfredo-muted">
-                      Em breve: conexão com API Suiter · exportação corporativa · auditoria de sync
+                    <div className="mt-8 w-full max-w-lg rounded-xl border border-alfredo-border bg-white p-4 text-left">
+                      <label className="text-[10px] font-bold uppercase text-alfredo-muted">Chave da API Alfredo</label>
+                      {generatedApiKey && <code className="mt-2 block break-all rounded-lg bg-alfredo-offwhite p-2 text-[11px]">{generatedApiKey}</code>}
+                      <button
+                        onClick={async () => {
+                          try {
+                            const response = await fetch(apiUrl("/api/integrations/api-keys"), {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json", ...(await getApiAuthHeaders()) },
+                              body: JSON.stringify({ name: "Conexão externa", scopes: ["meetings:read", "reports:read", "actions:read"] }),
+                            });
+                            const data = await readApiJson<{ apiKey?: string; error?: string }>(response);
+                            if (!response.ok || !data.apiKey) throw new Error(data.error || "Falha ao gerar chave.");
+                            setGeneratedApiKey(data.apiKey);
+                          } catch (error: any) { setCustomAlertMessage(error.message); }
+                        }}
+                        className="mt-3 rounded-xl bg-alfredo-teal px-4 py-2 text-xs font-bold text-alfredo-navy"
+                      >Gerar nova chave</button>
+                      <p className="mt-2 text-[10px] text-alfredo-muted">Copie agora: a chave completa não será exibida novamente.</p>
                     </div>
                   </div>
                 )}
@@ -4388,14 +4527,14 @@ Reunião vinculada ao Google Agenda:
             )}
           </AnimatePresence>
 
-          {/* RIGHT SIDE PANEL 2: SUITER INTEGRATION CONTROL PANEL */}
+          {/* RIGHT SIDE PANEL 2: GENERIC INTEGRATION CONTROL PANEL */}
           <AnimatePresence>
-            {showSuiterPanel && (
+            {showIntegrationPanel && (
               <>
                 {/* Mobile Backdrop */}
                 <div 
                   className="fixed inset-0 bg-alfredo-navy/55 backdrop-blur-sm z-35 md:hidden"
-                  onClick={() => setShowSuiterPanel(false)}
+                  onClick={() => setShowIntegrationPanel(false)}
                 />
                 <motion.div
                   initial={{ x: 300, opacity: 0 }}
@@ -4407,11 +4546,11 @@ Reunião vinculada ao Google Agenda:
                   <div className="flex items-center gap-1.5">
                     <Database size={14} className="text-alfredo-teal-dark" />
                     <h3 className="text-xs font-bold uppercase tracking-wider text-alfredo-navy">
-                      Integração Suiter
+                      Integrações
                     </h3>
                   </div>
                   <button 
-                    onClick={() => setShowSuiterPanel(false)}
+                    onClick={() => setShowIntegrationPanel(false)}
                     className="p-1 hover:bg-white rounded text-alfredo-muted hover:text-alfredo-navy cursor-pointer"
                   >
                     <X size={14} />
@@ -4421,7 +4560,7 @@ Reunião vinculada ao Google Agenda:
                 <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
                   {/* Explanation card */}
                   <div className="p-3 bg-white border border-alfredo-border rounded-xl text-[11px] text-alfredo-graphite leading-relaxed">
-                    Mapeie a sincronização de dados estruturados com o sistema <b>Suiter</b>. Quando você clicar em <i>"Exportar Suiter"</i>, o app enviará o payload no padrão JSON para o banco do sistema.
+                    Mapeie a sincronização de dados estruturados com o sistema <b>destino externo</b>. Quando você clicar em <i>"Exportar"</i>, o app enviará o payload no padrão JSON para o banco do sistema.
                   </div>
 
                   {/* Form configuration fields */}
@@ -4432,8 +4571,8 @@ Reunião vinculada ao Google Agenda:
                       </label>
                       <input
                         type="text"
-                        value={suiterConfig.apiUrl}
-                        onChange={(e) => setSuiterConfig({ ...suiterConfig, apiUrl: e.target.value })}
+                        value={integrationConfig.apiUrl}
+                        onChange={(e) => setIntegrationConfig({ ...integrationConfig, apiUrl: e.target.value })}
                         className="w-full p-2 bg-white border border-alfredo-border rounded text-xs text-alfredo-navy focus:outline-none focus:border-alfredo-teal/60"
                       />
                     </div>
@@ -4444,8 +4583,8 @@ Reunião vinculada ao Google Agenda:
                       </label>
                       <input
                         type="password"
-                        value={suiterConfig.token}
-                        onChange={(e) => setSuiterConfig({ ...suiterConfig, token: e.target.value })}
+                        value={integrationConfig.token}
+                        onChange={(e) => setIntegrationConfig({ ...integrationConfig, token: e.target.value })}
                         className="w-full p-2 bg-white border border-alfredo-border rounded text-xs text-alfredo-navy focus:outline-none focus:border-alfredo-teal/60"
                       />
                     </div>
@@ -4457,8 +4596,8 @@ Reunião vinculada ao Google Agenda:
                       </div>
                       <input
                         type="checkbox"
-                        checked={suiterConfig.isMock}
-                        onChange={(e) => setSuiterConfig({ ...suiterConfig, isMock: e.target.checked })}
+                        checked={integrationConfig.isMock}
+                        onChange={(e) => setIntegrationConfig({ ...integrationConfig, isMock: e.target.checked })}
                         className="w-4 h-4 rounded text-alfredo-teal-dark accent-alfredo-teal cursor-pointer"
                       />
                     </div>
@@ -4470,16 +4609,16 @@ Reunião vinculada ao Google Agenda:
                       Logs de Envio Recentes
                     </span>
                     
-                    {suiterLogs.length === 0 ? (
+                    {integrationLogs.length === 0 ? (
                       <div className="p-4 text-center border border-dashed border-alfredo-border text-alfredo-muted text-xs rounded-lg">
                         Nenhum log de API disponível.
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        {suiterLogs.map((log, idx) => (
+                        {integrationLogs.map((log, idx) => (
                           <div 
                             key={idx} 
-                            onClick={() => { setLatestExportLog(log); }}
+                            onClick={() => { setLatestIntegrationLog(log); }}
                             className="p-2.5 bg-white border border-alfredo-border hover:border-alfredo-border rounded-lg text-[10px] cursor-pointer transition-colors"
                           >
                             <div className="flex items-center justify-between">
@@ -4502,12 +4641,12 @@ Reunião vinculada ao Google Agenda:
                 </div>
 
                 {/* Sub-panel debugger output drawer */}
-                {latestExportLog && (
+                {latestIntegrationLog && (
                   <div className="p-4 border-t border-alfredo-border bg-alfredo-offwhite max-h-60 overflow-y-auto custom-scrollbar">
                     <div className="flex justify-between items-center mb-2">
                       <span className="text-[10px] font-mono text-alfredo-teal-dark font-bold">API PAYLOAD DEBUGGER</span>
                       <button 
-                        onClick={() => setLatestExportLog(null)}
+                        onClick={() => setLatestIntegrationLog(null)}
                         className="text-alfredo-muted hover:text-alfredo-navy"
                       >
                         <X size={10} />
@@ -4517,22 +4656,22 @@ Reunião vinculada ao Google Agenda:
                     <div className="space-y-2 font-mono text-[9px]">
                       <div>
                         <span className="text-alfredo-muted">REQUEST URL:</span>
-                        <div className="text-alfredo-graphite break-all">{latestExportLog.request.url}</div>
+                        <div className="text-alfredo-graphite break-all">{latestIntegrationLog.request.url}</div>
                       </div>
                       <div>
                         <span className="text-alfredo-muted">METHOD:</span>
-                        <div className="text-alfredo-teal-dark font-bold">{latestExportLog.request.method}</div>
+                        <div className="text-alfredo-teal-dark font-bold">{latestIntegrationLog.request.method}</div>
                       </div>
                       <div>
                         <span className="text-alfredo-muted">MAPPED JSON BODY:</span>
                         <pre className="bg-white p-2 rounded text-alfredo-teal-dark overflow-x-auto border border-alfredo-border max-h-24">
-                          {JSON.stringify(latestExportLog.request.body, null, 2)}
+                          {JSON.stringify(latestIntegrationLog.request.body, null, 2)}
                         </pre>
                       </div>
                       <div>
                         <span className="text-alfredo-muted">SERVER RESPONSE:</span>
                         <pre className="bg-white p-2 rounded text-alfredo-teal-dark overflow-x-auto border border-alfredo-border max-h-24">
-                          {JSON.stringify(latestExportLog.response.body, null, 2)}
+                          {JSON.stringify(latestIntegrationLog.response.body, null, 2)}
                         </pre>
                       </div>
                     </div>
@@ -4888,6 +5027,33 @@ Reunião vinculada ao Google Agenda:
             </div>
           )}
         </AnimatePresence>
+
+        {isProfileSettingsOpen && currentUser && (
+          <div className="fixed inset-0 z-[12000] flex items-center justify-center bg-alfredo-navy/50 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-sm rounded-2xl border border-alfredo-border bg-white p-5 shadow-2xl">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-sm font-bold text-alfredo-navy">Configurações do perfil</h3>
+                <button onClick={() => setIsProfileSettingsOpen(false)}><X size={16} /></button>
+              </div>
+              <label className="text-[10px] font-bold uppercase text-alfredo-muted">Nome de exibição</label>
+              <input value={profileName} onChange={(e) => setProfileName(e.target.value)} className="mt-1 w-full rounded-xl border border-alfredo-border px-3 py-2 text-sm" />
+              <button
+                onClick={async () => {
+                  try {
+                    const profile = await updateOwnProfileName(profileName);
+                    setCurrentUser(profile);
+                    localStorage.setItem("plaud_current_user", JSON.stringify(profile));
+                    setIsProfileSettingsOpen(false);
+                    triggerNotification("Perfil atualizado", "Seu nome foi salvo com sucesso.");
+                  } catch (error: any) {
+                    setCustomAlertMessage(error.message || "Não foi possível atualizar o perfil.");
+                  }
+                }}
+                className="mt-4 w-full rounded-xl bg-alfredo-teal px-4 py-2 text-xs font-bold text-alfredo-navy"
+              >Salvar alterações</button>
+            </div>
+          </div>
+        )}
 
         {/* Floating In-App Toast Notification */}
         <AnimatePresence>
