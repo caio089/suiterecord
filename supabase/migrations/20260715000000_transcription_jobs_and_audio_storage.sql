@@ -85,6 +85,18 @@ create policy "audio_recordings_insert_own" on storage.objects
     and lower((storage.foldername(name))[1]) = public.request_email()
   );
 
+-- upsert:true no cliente vira UPDATE quando o objeto já existe (reprocessamento).
+create policy "audio_recordings_update_own" on storage.objects
+  for update to authenticated
+  using (
+    bucket_id = 'audio-recordings'
+    and lower((storage.foldername(name))[1]) = public.request_email()
+  )
+  with check (
+    bucket_id = 'audio-recordings'
+    and lower((storage.foldername(name))[1]) = public.request_email()
+  );
+
 create policy "audio_recordings_delete_own" on storage.objects
   for delete to authenticated
   using (
