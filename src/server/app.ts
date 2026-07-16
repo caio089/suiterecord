@@ -78,6 +78,7 @@ const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
 const GROQ_CHAT_MODEL = process.env.GROQ_CHAT_MODEL || "llama-3.3-70b-versatile";
 const GROQ_WHISPER_MODEL = process.env.GROQ_WHISPER_MODEL || "whisper-large-v3-turbo";
 const AUDIO_BUCKET = "audio-recordings";
+const MAX_GROQ_AUDIO_BYTES = 24 * 1024 * 1024;
 /** Saída generosa o bastante pra transcrição+ata de uma reunião de 3h sem truncar o JSON. */
 const GROQ_CHAT_MAX_TOKENS = 8000;
 
@@ -404,6 +405,12 @@ async function runTranscriptionBackground(
     // Único diretório com permissão de escrita garantida em runtimes serverless (Vercel: só /tmp).
     tempFilePath = path.join(os.tmpdir(), `audio_${jobId}.${fileExtension}`);
     const buffer = Buffer.from(await fileBlob.arrayBuffer());
+    if (buffer.length > MAX_GROQ_AUDIO_BYTES) {
+      throw new Error(
+        `Áudio com ${(buffer.length / (1024 * 1024)).toFixed(1)} MB — acima do limite seguro de 24 MB para transcrição. ` +
+          "Grave com bitrate menor ou envie um arquivo compactado (MP3, M4A, OGG ou WEBM).",
+      );
+    }
     fs.writeFileSync(tempFilePath, buffer);
 
     console.log(
