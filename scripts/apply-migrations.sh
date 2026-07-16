@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# Aplica migrations SQL no projeto Supabase "Record" via Management API.
+# Aplica migrations SQL no projeto Supabase do Alfredo via Management API.
 # Requer: ~/.supabase/access-token (supabase login) OU SUPABASE_ACCESS_TOKEN
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-REF="${SUPABASE_PROJECT_REF:-brzefsmeghkzzwrsvrlt}"
+REF="${SUPABASE_PROJECT_REF:-}"
 TOKEN="${SUPABASE_ACCESS_TOKEN:-}"
 
 if [[ -z "$TOKEN" && -f "$HOME/.supabase/access-token" ]]; then
   TOKEN="$(tr -d '\n' < "$HOME/.supabase/access-token")"
 fi
 
-if [[ -z "$TOKEN" ]]; then
-  echo "Defina SUPABASE_ACCESS_TOKEN ou rode: npx supabase login"
+if [[ -z "$TOKEN" || -z "$REF" ]]; then
+  echo "Defina SUPABASE_PROJECT_REF e SUPABASE_ACCESS_TOKEN (ou rode: npx supabase login)"
   exit 1
 fi
 

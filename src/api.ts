@@ -3,7 +3,7 @@
  * - Vercel / local monolítico: vazio → usa o mesmo origin (`/api/...`)
  * - API em domínio separado (raro): `VITE_API_URL=https://sua-api.exemplo.com`
  */
-const API_URL_STORAGE_KEY = "suiter_api_url";
+const API_URL_STORAGE_KEY = "integration_api_url";
 
 function readStoredApiUrl(): string {
   try {

@@ -1,8 +1,8 @@
 import { apiUrl, getApiOrigin } from "./api";
 import type { GoogleCalendarEvent } from "./types";
 
-const TOKEN_STORAGE_KEY = "suiter_google_calendar_token";
-const TOKEN_EXPIRY_KEY = "suiter_google_calendar_token_expiry";
+const TOKEN_STORAGE_KEY = "integration_google_calendar_token";
+const TOKEN_EXPIRY_KEY = "integration_google_calendar_token_expiry";
 
 declare global {
   interface Window {
@@ -51,17 +51,17 @@ function loadGisScript(): Promise<void> {
   });
 }
 
-function safeLocalStorage(): Storage | null {
+function safeTokenStorage(): Storage | null {
   try {
-    if (typeof localStorage === "undefined") return null;
-    return localStorage;
+    if (typeof sessionStorage === "undefined") return null;
+    return sessionStorage;
   } catch {
     return null;
   }
 }
 
 export function getStoredGoogleAccessToken(): string | null {
-  const storage = safeLocalStorage();
+  const storage = safeTokenStorage();
   if (!storage) return null;
   const token = storage.getItem(TOKEN_STORAGE_KEY);
   const expiry = Number(storage.getItem(TOKEN_EXPIRY_KEY) || 0);
@@ -73,7 +73,7 @@ export function getStoredGoogleAccessToken(): string | null {
 }
 
 export function storeGoogleAccessToken(token: string, expiresInSeconds = 3600) {
-  const storage = safeLocalStorage();
+  const storage = safeTokenStorage();
   if (!storage) return;
   // Renova 60s antes do vencimento real
   const expiryMs = Date.now() + Math.max(60, expiresInSeconds - 60) * 1000;
@@ -82,7 +82,7 @@ export function storeGoogleAccessToken(token: string, expiresInSeconds = 3600) {
 }
 
 export function clearStoredGoogleAccessToken() {
-  const storage = safeLocalStorage();
+  const storage = safeTokenStorage();
   if (!storage) return;
   storage.removeItem(TOKEN_STORAGE_KEY);
   storage.removeItem(TOKEN_EXPIRY_KEY);
@@ -142,7 +142,7 @@ export async function connectGoogleCalendar(
 
     const popup = window.open(
       oauthStart,
-      "suiter_google_oauth",
+      "integration_google_oauth",
       `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,status=no`,
     );
 
@@ -187,8 +187,9 @@ export async function connectGoogleCalendar(
     };
 
     const onMessage = (event: MessageEvent) => {
+      if (event.origin !== new URL(apiOrigin).origin) return;
       const data = event.data;
-      if (!data || data.type !== "suiter-google-oauth") return;
+      if (!data || data.type !== "integration-google-oauth") return;
       // Prefer origem da API; ainda aceita o payload tipado (FRONTEND_URL / proxy)
 
       if (data.ok && data.accessToken) {

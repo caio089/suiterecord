@@ -2,7 +2,7 @@
 
 > **Escuta. Entende. Organiza.**
 
-Assistente de reuniões da Triforce Consultoria (extensão corporativa do ecossistema Suiter): gravação, transcrição com IA (Groq), atas, decisões, ações e Google Agenda.
+Assistente de reuniões da Triforce Consultoria: gravação protegida em fragmentos, transcrição com IA (Groq), atas, decisões, ações, integrações e Google Agenda.
 
 ## Local
 
@@ -45,9 +45,9 @@ Front (Vite) e API (Express em `api/index.ts` → `src/server/app.ts`) sobem jun
 4. **Environment Variables** (Production e Preview):
    - `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
    - `SUPABASE_URL` (mesma URL), `SUPABASE_SERVICE_ROLE_KEY` (sem `VITE_`)
-   - `GROQ_API_KEY`
-   - `VITE_GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
-   - `FRONTEND_URL` → URL de produção (ex.: `https://suiterecord.vercel.app`)
+   - `GROQ_API_KEY`, `QSTASH_TOKEN`, `TRANSCRIPTION_WORKER_SECRET`
+   - `VITE_GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_OAUTH_STATE_SECRET`
+   - `FRONTEND_URL` → URL de produção (ex.: `https://alfredo.vercel.app`)
 5. Deploy
 
 ### Google OAuth
@@ -64,10 +64,13 @@ No Google Cloud Console → OAuth Client (Web):
 
 ### Timeout da função
 
-`vercel.json` define `maxDuration: 60` segundos. Reuniões muito longas podem precisar de plano Pro com `maxDuration` maior (até 300s).
+`vercel.json` define `maxDuration: 300` segundos. O QStash entrega o job ao worker com retries; para volume elevado, execute a API/worker também em Fly.io ou outro processo persistente.
 
 ## Segurança
 
 - Login via **Supabase Auth** (usuários pré-definidos)
 - **RLS** no Postgres
+- APIs internas autenticadas por JWT Supabase
+- Áudio salvo em fragmentos no IndexedDB e Supabase Storage durante a captura
+- Chaves de API externas armazenadas somente como hash
 - Migrations: `./scripts/apply-migrations.sh`

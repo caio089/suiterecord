@@ -30,7 +30,7 @@ export type AppView =
   | "history"
   | "new_meeting"
   | "admin"
-  | "suiter"
+  | "integrations"
   | "dashboard"
   | "backups";
 
@@ -168,8 +168,8 @@ export default function AppSidebar({
       badgeDanger: backupsHaveFailed,
     },
     {
-      id: "suiter" as const,
-      label: "Integração Suiter",
+      id: "integrations" as const,
+      label: "Integrações",
       icon: Database,
     },
   ];
@@ -479,7 +479,7 @@ export default function AppSidebar({
                 {activeView === "new_meeting" && <Mic size={20} />}
                 {activeView === "backups" && <HardDrive size={20} />}
                 {activeView === "admin" && <Shield size={20} />}
-                {activeView === "suiter" && <Database size={20} />}
+                {activeView === "integrations" && <Database size={20} />}
                 {activeView === "history" && <FileText size={20} />}
               </div>
               <h3 className="font-display text-sm font-bold text-white">
@@ -487,7 +487,7 @@ export default function AppSidebar({
                 {activeView === "new_meeting" && "Nova reunião"}
                 {activeView === "backups" && "Backup de Áudios"}
                 {activeView === "admin" && "Equipe"}
-                {activeView === "suiter" && "Integração Suiter"}
+                {activeView === "integrations" && "Integrações"}
                 {activeView === "history" && "Reuniões"}
               </h3>
               <p className="mt-1.5 max-w-[200px] text-[11px] leading-relaxed text-zinc-500">
@@ -499,8 +499,8 @@ export default function AppSidebar({
                   "Áudios salvos neste dispositivo — ouça e reprocesse com IA."}
                 {activeView === "admin" &&
                   "Gerencie perfis e permissões da equipe."}
-                {activeView === "suiter" &&
-                  "Em breve: sincronização com o ecossistema Suiter."}
+                {activeView === "integrations" &&
+                  "Em breve: sincronização com o ecossistema destino externo."}
                 {activeView === "history" &&
                   "Recolha o menu para ver a lista de reuniões."}
               </p>

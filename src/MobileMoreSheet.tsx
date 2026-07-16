@@ -95,7 +95,7 @@ export default function MobileMoreSheet({
               <button
                 type="button"
                 onClick={() => {
-                  onNavigate("suiter");
+                  onNavigate("integrations");
                   onClose();
                 }}
                 className="flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-left text-sm font-medium text-alfredo-graphite transition-colors hover:bg-alfredo-surface-teal"
@@ -103,7 +103,7 @@ export default function MobileMoreSheet({
                 <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-alfredo-offwhite text-alfredo-graphite">
                   <Database size={16} />
                 </span>
-                Integração Suiter
+                Integrações
               </button>
 
               {isAdmin && (

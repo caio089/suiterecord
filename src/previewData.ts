@@ -34,7 +34,7 @@ export const PREVIEW_MEETINGS: Meeting[] = [
     topics: [
       { topic: "Roadmap Q3", details: "Priorização de entregas do trimestre." },
       { topic: "Modo Foco", details: "Adiado para o Q4 por dependências." },
-      { topic: "Integrações", details: "API do Suiter como prioridade." },
+      { topic: "Integrações", details: "API do destino externo como prioridade." },
     ],
     decisions: [
       "Priorizar Modo Foco e Integrações no Q3",

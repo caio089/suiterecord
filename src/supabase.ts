@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import { Meeting, PermittedUser, SuiterConfig, SuiterLog } from "./types";
+import { Meeting, PermittedUser, IntegrationConfig, IntegrationLog } from "./types";
 
 const supabaseUrl =
   import.meta.env.VITE_SUPABASE_URL ||
@@ -107,7 +107,7 @@ function userToRow(user: PermittedUser) {
   };
 }
 
-function configFromRow(row: Record<string, unknown>): SuiterConfig {
+function configFromRow(row: Record<string, unknown>): IntegrationConfig {
   return {
     apiUrl: String(row.api_url ?? ""),
     token: String(row.token ?? ""),
@@ -116,19 +116,19 @@ function configFromRow(row: Record<string, unknown>): SuiterConfig {
   };
 }
 
-function logFromRow(row: Record<string, unknown>): SuiterLog {
+function logFromRow(row: Record<string, unknown>): IntegrationLog {
   return {
     timestamp: String(row.timestamp ?? ""),
     meetingTitle: String(row.meeting_title ?? ""),
-    status: (row.status as SuiterLog["status"]) || "error",
+    status: (row.status as IntegrationLog["status"]) || "error",
     simulated: Boolean(row.simulated),
-    request: (row.request as SuiterLog["request"]) || {
+    request: (row.request as IntegrationLog["request"]) || {
       url: "",
       method: "",
       headers: {},
       body: null,
     },
-    response: (row.response as SuiterLog["response"]) || {
+    response: (row.response as IntegrationLog["response"]) || {
       status: 0,
       statusText: "",
       body: null,
@@ -139,9 +139,10 @@ function logFromRow(row: Record<string, unknown>): SuiterLog {
 // --- Meetings ---
 
 export const saveMeetingInCloud = async (meeting: Meeting) => {
+  const { data: authData } = await supabase.auth.getUser();
   const { error } = await supabase
     .from("meetings")
-    .upsert(meetingToRow(meeting), { onConflict: "id" });
+    .upsert({ ...meetingToRow(meeting), owner_id: authData.user?.id }, { onConflict: "id" });
   if (error) handleDbError(error, "upsert", `meetings/${meeting.id}`);
 };
 
@@ -191,10 +192,10 @@ export const loadPermittedUsersFromCloud = async (): Promise<PermittedUser[]> =>
   return (data || []).map((row) => userFromRow(row as Record<string, unknown>));
 };
 
-// --- Suiter config ---
+// --- destino externo config ---
 
-export const saveSuiterConfigInCloud = async (config: SuiterConfig) => {
-  const { error } = await supabase.from("suiter_config").upsert(
+export const saveIntegrationConfigInCloud = async (config: IntegrationConfig) => {
+  const { error } = await supabase.from("integration_config").upsert(
     {
       id: "default",
       api_url: config.apiUrl,
@@ -204,32 +205,32 @@ export const saveSuiterConfigInCloud = async (config: SuiterConfig) => {
     },
     { onConflict: "id" }
   );
-  if (error) handleDbError(error, "upsert", "suiter_config/default");
+  if (error) handleDbError(error, "upsert", "integration_config/default");
 };
 
-export const loadSuiterConfigFromCloud = async (): Promise<SuiterConfig | null> => {
+export const loadIntegrationConfigFromCloud = async (): Promise<IntegrationConfig | null> => {
   const { data, error } = await supabase
-    .from("suiter_config")
+    .from("integration_config")
     .select("*")
     .eq("id", "default")
     .maybeSingle();
   if (error) {
-    handleDbError(error, "get", "suiter_config/default");
+    handleDbError(error, "get", "integration_config/default");
     return null;
   }
   if (!data) return null;
   return configFromRow(data as Record<string, unknown>);
 };
 
-// --- Suiter logs ---
+// --- destino externo logs ---
 
-export const saveSuiterLogsInCloud = async (logs: SuiterLog[]) => {
+export const saveIntegrationLogsInCloud = async (logs: IntegrationLog[]) => {
   // Substitui o conjunto completo (mesmo comportamento do doc único no Firestore)
   const { error: deleteError } = await supabase
-    .from("suiter_logs")
+    .from("integration_logs")
     .delete()
     .not("id", "is", null);
-  if (deleteError) handleDbError(deleteError, "delete", "suiter_logs");
+  if (deleteError) handleDbError(deleteError, "delete", "integration_logs");
 
   if (logs.length === 0) return;
 
@@ -242,17 +243,17 @@ export const saveSuiterLogsInCloud = async (logs: SuiterLog[]) => {
     response: log.response,
   }));
 
-  const { error } = await supabase.from("suiter_logs").insert(rows);
-  if (error) handleDbError(error, "insert", "suiter_logs");
+  const { error } = await supabase.from("integration_logs").insert(rows);
+  if (error) handleDbError(error, "insert", "integration_logs");
 };
 
-export const loadSuiterLogsFromCloud = async (): Promise<SuiterLog[]> => {
+export const loadIntegrationLogsFromCloud = async (): Promise<IntegrationLog[]> => {
   const { data, error } = await supabase
-    .from("suiter_logs")
+    .from("integration_logs")
     .select("*")
     .order("timestamp", { ascending: false });
   if (error) {
-    handleDbError(error, "list", "suiter_logs");
+    handleDbError(error, "list", "integration_logs");
     return [];
   }
   return (data || []).map((row) => logFromRow(row as Record<string, unknown>));
@@ -458,4 +459,87 @@ export const onAuthStateChange = (
   return supabase.auth.onAuthStateChange((event, session) => {
     callback(event, session);
   });
+};
+
+export const uploadAudioChunkToStorage = async (
+  ownerEmail: string,
+  sessionId: string,
+  sequence: number,
+  blob: Blob,
+  mimeType: string,
+): Promise<string> => {
+  const path = `${sanitizeStorageSegment(ownerEmail)}/${sanitizeStorageSegment(sessionId)}/chunks/${String(sequence).padStart(6, "0")}`;
+  const { error } = await supabase.storage.from(AUDIO_BUCKET).upload(path, blob, {
+    contentType: mimeType.split(";")[0],
+    upsert: true,
+  });
+  if (error) handleDbError(error, "upload", `storage/${AUDIO_BUCKET}/${path}`);
+  return path;
+};
+
+async function requireCurrentUserId(): Promise<string> {
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user?.id) throw new Error("Sessão Supabase inválida.");
+  return data.user.id;
+}
+
+export async function createRecordingSession(id: string, title: string, mimeType?: string) {
+  const ownerId = await requireCurrentUserId();
+  const { error } = await supabase.from("recording_sessions").upsert({
+    id, owner_id: ownerId, title, mime_type: mimeType || null,
+    status: "recording", last_heartbeat_at: new Date().toISOString(),
+  });
+  if (error) handleDbError(error, "upsert", `recording_sessions/${id}`);
+}
+
+export async function confirmRecordingChunk(input: {
+  sessionId: string; sequence: number; sizeBytes: number; storagePath: string;
+}) {
+  const ownerId = await requireCurrentUserId();
+  const id = `${input.sessionId}_${input.sequence}`;
+  const { error } = await supabase.from("recording_chunks").upsert({
+    id, session_id: input.sessionId, owner_id: ownerId, sequence: input.sequence,
+    size_bytes: input.sizeBytes, storage_path: input.storagePath,
+    upload_status: "uploaded", confirmed_at: new Date().toISOString(),
+  });
+  if (error) handleDbError(error, "upsert", `recording_chunks/${id}`);
+  await supabase.from("recording_sessions").update({
+    status: "uploading", last_heartbeat_at: new Date().toISOString(),
+  }).eq("id", input.sessionId);
+}
+
+export async function finishRecordingSession(id: string, durationSeconds: number, totalChunks: number, confirmedChunks: number) {
+  const { error } = await supabase.from("recording_sessions").update({
+    status: confirmedChunks === totalChunks ? "uploaded" : "uploading",
+    duration_seconds: durationSeconds, total_chunks: totalChunks,
+    confirmed_chunks: confirmedChunks, last_heartbeat_at: new Date().toISOString(),
+  }).eq("id", id);
+  if (error) handleDbError(error, "update", `recording_sessions/${id}`);
+}
+
+/** Cabeçalhos autenticados para chamadas à API do Alfredo. */
+export const getApiAuthHeaders = async (): Promise<Record<string, string>> => {
+  if (!isSupabaseConfigured) throw new Error("Supabase não configurado.");
+  const { data, error } = await supabase.auth.getSession();
+  if (error || !data.session?.access_token) {
+    throw new Error("Sessão expirada. Entre novamente.");
+  }
+  return { Authorization: `Bearer ${data.session.access_token}` };
+};
+
+export const updateOwnProfileName = async (name: string): Promise<AuthProfile> => {
+  const cleanName = name.trim();
+  if (!cleanName) throw new Error("Informe um nome válido.");
+  const { data: userData, error: userError } = await supabase.auth.updateUser({
+    data: { name: cleanName, full_name: cleanName },
+  });
+  if (userError || !userData.user?.email) throw new Error(userError?.message || "Sessão inválida.");
+  const email = userData.user.email.toLowerCase();
+  const { data: row, error } = await supabase.from("permitted_users")
+    .update({ name: cleanName })
+    .eq("email", email)
+    .select("name,email,role,photo_url")
+    .single();
+  if (error) handleDbError(error, "update", `permitted_users/${email}`);
+  return { name: row.name, email: row.email, role: row.role, photoUrl: row.photo_url || undefined };
 };

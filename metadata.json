@@ -1,6 +1,6 @@
 {
   "name": "Alfredo — Assistente de Reuniões",
-  "description": "Alfredo registra e transcreve reuniões com inteligência artificial, organiza com tags, faz buscas inteligentes e exporta atas para PDF, Word (DOCX) e para o sistema Suiter.",
+  "description": "Alfredo registra e transcreve reuniões com inteligência artificial, organiza com tags, faz buscas inteligentes e exporta atas para PDF, Word (DOCX) e para sistemas externos.",
   "requestFramePermissions": ["microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

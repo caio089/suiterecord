@@ -1,8 +1,8 @@
-# Fly.io — Suiter Record
+# Fly.io — Alfredo
 # Região São Paulo (gru). Troque "app" por um nome único antes do primeiro deploy
 # (ou deixe o `fly launch` gerar um).
 
-app = "suiter-record"
+app = "integration-record"
 primary_region = "gru"
 
 [build]

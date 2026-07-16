@@ -1,4 +1,4 @@
-# Suiter Record — container monolítico (API + static no mesmo processo).
+# Alfredo — container monolítico (API + static no mesmo processo).
 # No Render preferimos 2 serviços (ver render.yaml). Este Dockerfile serve
 # para Cloud Run / Fly / um único Web Service Docker.
 

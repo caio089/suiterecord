@@ -106,7 +106,7 @@ const FEATURES = [
   {
     icon: Sparkles,
     title: "Ata com IA",
-    text: "Transcrição, overview, decisões e ações — prontos para o fluxo Suiter.",
+    text: "Transcrição, overview, decisões e ações — prontos para o fluxo de trabalho.",
   },
   {
     icon: Calendar,
@@ -126,7 +126,7 @@ const FEATURES = [
   {
     icon: ExternalLink,
     title: "Exportação",
-    text: "PDF, DOCX e integração com o ecossistema Suiter.",
+    text: "PDF, DOCX e integração com o ecossistema de integrações.",
   },
 ];
 
@@ -480,7 +480,7 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
               transition={{ duration: 0.4, delay: 0.18, ease }}
               className="mt-3 max-w-xl text-sm leading-relaxed text-zinc-400 sm:mt-4 sm:text-base"
             >
-              Extensão corporativa do ecossistema Suiter: áudio, IA e Google
+              Extensão corporativa do ecossistema de integrações: áudio, IA e Google
               Agenda no mesmo fluxo.
             </motion.p>
 
@@ -605,7 +605,7 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
               "Exportação",
               "Busca semântica",
               "Acesso corporativo",
-              "Ecossistema Suiter",
+              "Ecossistema de integrações",
             ].map((label) => (
               <span
                 key={`${copy}-${label}`}
@@ -738,7 +738,7 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
                 atendimento@triforceconsultoria.com
               </a>
               <p className="text-xs text-zinc-500">
-                Desenvolvido pela Triforce Consultoria · uso corporativo Suiter
+                Desenvolvido pela Triforce Consultoria · uso corporativo
               </p>
             </div>
 

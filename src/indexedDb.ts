@@ -18,9 +18,46 @@ export interface LocalRecording {
   storagePath?: string;
 }
 
-const DB_NAME = "SuiterRecorderOfflineDB";
+export interface LocalRecordingChunk {
+  id: string;
+  sessionId: string;
+  sequence: number;
+  blob: Blob;
+  mimeType: string;
+  uploaded: boolean;
+  storagePath?: string;
+  createdAt: number;
+}
+
+const DB_NAME = "AlfredoOfflineDB";
 const STORE_NAME = "local_recordings";
-const DB_VERSION = 1;
+const CHUNK_STORE_NAME = "recording_chunks";
+const DB_VERSION = 2;
+const LEGACY_DB_NAME = atob("U3VpdGVyUmVjb3JkZXJPZmZsaW5lREI=");
+let legacyMigrationAttempted = false;
+
+async function migrateLegacyRecordings(target: IDBDatabase): Promise<void> {
+  if (legacyMigrationAttempted || LEGACY_DB_NAME === DB_NAME) return;
+  legacyMigrationAttempted = true;
+  const known = typeof indexedDB.databases === "function" ? await indexedDB.databases() : [];
+  if (known.length && !known.some((entry) => entry.name === LEGACY_DB_NAME)) return;
+  await new Promise<void>((resolve) => {
+    const legacyRequest = indexedDB.open(LEGACY_DB_NAME);
+    legacyRequest.onerror = () => resolve();
+    legacyRequest.onsuccess = () => {
+      const legacy = legacyRequest.result;
+      if (!legacy.objectStoreNames.contains(STORE_NAME)) { legacy.close(); resolve(); return; }
+      const getAll = legacy.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).getAll();
+      getAll.onerror = () => { legacy.close(); resolve(); };
+      getAll.onsuccess = () => {
+        const tx = target.transaction(STORE_NAME, "readwrite");
+        getAll.result.forEach((recording) => tx.objectStore(STORE_NAME).put(recording));
+        tx.oncomplete = () => { legacy.close(); resolve(); };
+        tx.onerror = () => { legacy.close(); resolve(); };
+      };
+    };
+  });
+}
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -31,7 +68,8 @@ function openDB(): Promise<IDBDatabase> {
       reject(request.error);
     };
 
-    request.onsuccess = () => {
+    request.onsuccess = async () => {
+      await migrateLegacyRecordings(request.result);
       resolve(request.result);
     };
 
@@ -40,7 +78,51 @@ function openDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: "id" });
       }
+      if (!db.objectStoreNames.contains(CHUNK_STORE_NAME)) {
+        const chunks = db.createObjectStore(CHUNK_STORE_NAME, { keyPath: "id" });
+        chunks.createIndex("sessionId", "sessionId", { unique: false });
+      }
     };
+  });
+}
+
+export async function saveRecordingChunk(chunk: LocalRecordingChunk): Promise<void> {
+  const db = await openDB();
+  await new Promise<void>((resolve, reject) => {
+    const request = db.transaction(CHUNK_STORE_NAME, "readwrite").objectStore(CHUNK_STORE_NAME).put(chunk);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function getRecordingChunks(sessionId: string): Promise<LocalRecordingChunk[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction(CHUNK_STORE_NAME, "readonly").objectStore(CHUNK_STORE_NAME)
+      .index("sessionId").getAll(sessionId);
+    request.onsuccess = () => resolve((request.result || []).sort((a, b) => a.sequence - b.sequence));
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function getPendingRecordingChunks(): Promise<LocalRecordingChunk[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction(CHUNK_STORE_NAME, "readonly").objectStore(CHUNK_STORE_NAME).getAll();
+    request.onsuccess = () => resolve((request.result || []).filter((chunk) => !chunk.uploaded));
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function deleteRecordingChunks(sessionId: string): Promise<void> {
+  const chunks = await getRecordingChunks(sessionId);
+  const db = await openDB();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(CHUNK_STORE_NAME, "readwrite");
+    const store = tx.objectStore(CHUNK_STORE_NAME);
+    chunks.forEach((chunk) => store.delete(chunk.id));
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
   });
 }
 
