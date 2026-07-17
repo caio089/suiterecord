@@ -1,5 +1,10 @@
 import type { IncomingMessage, ServerResponse } from "http";
-import app from "../src/server/app";
+// IMPORTANTE: extensão .js explícita. Na Vercel esta função roda como ESM puro
+// (package.json tem "type": "module") e não é bundlada, então o Node exige a
+// extensão no import relativo — sem ela dá ERR_MODULE_NOT_FOUND e a função
+// inteira crasha no load (FUNCTION_INVOCATION_FAILED em todo /api/*). O TS com
+// moduleResolution "bundler" aceita o `.js` apontando para o arquivo `.ts`.
+import app from "../src/server/app.js";
 
 /**
  * Função serverless da Vercel — catch-all para TODAS as rotas /api/* (e /api).
