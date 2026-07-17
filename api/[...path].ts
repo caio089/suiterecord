@@ -9,18 +9,42 @@ import app from "../src/server/app.js";
 /**
  * Função serverless da Vercel — catch-all para TODAS as rotas /api/* (e /api).
  *
- * Por que catch-all (`[...path].ts`) e não `index.ts` + rewrite:
- * `api/index.ts` só casa `/api` exato; um rewrite `/api/:path* -> /api` faz o
- * Express receber `req.url = "/api"`, perdendo o subpath (nenhuma rota casa e a
- * função acaba retornando erro). Com o catch-all, a Vercel roteia
- * `/api/qualquer/coisa` para cá pelo filesystem (antes dos rewrites), preservando
- * o path original em `req.url` — o roteamento interno do Express
- * (`/api/transcribe`, `/api/google/oauth/status` etc.) volta a funcionar.
+ * Por que catch-all (`[...path].ts`): a Vercel roteia `/api/qualquer/coisa` para
+ * cá pelo filesystem. Porém a rota gerada automaticamente só casa UM segmento
+ * (`/api/x` funciona, `/api/x/y/z` dava NOT_FOUND no roteador da Vercel). Por
+ * isso o vercel.json também tem o rewrite explícito
+ * `/api/:path* -> /api/[...path]`, que força os caminhos aninhados a chegarem
+ * nesta função (padrão "splat API route" documentado pela Vercel).
+ *
+ * Reconstrução do path: para o catch-all `[...path]`, a Vercel expõe os
+ * segmentos no query param `path` (tanto na rota de filesystem quanto via
+ * rewrite). Reconstruímos `req.url` a partir dele para garantir que o Express
+ * receba o caminho real (`/api/google/oauth/status`) e roteie corretamente,
+ * independentemente de o pathname que a Vercel deixou em `req.url`.
  *
  * O handler é uma função explícita (não `export default app`) para evitar
  * ambiguidade de interop ESM/CJS ao a Vercel reconhecer o export como handler.
  */
 export default function handler(req: IncomingMessage, res: ServerResponse) {
+  const rawUrl = req.url ?? "/";
+  const queryStart = rawUrl.indexOf("?");
+  const search = queryStart >= 0 ? rawUrl.slice(queryStart + 1) : "";
+  const params = new URLSearchParams(search);
+  const segments = params.getAll("path").filter(Boolean);
+
+  if (segments.length > 0) {
+    // `path` pode vir como múltiplos valores (path=a&path=b) ou como um único
+    // valor com barras (path=a/b/c); join + filtro de vazios cobre ambos.
+    const pathname = `/api/${segments
+      .join("/")
+      .split("/")
+      .filter(Boolean)
+      .join("/")}`;
+    params.delete("path");
+    const rest = params.toString();
+    req.url = rest ? `${pathname}?${rest}` : pathname;
+  }
+
   return (app as unknown as (req: IncomingMessage, res: ServerResponse) => void)(
     req,
     res,
