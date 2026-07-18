@@ -92,6 +92,9 @@ const GROQ_CHUNK_CHARS = 16_000;
 // Acima disso a transcrição é resumida em trechos antes da ata final.
 const GROQ_CHUNK_THRESHOLD_CHARS = 22_000;
 const GROQ_MAX_RATELIMIT_RETRIES = 4;
+// O refino reescreve o trecho ~1:1 (não resume), então a saída é da ordem da
+// entrada — precisa de teto maior que o resumo, mas ainda dentro do TPM.
+const GROQ_REFINE_MAX_TOKENS = 6000;
 
 /** Divide uma string em pedaços de no máximo `size` caracteres. */
 function chunkString(text: string, size: number): string[] {
@@ -259,6 +262,61 @@ async function groqChatText(
   return String(content);
 }
 
+const TRANSCRIPT_EDITOR_SYSTEM = `Você é o editor de transcrições do Alfredo. Reescreva o trecho de transcrição BRUTA mantendo TODO o conteúdo e as palavras ditas (verbatim) — não resuma, não encurte, não invente falas.
+
+Tarefas obrigatórias:
+1. LOCUTORES: separe as falas por quem fala, no formato "Palestrante 1:", "Palestrante 2:" no início de cada fala (use o nome real APENAS quando o contexto fornecido permitir identificar com segurança). Uma linha em branco entre falas de locutores diferentes.
+2. FORMATAÇÃO: organize em parágrafos coerentes, com pontuação, acentuação e capitalização corretas em português brasileiro. Remova hesitações repetidas ("é... é... é") sem perder o sentido.
+3. CURADORIA (sempre):
+   - Palavrões/xingamentos: mantenha só a primeira letra e tarje o resto (ex.: "p***", "c****").
+   - Dados sensíveis ditos em voz alta (senhas, tokens, chaves/segredos, números de cartão, CPF/CNPJ completos): substitua por "[dado sensível removido]".
+   - NÃO altere o sentido nem remova conteúdo de negócio (decisões, números de projeto, valores acordados).
+
+Responda APENAS com o texto reescrito do trecho, sem comentários, títulos ou marcadores.`;
+
+/**
+ * Transforma a transcrição CRUA do Whisper (um bloco sem locutores) em uma
+ * transcrição de leitura: locutores separados, parágrafos, pontuação e
+ * curadoria (palavrões tarjados, dados sensíveis removidos). Processa em
+ * trechos (map, sem reduce — é reescrita 1:1, preserva o conteúdo integral).
+ */
+async function refineTranscript(
+  rawTranscript: string,
+  context: string | undefined,
+  onProgress?: (msg: string) => Promise<void>,
+): Promise<string> {
+  const text = rawTranscript.trim();
+  if (!text) return "";
+  const parts = chunkString(text, GROQ_CHUNK_CHARS);
+  const contextBlock = context
+    ? `\n\nCONTEXTO (para identificar locutores reais quando possível):\n${context}`
+    : "";
+  const refined: string[] = [];
+  for (let index = 0; index < parts.length; index++) {
+    if (onProgress) {
+      await onProgress(
+        parts.length > 1
+          ? `Organizando a transcrição (trecho ${index + 1} de ${parts.length})...`
+          : "Organizando a transcrição (locutores, parágrafos e curadoria)...",
+      );
+    }
+    try {
+      const out = await groqChatText(
+        TRANSCRIPT_EDITOR_SYSTEM,
+        `Trecho ${index + 1}/${parts.length} da transcrição bruta:\n"""\n${parts[index]}\n"""${contextBlock}`,
+        GROQ_REFINE_MAX_TOKENS,
+      );
+      refined.push(out.trim());
+    } catch (err) {
+      // Se o refino de um trecho falhar, cai para o texto bruto dele em vez de
+      // perder o conteúdo — a transcrição continua completa.
+      console.error(`[refine] Falha ao refinar trecho ${index + 1}:`, err);
+      refined.push(parts[index]);
+    }
+  }
+  return refined.join("\n\n");
+}
+
 async function groqTranscribeAudio(
   filePath: string,
   mimeType: string
@@ -393,7 +451,7 @@ const MEETING_JSON_SCHEMA_HINT = `{
   "overview": "string — visão geral concisa",
   "topics": [{ "topic": "string", "details": "string" }],
   "decisions": ["string"],
-  "actions": [{ "action": "string", "assignee": "string", "priority": "Alta|Média|Baixa" }],
+  "actions": [{ "action": "string", "assignee": "string", "priority": "Alta|Média|Baixa", "deadline": "string — prazo AAAA-MM-DD se citado na reunião, senão string vazia" }],
   "participants": {
     "membersTriforce": ["string"],
     "membersClient": ["string"]
@@ -534,7 +592,7 @@ ${transcriptForAnalysis}
 
 Com base nessa transcrição, produza a ata estruturada no JSON exigido.
 1. Refine a transcrição de forma profissional, organizando em parágrafos e separando locutores (ex: 'Palestrante 1') quando possível — sem inventar falas.
-2. Crie título, overview, tópicos, decisões, ações (com assignee e prioridade Alta/Média/Baixa), participantes (Triforce vs Cliente) e 3–5 tags.
+2. Crie título, overview, tópicos, decisões, ações (com assignee, prioridade Alta/Média/Baixa e, quando um prazo for mencionado, deadline no formato AAAA-MM-DD), participantes (Triforce vs Cliente) e 3–5 tags.
 
 INSTRUÇÃO CRÍTICA:
 NÃO invente participantes fictícios. Se for monólogo/teste, liste apenas quem for identificável.
@@ -551,13 +609,18 @@ Todos os campos obrigatórios devem existir. Use português brasileiro.`;
 
     const result = await groqChatJson(systemPrompt, userPrompt);
 
-    // A ata pode usar resumos hierárquicos, mas a transcrição entregue permanece integral.
-    result.transcript = rawTranscript;
-
-    // Garante transcript mesmo se o modelo omitir
-    if (!result.transcript) {
-      result.transcript = rawTranscript;
+    // Transcrição de leitura: reescrita fiel com locutores separados, parágrafos,
+    // pontuação e curadoria (palavrões tarjados, dados sensíveis removidos). A ata
+    // acima usa resumos hierárquicos; a transcrição entregue permanece integral.
+    let refinedTranscript = rawTranscript;
+    try {
+      refinedTranscript = await refineTranscript(rawTranscript, context, async (msg) => {
+        await updateJob(supabaseAdmin, jobId, { progress_message: msg });
+      });
+    } catch (err) {
+      console.error(`[Job ${jobId}] Falha ao refinar a transcrição — usando a bruta:`, err);
     }
+    result.transcript = refinedTranscript || rawTranscript;
     result.topics = Array.isArray(result.topics) ? result.topics : [];
     result.decisions = Array.isArray(result.decisions) ? result.decisions : [];
     result.actions = Array.isArray(result.actions) ? result.actions : [];

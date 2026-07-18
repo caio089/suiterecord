@@ -842,6 +842,7 @@ export default function App() {
   const [taskAction, setTaskAction] = useState("");
   const [taskAssignee, setTaskAssignee] = useState("");
   const [taskPriority, setTaskPriority] = useState<"Alta" | "Média" | "Baixa">("Média");
+  const [taskDeadline, setTaskDeadline] = useState("");
 
   // UI state
   const [activeTab, setActiveTab] = useState<"transcript" | "summary">("summary");
@@ -3532,6 +3533,7 @@ Origem do áudio: Supabase Storage (${storagePath})
                                   ];
                                   setTaskAssignee(allP[0] || currentUser?.name || "Rodolfo");
                                   setTaskPriority("Média");
+                                  setTaskDeadline("");
                                   setIsTaskModalOpen(true);
                                 }}
                                 className="flex items-center gap-1 text-[11px] font-bold text-alfredo-teal-dark hover:text-alfredo-teal-dark bg-alfredo-surface-teal hover:bg-alfredo-surface-teal border border-alfredo-teal/30 rounded-lg px-2 py-1 transition-all cursor-pointer"
@@ -3603,6 +3605,23 @@ Origem do áudio: Supabase Storage (${storagePath})
                                           }`}>
                                             {a.priority}
                                           </span>
+                                          {a.deadline && (
+                                            <span
+                                              className={`inline-flex items-center gap-1 text-[9px] font-mono px-1.5 py-0.5 rounded border ${
+                                                !completed && a.deadline < getLocalDateString(new Date())
+                                                  ? "bg-alfredo-coral/10 text-alfredo-coral border-alfredo-coral/30"
+                                                  : "bg-white text-alfredo-graphite border-alfredo-border"
+                                              }`}
+                                              title={
+                                                !completed && a.deadline < getLocalDateString(new Date())
+                                                  ? "Prazo vencido"
+                                                  : "Prazo"
+                                              }
+                                            >
+                                              <Calendar size={9} />
+                                              {a.deadline.split("-").reverse().join("/")}
+                                            </span>
+                                          )}
                                         </div>
                                       </div>
 
@@ -3615,6 +3634,7 @@ Origem do áudio: Supabase Storage (${storagePath})
                                             setTaskAction(a.action);
                                             setTaskAssignee(a.assignee);
                                             setTaskPriority(a.priority);
+                                            setTaskDeadline(a.deadline || "");
                                             setIsTaskModalOpen(true);
                                           }}
                                           className="p-1 text-alfredo-graphite hover:text-alfredo-teal-dark hover:bg-white rounded transition-colors cursor-pointer"
@@ -5321,6 +5341,30 @@ Origem do áudio: Supabase Storage (${storagePath})
                       </select>
                     </div>
                   </div>
+
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] uppercase font-mono text-alfredo-graphite font-bold">
+                      Prazo <span className="text-alfredo-muted normal-case">(opcional)</span>
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="date"
+                        value={taskDeadline}
+                        onChange={(e) => setTaskDeadline(e.target.value)}
+                        className="w-full bg-white border border-alfredo-border rounded-xl py-2 px-3 text-xs text-alfredo-navy focus:outline-none focus:border-alfredo-teal/60 cursor-pointer"
+                      />
+                      {taskDeadline && (
+                        <button
+                          type="button"
+                          onClick={() => setTaskDeadline("")}
+                          className="shrink-0 px-2 py-2 rounded-lg bg-white border border-alfredo-border text-alfredo-muted hover:text-alfredo-coral transition-colors cursor-pointer"
+                          title="Remover prazo"
+                        >
+                          <X size={13} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex gap-2 justify-end pt-2">
@@ -5342,13 +5386,15 @@ Origem do áudio: Supabase Storage (${storagePath})
                               ...updatedActions[editingTaskIdx],
                               action: taskAction.trim(),
                               assignee: taskAssignee,
-                              priority: taskPriority
+                              priority: taskPriority,
+                              deadline: taskDeadline || undefined
                             };
                           } else {
                             updatedActions.push({
                               action: taskAction.trim(),
                               assignee: taskAssignee,
                               priority: taskPriority,
+                              deadline: taskDeadline || undefined,
                               status: "pending"
                             });
                           }

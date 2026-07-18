@@ -8,6 +8,8 @@ export interface ActionItem {
   assignee: string;
   priority: "Alta" | "Média" | "Baixa";
   status?: "pending" | "completed";
+  /** Prazo opcional (AAAA-MM-DD). */
+  deadline?: string;
 }
 
 export interface Meeting {
