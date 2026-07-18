@@ -783,6 +783,7 @@ export default function App() {
   useEffect(() => {
     setIsEditingTranscript(false);
     setIsEditingTitle(false);
+    setEditingDecisionIdx(null);
   }, [selectedMeetingId]);
 
   // Triforce logo loading state
@@ -844,6 +845,9 @@ export default function App() {
   const [taskAssignee, setTaskAssignee] = useState("");
   const [taskPriority, setTaskPriority] = useState<"Alta" | "Média" | "Baixa">("Média");
   const [taskDeadline, setTaskDeadline] = useState("");
+  // Edição de decisões importantes
+  const [editingDecisionIdx, setEditingDecisionIdx] = useState<number | null>(null);
+  const [decisionDraft, setDecisionDraft] = useState("");
 
   // UI state
   const [activeTab, setActiveTab] = useState<"transcript" | "summary">("summary");
@@ -2271,21 +2275,22 @@ Origem do áudio: Supabase Storage (${storagePath})
     doc.setFontSize(8.5);
     doc.setTextColor(17, 24, 39);
     doc.text("Ação / Tarefa Especificada", 17, currentY + 4.5);
-    doc.text("Responsável", 125, currentY + 4.5);
-    doc.text("Prioridade", 168, currentY + 4.5);
+    doc.text("Responsável", 108, currentY + 4.5);
+    doc.text("Prioridade", 148, currentY + 4.5);
+    doc.text("Prazo", 175, currentY + 4.5);
     currentY += 11;
 
     meeting.actions.forEach((a) => {
-      const splitAction = doc.splitTextToSize(a.action, 105);
+      const splitAction = doc.splitTextToSize(a.action, 88);
       const neededHeight = (splitAction.length * 4.5) + 4;
       checkPageBreak(neededHeight);
-      
+
       doc.setFont("Helvetica", "normal");
       doc.setFontSize(8.5);
       doc.setTextColor(55, 65, 81);
       doc.text(splitAction, 17, currentY);
-      doc.text(a.assignee, 125, currentY);
-      
+      doc.text(doc.splitTextToSize(a.assignee, 36), 108, currentY);
+
       // Style priority badge text
       if (a.priority === "Alta") {
         doc.setTextColor(255, 107, 90);
@@ -2294,7 +2299,10 @@ Origem do áudio: Supabase Storage (${storagePath})
       } else {
         doc.setTextColor(5, 150, 105);
       }
-      doc.text(a.priority, 168, currentY);
+      doc.text(a.priority, 148, currentY);
+
+      doc.setTextColor(55, 65, 81);
+      doc.text(a.deadline ? a.deadline.split("-").reverse().join("/") : "—", 175, currentY);
       
       doc.setDrawColor(243, 244, 246);
       doc.line(15, currentY + (splitAction.length * 4.5) + 1, 195, currentY + (splitAction.length * 4.5) + 1);
@@ -2465,9 +2473,10 @@ Origem do áudio: Supabase Storage (${storagePath})
         <table class="action-table">
           <thead>
             <tr>
-              <th style="width: 50%;">Ação / Tarefa Especificada</th>
-              <th style="width: 25%;">Responsável</th>
-              <th style="width: 25%;">Prioridade</th>
+              <th style="width: 42%;">Ação / Tarefa Especificada</th>
+              <th style="width: 20%;">Responsável</th>
+              <th style="width: 18%;">Prioridade</th>
+              <th style="width: 20%;">Prazo</th>
             </tr>
           </thead>
           <tbody>
@@ -2480,6 +2489,7 @@ Origem do áudio: Supabase Storage (${storagePath})
                     ${a.priority}
                   </span>
                 </td>
+                <td>${a.deadline ? a.deadline.split("-").reverse().join("/") : "—"}</td>
               </tr>
             `).join("")}
           </tbody>
@@ -2995,7 +3005,7 @@ Origem do áudio: Supabase Storage (${storagePath})
                                   setTitleDraft(selectedMeeting.title || "");
                                   setIsEditingTitle(true);
                                 }}
-                                className="shrink-0 p-1 text-alfredo-muted hover:text-alfredo-teal-dark hover:bg-white rounded transition-colors cursor-pointer opacity-0 group-hover/title:opacity-100 focus:opacity-100"
+                                className="shrink-0 p-1 text-alfredo-teal-dark hover:text-alfredo-teal-dark hover:bg-white rounded transition-colors cursor-pointer"
                                 title="Editar nome da reunião"
                               >
                                 <Edit2 size={14} />
@@ -3510,33 +3520,127 @@ Origem do áudio: Supabase Storage (${storagePath})
 
                       {/* BENTO BLOCK 1.6: KEY DECISIONS */}
                       <div className="glass rounded-2xl p-6 relative overflow-hidden">
-                        <div className="flex items-center gap-2 mb-4">
-                          <div className="p-1.5 rounded-lg bg-alfredo-offwhite border border-alfredo-border text-alfredo-warning">
-                            <CheckSquare size={14} />
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 rounded-lg bg-alfredo-offwhite border border-alfredo-border text-alfredo-warning">
+                              <CheckSquare size={14} />
+                            </div>
+                            <h3 className="font-semibold text-sm uppercase tracking-wider text-alfredo-navy">
+                              Decisões Importantes & Alinhamentos Estratégicos
+                            </h3>
                           </div>
-                          <h3 className="font-semibold text-sm uppercase tracking-wider text-alfredo-navy">
-                            Decisões Importantes & Alinhamentos Estratégicos
-                          </h3>
+                          <button
+                            onClick={() => {
+                              setMeetings((prev) =>
+                                prev.map((m) =>
+                                  m.id === selectedMeeting.id
+                                    ? { ...m, decisions: [...(m.decisions || []), ""] }
+                                    : m,
+                                ),
+                              );
+                              setEditingDecisionIdx((selectedMeeting.decisions || []).length);
+                              setDecisionDraft("");
+                            }}
+                            className="flex items-center gap-1 text-[11px] font-bold text-alfredo-teal-dark bg-alfredo-surface-teal hover:bg-alfredo-surface-teal border border-alfredo-teal/30 rounded-lg px-2 py-1 transition-all cursor-pointer shrink-0"
+                          >
+                            <Plus size={11} />
+                            Nova Decisão
+                          </button>
                         </div>
 
                         <div className="space-y-2.5">
-                          {(selectedMeeting.decisions && selectedMeeting.decisions.length > 0
-                            ? selectedMeeting.decisions
-                            : [
-                                "Aprovação unânime do plano de trabalho de assessoria apresentado pela Triforce.",
-                                "Validação imediata das metas fiscais do segundo trimestre com o cliente.",
-                                "Próximo alinhamento de acompanhamento de sprint agendado para o dia 15."
-                              ]
-                          ).map((decision, idx) => (
-                            <div key={idx} className="flex items-start gap-3 p-3 bg-alfredo-offwhite border border-alfredo-border hover:border-alfredo-border rounded-xl transition-all">
-                              <span className="w-5 h-5 rounded-full bg-alfredo-warning/10 text-alfredo-warning flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
-                                {idx + 1}
-                              </span>
-                              <p className="text-xs text-alfredo-graphite leading-relaxed font-sans">
-                                {decision}
-                              </p>
-                            </div>
-                          ))}
+                          {(selectedMeeting.decisions || []).length === 0 ? (
+                            <p className="text-xs text-alfredo-muted">Nenhuma decisão registrada nesta reunião.</p>
+                          ) : (
+                            (selectedMeeting.decisions || []).map((decision, idx) => (
+                              <div key={idx} className="flex items-start gap-3 p-3 bg-alfredo-offwhite border border-alfredo-border rounded-xl transition-all">
+                                <span className="w-5 h-5 rounded-full bg-alfredo-warning/10 text-alfredo-warning flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                                  {idx + 1}
+                                </span>
+                                {editingDecisionIdx === idx ? (
+                                  <div className="flex-1 flex flex-col gap-2">
+                                    <textarea
+                                      autoFocus
+                                      value={decisionDraft}
+                                      onChange={(e) => setDecisionDraft(e.target.value)}
+                                      rows={2}
+                                      placeholder="Descreva a decisão ou alinhamento..."
+                                      className="w-full bg-white border border-alfredo-teal/50 rounded-lg py-1.5 px-2.5 text-xs text-alfredo-navy focus:outline-none focus:border-alfredo-teal resize-y"
+                                    />
+                                    <div className="flex items-center gap-2 justify-end">
+                                      <button
+                                        onClick={() => {
+                                          // Cancelar: remove a decisão se estava vazia (recém-criada)
+                                          setMeetings((prev) =>
+                                            prev.map((m) =>
+                                              m.id === selectedMeeting.id
+                                                ? { ...m, decisions: (m.decisions || []).filter((d, i) => !(i === idx && !d.trim())) }
+                                                : m,
+                                            ),
+                                          );
+                                          setEditingDecisionIdx(null);
+                                        }}
+                                        className="inline-flex items-center gap-1 rounded-lg border border-alfredo-border bg-white px-2 py-1 text-[11px] font-semibold text-alfredo-graphite hover:text-alfredo-navy cursor-pointer"
+                                      >
+                                        <X size={12} /> Cancelar
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          const t = decisionDraft.trim();
+                                          setMeetings((prev) =>
+                                            prev.map((m) => {
+                                              if (m.id !== selectedMeeting.id) return m;
+                                              const arr = [...(m.decisions || [])];
+                                              if (t) arr[idx] = t;
+                                              else arr.splice(idx, 1);
+                                              return { ...m, decisions: arr };
+                                            }),
+                                          );
+                                          setEditingDecisionIdx(null);
+                                        }}
+                                        className="inline-flex items-center gap-1 rounded-lg bg-alfredo-teal px-2.5 py-1 text-[11px] font-bold text-alfredo-navy hover:bg-alfredo-teal active:scale-[0.98] cursor-pointer"
+                                      >
+                                        <Check size={12} /> Salvar
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <p className="flex-1 text-xs text-alfredo-graphite leading-relaxed font-sans">
+                                      {decision}
+                                    </p>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <button
+                                        onClick={() => {
+                                          setEditingDecisionIdx(idx);
+                                          setDecisionDraft(decision);
+                                        }}
+                                        className="p-1 text-alfredo-graphite hover:text-alfredo-teal-dark hover:bg-white rounded transition-colors cursor-pointer"
+                                        title="Editar decisão"
+                                      >
+                                        <Edit2 size={11} />
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setMeetings((prev) =>
+                                            prev.map((m) =>
+                                              m.id === selectedMeeting.id
+                                                ? { ...m, decisions: (m.decisions || []).filter((_, i) => i !== idx) }
+                                                : m,
+                                            ),
+                                          );
+                                        }}
+                                        className="p-1 text-alfredo-graphite hover:text-alfredo-coral hover:bg-white rounded transition-colors cursor-pointer"
+                                        title="Excluir decisão"
+                                      >
+                                        <Trash2 size={11} />
+                                      </button>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            ))
+                          )}
                         </div>
                       </div>
 
@@ -3691,8 +3795,8 @@ Origem do áudio: Supabase Storage (${storagePath})
                                         </div>
                                       </div>
 
-                                      {/* Task Edit/Delete Actions */}
-                                      <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      {/* Task Edit/Delete Actions — sempre visíveis */}
+                                      <div className="flex items-center gap-1 shrink-0">
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();

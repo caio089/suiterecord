@@ -113,11 +113,36 @@ export async function getAudioDurationSeconds(blob: Blob): Promise<number> {
     const audio = new Audio();
     audio.preload = "metadata";
     const duration = await new Promise<number>((resolve, reject) => {
+      let settled = false;
+      const done = (v: number) => {
+        if (!settled) {
+          settled = true;
+          resolve(v);
+        }
+      };
       audio.onloadedmetadata = () => {
-        resolve(Number.isFinite(audio.duration) ? audio.duration : 0);
+        if (Number.isFinite(audio.duration) && audio.duration > 0) {
+          done(audio.duration);
+          return;
+        }
+        // WebM/Opus gravado pelo MediaRecorder é streaming: o cabeçalho não traz
+        // a duração e `audio.duration` vem Infinity/NaN. Forçar o currentTime pro
+        // fim faz o navegador varrer o arquivo e calcular a duração real.
+        const onTimeUpdate = () => {
+          if (Number.isFinite(audio.duration) && audio.duration > 0) {
+            audio.removeEventListener("timeupdate", onTimeUpdate);
+            const real = audio.duration;
+            audio.currentTime = 0;
+            done(real);
+          }
+        };
+        audio.addEventListener("timeupdate", onTimeUpdate);
+        audio.currentTime = 1e101;
       };
       audio.onerror = () => reject(new Error("Não foi possível ler a duração do áudio."));
       audio.src = url;
+      // Rede de segurança: não travar se o navegador não emitir os eventos.
+      setTimeout(() => done(0), 20000);
     });
     return Math.max(1, Math.round(duration));
   } finally {
