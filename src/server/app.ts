@@ -321,18 +321,34 @@ async function enqueueDurableTranscription(req: express.Request, jobId: string):
   const workerSecret = process.env.TRANSCRIPTION_WORKER_SECRET || "";
   if (!qstashToken || !workerSecret) return false;
   const callback = `${resolveApiPublicUrl(req)}/api/internal/transcription-worker`;
-  const response = await fetch(`https://qstash.upstash.io/v2/publish/${encodeURIComponent(callback)}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${qstashToken}`,
-      "Content-Type": "application/json",
-      "Upstash-Retries": "5",
-      "Upstash-Forward-Authorization": `Bearer ${workerSecret}`,
-    },
-    body: JSON.stringify({ jobId }),
-  });
-  if (!response.ok) throw new Error(`Não foi possível enfileirar a transcrição (${response.status}).`);
-  return true;
+  // A URL de destino vai LITERAL no path do QStash (/v2/publish/https://...).
+  // Percent-encodá-la (encodeURIComponent) faz o QStash responder 400
+  // ("invalid destination url"), que era o que derrubava toda a transcrição.
+  try {
+    const response = await fetch(`https://qstash.upstash.io/v2/publish/${callback}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${qstashToken}`,
+        "Content-Type": "application/json",
+        "Upstash-Retries": "5",
+        "Upstash-Forward-Authorization": `Bearer ${workerSecret}`,
+      },
+      body: JSON.stringify({ jobId }),
+    });
+    if (!response.ok) {
+      const detail = await response.text().catch(() => "");
+      // Degrada para processamento in-process em vez de derrubar a transcrição —
+      // e loga o corpo do QStash para diagnóstico (o status sozinho não bastava).
+      console.error(
+        `[enqueue] QStash recusou o enfileiramento (${response.status}) para ${callback}: ${detail.slice(0, 500)} — usando processamento in-process.`,
+      );
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[enqueue] Erro de rede ao chamar o QStash — usando processamento in-process:", err);
+    return false;
+  }
 }
 
 const MEETING_JSON_SCHEMA_HINT = `{
