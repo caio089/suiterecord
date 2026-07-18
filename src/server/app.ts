@@ -76,6 +76,9 @@ app.use((req, res, next) => {
 
 const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
 const GROQ_CHAT_MODEL = process.env.GROQ_CHAT_MODEL || "llama-3.3-70b-versatile";
+// Modelo rápido/barato para o trabalho em volume (resumos de trecho e refino da
+// transcrição). Gasta bem menos TPM que o 70b, que fica reservado à ata final.
+const GROQ_FAST_MODEL = process.env.GROQ_FAST_MODEL || "llama-3.1-8b-instant";
 const GROQ_WHISPER_MODEL = process.env.GROQ_WHISPER_MODEL || "whisper-large-v3-turbo";
 const AUDIO_BUCKET = "audio-recordings";
 const MAX_GROQ_AUDIO_BYTES = 24 * 1024 * 1024;
@@ -238,9 +241,10 @@ async function groqChatText(
   systemPrompt: string,
   userPrompt: string,
   maxTokens: number = GROQ_CHAT_MAX_TOKENS,
+  model: string = GROQ_CHAT_MODEL,
 ): Promise<string> {
   const response = await groqChatRequest({
-    model: GROQ_CHAT_MODEL,
+    model,
     temperature: 0.3,
     max_tokens: maxTokens,
     messages: [
@@ -305,6 +309,7 @@ async function refineTranscript(
         TRANSCRIPT_EDITOR_SYSTEM,
         `Trecho ${index + 1}/${parts.length} da transcrição bruta:\n"""\n${parts[index]}\n"""${contextBlock}`,
         GROQ_REFINE_MAX_TOKENS,
+        GROQ_FAST_MODEL,
       );
       refined.push(out.trim());
     } catch (err) {
@@ -542,12 +547,13 @@ async function runTranscriptionBackground(
       progress_message: "Gerando ata estruturada com Groq Llama (etapa 2 de 2)...",
     });
 
+    // Áudio curto: uma ÚNICA chamada gera ata + transcrição refinada (o campo
+    // `transcript` do JSON já sai com locutores/parágrafos/curadoria), cortando
+    // ~metade dos tokens. Áudio longo: map-reduce com o modelo rápido para caber
+    // no TPM, e a transcrição integral é refinada à parte (a ata usa os resumos).
+    const isLong = rawTranscript.length > GROQ_CHUNK_THRESHOLD_CHARS;
     let transcriptForAnalysis = rawTranscript;
-    if (rawTranscript.length > GROQ_CHUNK_THRESHOLD_CHARS) {
-      // Map-reduce: resume cada trecho (request pequena, cabe no TPM) e depois
-      // analisa a síntese. O regex antigo (`{1,45_000}`) era inválido — o `_`
-      // quebra o quantificador — então nunca dividia e mandava a transcrição
-      // inteira, estourando o limite de tokens da Groq (413).
+    if (isLong) {
       const parts = chunkString(rawTranscript, GROQ_CHUNK_CHARS);
       const summaries: string[] = [];
       for (let index = 0; index < parts.length; index++) {
@@ -559,13 +565,13 @@ async function runTranscriptionBackground(
             "Resuma fielmente este trecho de reunião, preservando nomes, decisões, ações, responsáveis e fatos. Não invente dados.",
             parts[index],
             GROQ_SUMMARY_MAX_TOKENS,
+            GROQ_FAST_MODEL,
           ),
         );
       }
       transcriptForAnalysis = summaries.join("\n\n--- PRÓXIMO TRECHO ---\n\n");
 
-      // Reuniões muito longas: se a soma dos resumos ainda for grande, resume os
-      // resumos (segundo nível do reduce) para caber na análise final.
+      // Reuniões muito longas: reduz os resumos de novo para caber na ata final.
       if (transcriptForAnalysis.length > GROQ_CHUNK_THRESHOLD_CHARS) {
         await updateJob(supabaseAdmin, jobId, {
           progress_message: "Consolidando síntese final...",
@@ -578,6 +584,7 @@ async function runTranscriptionBackground(
               "Una e resuma fielmente estes resumos parciais de uma mesma reunião, preservando nomes, decisões, ações e responsáveis. Não invente dados.",
               part,
               GROQ_SUMMARY_MAX_TOKENS,
+              GROQ_FAST_MODEL,
             ),
           );
         }
@@ -585,42 +592,51 @@ async function runTranscriptionBackground(
       }
     }
 
-    let userPrompt = `Transcrição bruta da reunião:
+    let userPrompt = `Transcrição da reunião:
 """
 ${transcriptForAnalysis}
 """
 
-Com base nessa transcrição, produza a ata estruturada no JSON exigido.
-1. Refine a transcrição de forma profissional, organizando em parágrafos e separando locutores (ex: 'Palestrante 1') quando possível — sem inventar falas.
-2. Crie título, overview, tópicos, decisões, ações (com assignee, prioridade Alta/Média/Baixa e, quando um prazo for mencionado, deadline no formato AAAA-MM-DD), participantes (Triforce vs Cliente) e 3–5 tags.
+Produza a ata estruturada no JSON exigido: título, overview, tópicos, decisões, ações (assignee, prioridade Alta/Média/Baixa e deadline AAAA-MM-DD quando houver prazo), participantes (Triforce vs Cliente) e 3–5 tags.`;
 
-INSTRUÇÃO CRÍTICA:
-NÃO invente participantes fictícios. Se for monólogo/teste, liste apenas quem for identificável.
-Atribua ações apenas a participantes reais.`;
+    if (isLong) {
+      // A transcrição integral é refinada à parte; a ata não precisa reescrevê-la.
+      userPrompt += `\nNo campo "transcript", escreva apenas "(transcrição completa gerada à parte)".`;
+    } else {
+      // Curto: a mesma chamada entrega a transcrição de leitura completa.
+      userPrompt += `\nNo campo "transcript", entregue a transcrição COMPLETA (verbatim, sem resumir) reescrita com locutores separados ("Palestrante 1:", "Palestrante 2:" ou nome real quando o contexto permitir), parágrafos e pontuação corretos, palavrões tarjados (1ª letra + ***) e dados sensíveis (senhas, tokens, cartão, CPF/CNPJ) trocados por "[dado sensível removido]".`;
+    }
+
+    userPrompt += `\n\nNÃO invente participantes fictícios; se for monólogo/teste, liste só quem for identificável. Atribua ações apenas a participantes reais.`;
 
     if (context) {
       userPrompt += `\n\nCONTEXTO REAL DA REUNIÃO:\n${context}\n\nUse este contexto para título, participantes e responsáveis das ações.`;
     }
 
-    const systemPrompt = `Você é o assistente de produtividade do Alfredo.
-Responda APENAS com um objeto JSON válido (sem markdown) neste formato:
+    const systemPrompt = `Você é o assistente de produtividade do Alfredo. Responda APENAS com um objeto JSON válido (sem markdown) neste formato:
 ${MEETING_JSON_SCHEMA_HINT}
 Todos os campos obrigatórios devem existir. Use português brasileiro.`;
 
     const result = await groqChatJson(systemPrompt, userPrompt);
 
-    // Transcrição de leitura: reescrita fiel com locutores separados, parágrafos,
-    // pontuação e curadoria (palavrões tarjados, dados sensíveis removidos). A ata
-    // acima usa resumos hierárquicos; a transcrição entregue permanece integral.
-    let refinedTranscript = rawTranscript;
-    try {
-      refinedTranscript = await refineTranscript(rawTranscript, context, async (msg) => {
-        await updateJob(supabaseAdmin, jobId, { progress_message: msg });
-      });
-    } catch (err) {
-      console.error(`[Job ${jobId}] Falha ao refinar a transcrição — usando a bruta:`, err);
+    // Transcrição de leitura (locutores, parágrafos, curadoria).
+    if (isLong) {
+      // A ata usou resumos; refina a transcrição integral à parte (modelo rápido).
+      let refinedTranscript = rawTranscript;
+      try {
+        refinedTranscript = await refineTranscript(rawTranscript, context, async (msg) => {
+          await updateJob(supabaseAdmin, jobId, { progress_message: msg });
+        });
+      } catch (err) {
+        console.error(`[Job ${jobId}] Falha ao refinar a transcrição — usando a bruta:`, err);
+      }
+      result.transcript = refinedTranscript || rawTranscript;
+    } else {
+      // Curto: usa o transcript já refinado na chamada da ata; cai para o bruto se
+      // o modelo devolveu algo curto demais (sinal de que resumiu em vez de reescrever).
+      const t = typeof result.transcript === "string" ? result.transcript.trim() : "";
+      result.transcript = t.length >= rawTranscript.length * 0.5 ? t : rawTranscript;
     }
-    result.transcript = refinedTranscript || rawTranscript;
     result.topics = Array.isArray(result.topics) ? result.topics : [];
     result.decisions = Array.isArray(result.decisions) ? result.decisions : [];
     result.actions = Array.isArray(result.actions) ? result.actions : [];
