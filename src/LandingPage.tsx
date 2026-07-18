@@ -42,7 +42,10 @@ type LandingPageProps = {
 
 type IntroPhase = "brand" | "fade" | "dawn" | "done";
 
-const BRAND_LETTERS = "Alfredo".split("");
+// Frase de abertura: "Prazer, " em branco e "Alfredo!" em teal (índices >= 8),
+// com a logomarca ao lado (ver bloco da intro).
+const BRAND_LETTERS = "Prazer, Alfredo!".split("");
+const BRAND_TEAL_FROM = 8;
 
 const PLANS = [
   {
@@ -279,14 +282,31 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
             )}
 
             {(introPhase === "brand" || introPhase === "fade") && (
-              <div className="flex max-w-full flex-nowrap items-center justify-center gap-x-[0.06em] overflow-hidden px-3 font-display text-[clamp(1.35rem,5.8vw,4.5rem)] font-bold tracking-tight whitespace-nowrap">
+              <div className="flex max-w-full flex-nowrap items-center justify-center gap-x-[0.35em] overflow-hidden px-3">
+                <motion.span
+                  className="shrink-0"
+                  initial={{ opacity: 0, y: 18, filter: "blur(6px)", scale: 0.9 }}
+                  animate={
+                    introPhase === "fade"
+                      ? { opacity: 0, y: -8, filter: "blur(10px)", scale: 0.97 }
+                      : { opacity: 1, y: 0, filter: "blur(0px)", scale: 1 }
+                  }
+                  transition={{ duration: introPhase === "fade" ? 0.32 : 0.4, ease }}
+                >
+                  <AlfredoMark
+                    size={64}
+                    variant="light"
+                    className="h-[clamp(28px,7vw,64px)] w-[clamp(28px,7vw,64px)]"
+                  />
+                </motion.span>
+                <span className="flex flex-nowrap items-center gap-x-[0.06em] font-display text-[clamp(1.15rem,5vw,3.75rem)] font-bold tracking-tight whitespace-nowrap">
                 {BRAND_LETTERS.map((letter, i) => (
                   <motion.span
                     key={`${letter}-${i}`}
                     className={
                       letter === " "
                         ? "inline-block w-[0.28em] shrink-0"
-                        : i > 6
+                        : i >= BRAND_TEAL_FROM
                           ? "shrink-0 text-alfredo-teal"
                           : "shrink-0 text-white"
                     }
@@ -316,6 +336,7 @@ export default function LandingPage({ logoSrc, onEnter }: LandingPageProps) {
                     {letter === " " ? "\u00A0" : letter}
                   </motion.span>
                 ))}
+                </span>
               </div>
             )}
           </motion.div>

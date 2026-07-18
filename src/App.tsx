@@ -3196,7 +3196,7 @@ Origem do áudio: Supabase Storage (${storagePath})
                       <div className="p-4 bg-alfredo-offwhite border border-alfredo-border rounded-xl text-xs text-alfredo-graphite flex items-start gap-2.5">
                         <Info size={16} className="text-alfredo-teal-dark shrink-0 mt-0.5" />
                         <div>
-                          A transcrição é processada na íntegra pelo modelo de voz do Gemini. O modelo detecta automaticamente os locutores na reunião física para organizar o diálogo em parágrafos separados.
+                          A transcrição é processada na íntegra pelo assistente de voz do Alfredo, que separa os locutores e organiza o diálogo em parágrafos com pontuação e curadoria de conteúdo.
                         </div>
                       </div>
 
@@ -4986,7 +4986,7 @@ Origem do áudio: Supabase Storage (${storagePath})
                 <div className="p-4 bg-alfredo-offwhite border-b border-alfredo-border text-[11px] text-alfredo-graphite leading-relaxed flex items-start gap-2">
                   <Info size={14} className="text-alfredo-teal-dark shrink-0 mt-0.5" />
                   <span>
-                    Consulte todo o histórico de reuniões usando linguagem natural. O Gemini buscará a resposta unificando todas as transcrições salvas.
+                    Consulte todo o histórico de reuniões usando linguagem natural. O Alfredo buscará a resposta unificando todas as transcrições salvas.
                   </span>
                 </div>
 
@@ -5004,7 +5004,7 @@ Origem do áudio: Supabase Storage (${storagePath})
                       
                       <div className="text-[10px] text-alfredo-muted font-mono flex items-center gap-1 uppercase">
                         <Sparkles size={11} className="text-alfredo-teal-dark" />
-                        <span>Resposta do Gemini:</span>
+                        <span>Resposta do Alfredo:</span>
                       </div>
                       <div className="text-xs text-alfredo-graphite bg-alfredo-offwhite p-3 rounded-xl border border-alfredo-border leading-relaxed whitespace-pre-wrap">
                         {smartAnswer}
