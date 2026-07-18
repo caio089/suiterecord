@@ -779,9 +779,10 @@ export default function App() {
   // Active meeting context
   const selectedMeeting = meetings.find(m => m.id === selectedMeetingId) || null;
 
-  // Sai do modo de edição de transcrição ao trocar de reunião (evita draft preso).
+  // Sai dos modos de edição ao trocar de reunião (evita draft preso).
   useEffect(() => {
     setIsEditingTranscript(false);
+    setIsEditingTitle(false);
   }, [selectedMeetingId]);
 
   // Triforce logo loading state
@@ -849,6 +850,9 @@ export default function App() {
   // Edição manual da transcrição completa
   const [isEditingTranscript, setIsEditingTranscript] = useState(false);
   const [transcriptDraft, setTranscriptDraft] = useState("");
+  // Edição do título da reunião
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
   
@@ -2933,10 +2937,72 @@ Origem do áudio: Supabase Storage (${storagePath})
                             <ChevronLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
                             Voltar para Minhas Reuniões
                           </button>
-                          <h2 className="font-semibold text-xl text-alfredo-navy tracking-tight">
-                            {selectedMeeting.title}
-                          </h2>
-                          
+                          {isEditingTitle ? (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={titleDraft}
+                                autoFocus
+                                onChange={(e) => setTitleDraft(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    const t = titleDraft.trim();
+                                    if (t) {
+                                      setMeetings((prev) =>
+                                        prev.map((m) => (m.id === selectedMeeting.id ? { ...m, title: t } : m)),
+                                      );
+                                    }
+                                    setIsEditingTitle(false);
+                                  } else if (e.key === "Escape") {
+                                    setIsEditingTitle(false);
+                                  }
+                                }}
+                                className="font-semibold text-xl text-alfredo-navy tracking-tight bg-white border border-alfredo-teal/50 rounded-lg px-2 py-1 focus:outline-none focus:border-alfredo-teal min-w-0 flex-1"
+                                placeholder="Título da reunião"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const t = titleDraft.trim();
+                                  if (t) {
+                                    setMeetings((prev) =>
+                                      prev.map((m) => (m.id === selectedMeeting.id ? { ...m, title: t } : m)),
+                                    );
+                                  }
+                                  setIsEditingTitle(false);
+                                }}
+                                className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-alfredo-teal px-2.5 py-1.5 text-[11px] font-bold text-alfredo-navy transition-all hover:bg-alfredo-teal active:scale-[0.98] cursor-pointer"
+                              >
+                                <Check size={13} /> Salvar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setIsEditingTitle(false)}
+                                className="shrink-0 inline-flex items-center rounded-lg border border-alfredo-border bg-white px-2 py-1.5 text-alfredo-muted hover:text-alfredo-navy transition-colors cursor-pointer"
+                                title="Cancelar"
+                              >
+                                <X size={13} />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 group/title">
+                              <h2 className="font-semibold text-xl text-alfredo-navy tracking-tight">
+                                {selectedMeeting.title}
+                              </h2>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setTitleDraft(selectedMeeting.title || "");
+                                  setIsEditingTitle(true);
+                                }}
+                                className="shrink-0 p-1 text-alfredo-muted hover:text-alfredo-teal-dark hover:bg-white rounded transition-colors cursor-pointer opacity-0 group-hover/title:opacity-100 focus:opacity-100"
+                                title="Editar nome da reunião"
+                              >
+                                <Edit2 size={14} />
+                              </button>
+                            </div>
+                          )}
+
                           <div className="flex items-center gap-4 text-xs text-alfredo-graphite font-mono mt-1.5">
                             <span className="flex items-center gap-1 text-alfredo-graphite">
                               Data: {selectedMeeting.date}
