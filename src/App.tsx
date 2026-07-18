@@ -292,10 +292,12 @@ const getMeetingParticipantsList = (meeting: any, permittedUsers: any[] = []) =>
     if (isGeneric) return;
 
     const lower = speaker.toLowerCase();
+    // Classifica pela lista real de usuários da conta (permittedUsers = Triforce)
+    // + palavras de papel genéricas — sem nomes próprios chumbados no código.
     const isTriforce = [
-      "luiz", "sofia", "renata", "rodolfo", "consultor", "triforce",
+      "consultor", "triforce", "assessor",
       ...knownTriforceNames
-    ].some(keyword => lower.includes(keyword));
+    ].some(keyword => keyword && lower.includes(keyword));
     
     if (isTriforce) {
       if (!autoTriforce.includes(speaker)) autoTriforce.push(speaker);
@@ -784,6 +786,8 @@ export default function App() {
     setIsEditingTranscript(false);
     setIsEditingTitle(false);
     setEditingDecisionIdx(null);
+    setIsEditingOverview(false);
+    setEditingTopicIdx(null);
   }, [selectedMeetingId]);
 
   // Triforce logo loading state
@@ -848,6 +852,12 @@ export default function App() {
   // Edição de decisões importantes
   const [editingDecisionIdx, setEditingDecisionIdx] = useState<number | null>(null);
   const [decisionDraft, setDecisionDraft] = useState("");
+  // Edição da visão geral e dos tópicos
+  const [isEditingOverview, setIsEditingOverview] = useState(false);
+  const [overviewDraft, setOverviewDraft] = useState("");
+  const [editingTopicIdx, setEditingTopicIdx] = useState<number | null>(null);
+  const [topicDraftTitle, setTopicDraftTitle] = useState("");
+  const [topicDraftDetails, setTopicDraftDetails] = useState("");
 
   // UI state
   const [activeTab, setActiveTab] = useState<"transcript" | "summary">("summary");
@@ -988,7 +998,7 @@ export default function App() {
         try {
           new Notification(title, {
             body: body,
-            icon: "https://cdn-icons-png.flaticon.com/512/3602/3602145.png"
+            icon: "/alfredo-icon-192.png"
           });
         } catch (err) {
           console.error("Erro ao disparar notificação nativa:", err);
@@ -3264,7 +3274,8 @@ Origem do áudio: Supabase Storage (${storagePath})
                                         // Also add to participants list if not already there
                                         const parts = getMeetingParticipantsList(selectedMeeting, permittedUsers);
                                         const lowerVal = val.toLowerCase();
-                                        const isTriforce = ["luiz", "sofia", "renata", "rodolfo", "consultor", "triforce"].some(keyword => lowerVal.includes(keyword));
+                                        const isTriforce = ["consultor", "triforce", "assessor", ...permittedUsers.map(u => (u.name || "").toLowerCase())]
+                                          .some(keyword => keyword && lowerVal.includes(keyword));
                                         
                                         const updatedTriforce = [...parts.membersTriforce];
                                         const updatedClient = [...parts.membersClient];
@@ -3365,14 +3376,13 @@ Origem do áudio: Supabase Storage (${storagePath})
                             const parts = getMeetingParticipantsList(selectedMeeting, permittedUsers);
                             const cleanSpeaker = speakerName.replace(":", "").trim();
                             
-                            const isTriforce = parts.membersTriforce.some(p => p.toLowerCase() === cleanSpeaker.toLowerCase()) || 
-                                              cleanSpeaker.toLowerCase().includes("triforce") || 
+                            const isTriforce = parts.membersTriforce.some(p => p.toLowerCase() === cleanSpeaker.toLowerCase()) ||
+                                              cleanSpeaker.toLowerCase().includes("triforce") ||
                                               cleanSpeaker.toLowerCase().includes("consultor") ||
-                                              ["luiz", "sofia", "renata", "rodolfo"].some(kw => cleanSpeaker.toLowerCase().includes(kw));
+                                              permittedUsers.some(u => (u.name || "").toLowerCase() === cleanSpeaker.toLowerCase());
                             const isClient = parts.membersClient.some(p => p.toLowerCase() === cleanSpeaker.toLowerCase()) ||
                                              cleanSpeaker.toLowerCase().includes("cliente") ||
-                                             cleanSpeaker.toLowerCase().includes("parceiro") ||
-                                             ["gestor", "vitor", "carlos", "mariana"].some(kw => cleanSpeaker.toLowerCase().includes(kw));
+                                             cleanSpeaker.toLowerCase().includes("parceiro");
 
                             // Fallback to speaker index colors if neither is matched explicitly
                             const speakers = getSpeakersFromTranscript(selectedMeeting.transcript);
@@ -3419,17 +3429,56 @@ Origem do áudio: Supabase Storage (${storagePath})
                         <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
                           <FileText size={120} />
                         </div>
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className="p-1.5 rounded-lg bg-alfredo-offwhite border border-alfredo-border text-alfredo-teal-dark">
-                            <Sparkles size={14} />
+                        <div className="flex items-center justify-between gap-2 mb-3">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 rounded-lg bg-alfredo-offwhite border border-alfredo-border text-alfredo-teal-dark">
+                              <Sparkles size={14} />
+                            </div>
+                            <h3 className="font-semibold text-sm uppercase tracking-wider text-alfredo-navy">
+                              Visão Geral Inteligente (IA)
+                            </h3>
                           </div>
-                          <h3 className="font-semibold text-sm uppercase tracking-wider text-alfredo-navy">
-                            Visão Geral Inteligente (IA)
-                          </h3>
+                          {!isEditingOverview && (
+                            <button
+                              onClick={() => { setOverviewDraft(selectedMeeting.overview || ""); setIsEditingOverview(true); }}
+                              className="p-1 text-alfredo-teal-dark hover:bg-white rounded transition-colors cursor-pointer shrink-0"
+                              title="Editar visão geral"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                          )}
                         </div>
-                        <p className="text-sm text-alfredo-graphite leading-relaxed">
-                          {selectedMeeting.overview}
-                        </p>
+                        {isEditingOverview ? (
+                          <div className="flex flex-col gap-2">
+                            <textarea
+                              autoFocus
+                              value={overviewDraft}
+                              onChange={(e) => setOverviewDraft(e.target.value)}
+                              rows={4}
+                              className="w-full bg-white border border-alfredo-teal/50 rounded-lg py-2 px-3 text-sm text-alfredo-navy focus:outline-none focus:border-alfredo-teal resize-y"
+                              placeholder="Resumo executivo da reunião..."
+                            />
+                            <div className="flex items-center gap-2 justify-end">
+                              <button onClick={() => setIsEditingOverview(false)} className="inline-flex items-center gap-1 rounded-lg border border-alfredo-border bg-white px-3 py-1.5 text-[11px] font-semibold text-alfredo-graphite hover:text-alfredo-navy cursor-pointer">
+                                <X size={12} /> Cancelar
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const t = overviewDraft.trim();
+                                  setMeetings(prev => prev.map(m => m.id === selectedMeeting.id ? { ...m, overview: t } : m));
+                                  setIsEditingOverview(false);
+                                }}
+                                className="inline-flex items-center gap-1 rounded-lg bg-alfredo-teal px-3 py-1.5 text-[11px] font-bold text-alfredo-navy hover:bg-alfredo-teal active:scale-[0.98] cursor-pointer"
+                              >
+                                <Check size={12} /> Salvar
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-alfredo-graphite leading-relaxed">
+                            {selectedMeeting.overview || <span className="text-alfredo-muted">Sem visão geral. Clique no lápis para adicionar.</span>}
+                          </p>
+                        )}
                       </div>
 
                       {/* BENTO BLOCK 1.5: CONFIRMED PARTICIPANTS */}
@@ -3649,28 +3698,107 @@ Origem do áudio: Supabase Storage (${storagePath})
                         
                         {/* Discussion Topics list */}
                         <div className="glass rounded-2xl p-6 flex flex-col">
-                          <div className="flex items-center gap-2 mb-4 shrink-0">
-                            <div className="p-1.5 rounded-lg bg-alfredo-offwhite border border-alfredo-border text-alfredo-teal-dark">
-                              <Info size={14} />
+                          <div className="flex items-center justify-between gap-2 mb-4 shrink-0">
+                            <div className="flex items-center gap-2">
+                              <div className="p-1.5 rounded-lg bg-alfredo-offwhite border border-alfredo-border text-alfredo-teal-dark">
+                                <Info size={14} />
+                              </div>
+                              <h3 className="font-semibold text-sm uppercase tracking-wider text-alfredo-navy">
+                                Tópicos Discutidos
+                              </h3>
                             </div>
-                            <h3 className="font-semibold text-sm uppercase tracking-wider text-alfredo-navy">
-                              Tópicos Discutidos
-                            </h3>
+                            <button
+                              onClick={() => {
+                                setMeetings(prev => prev.map(m => m.id === selectedMeeting.id ? { ...m, topics: [...(m.topics || []), { topic: "", details: "" }] } : m));
+                                setEditingTopicIdx((selectedMeeting.topics || []).length);
+                                setTopicDraftTitle(""); setTopicDraftDetails("");
+                              }}
+                              className="flex items-center gap-1 text-[11px] font-bold text-alfredo-teal-dark bg-alfredo-surface-teal hover:bg-alfredo-surface-teal border border-alfredo-teal/30 rounded-lg px-2 py-1 transition-all cursor-pointer shrink-0"
+                            >
+                              <Plus size={11} /> Novo Tópico
+                            </button>
                           </div>
-                          
+
                           <div className="space-y-4 overflow-y-auto flex-1 pr-1 custom-scrollbar">
                             {selectedMeeting.topics.length === 0 ? (
-                              <p className="text-xs text-alfredo-muted">Nenhum tópico extraído.</p>
+                              <p className="text-xs text-alfredo-muted">Nenhum tópico registrado.</p>
                             ) : (
                               selectedMeeting.topics.map((t, idx) => (
-                                <div key={idx} className="p-3 bg-alfredo-offwhite border border-alfredo-border hover:border-alfredo-teal/30 rounded-xl transition-all">
-                                  <h4 className="text-xs font-semibold text-alfredo-navy flex items-center gap-2 mb-1.5">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-alfredo-teal"></span>
-                                    {t.topic}
-                                  </h4>
-                                  <p className="text-[11px] text-alfredo-graphite leading-relaxed">
-                                    {t.details}
-                                  </p>
+                                <div key={idx} className="p-3 bg-alfredo-offwhite border border-alfredo-border rounded-xl transition-all">
+                                  {editingTopicIdx === idx ? (
+                                    <div className="flex flex-col gap-2">
+                                      <input
+                                        autoFocus
+                                        value={topicDraftTitle}
+                                        onChange={(e) => setTopicDraftTitle(e.target.value)}
+                                        placeholder="Título do tópico"
+                                        className="w-full bg-white border border-alfredo-teal/50 rounded-lg py-1.5 px-2.5 text-xs font-semibold text-alfredo-navy focus:outline-none focus:border-alfredo-teal"
+                                      />
+                                      <textarea
+                                        value={topicDraftDetails}
+                                        onChange={(e) => setTopicDraftDetails(e.target.value)}
+                                        rows={2}
+                                        placeholder="Detalhes do que foi discutido"
+                                        className="w-full bg-white border border-alfredo-border rounded-lg py-1.5 px-2.5 text-[11px] text-alfredo-graphite focus:outline-none focus:border-alfredo-teal/60 resize-y"
+                                      />
+                                      <div className="flex items-center gap-2 justify-end">
+                                        <button
+                                          onClick={() => {
+                                            setMeetings(prev => prev.map(m => m.id === selectedMeeting.id ? { ...m, topics: (m.topics || []).filter((tp, i) => !(i === idx && !tp.topic.trim() && !tp.details.trim())) } : m));
+                                            setEditingTopicIdx(null);
+                                          }}
+                                          className="inline-flex items-center gap-1 rounded-lg border border-alfredo-border bg-white px-2 py-1 text-[11px] font-semibold text-alfredo-graphite hover:text-alfredo-navy cursor-pointer"
+                                        >
+                                          <X size={12} /> Cancelar
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            const title = topicDraftTitle.trim();
+                                            const details = topicDraftDetails.trim();
+                                            setMeetings(prev => prev.map(m => {
+                                              if (m.id !== selectedMeeting.id) return m;
+                                              const arr = [...(m.topics || [])];
+                                              if (!title && !details) arr.splice(idx, 1);
+                                              else arr[idx] = { topic: title || "Tópico", details };
+                                              return { ...m, topics: arr };
+                                            }));
+                                            setEditingTopicIdx(null);
+                                          }}
+                                          className="inline-flex items-center gap-1 rounded-lg bg-alfredo-teal px-2.5 py-1 text-[11px] font-bold text-alfredo-navy hover:bg-alfredo-teal active:scale-[0.98] cursor-pointer"
+                                        >
+                                          <Check size={12} /> Salvar
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="min-w-0 flex-1">
+                                        <h4 className="text-xs font-semibold text-alfredo-navy flex items-center gap-2 mb-1.5">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-alfredo-teal shrink-0"></span>
+                                          {t.topic}
+                                        </h4>
+                                        <p className="text-[11px] text-alfredo-graphite leading-relaxed">
+                                          {t.details}
+                                        </p>
+                                      </div>
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        <button
+                                          onClick={() => { setEditingTopicIdx(idx); setTopicDraftTitle(t.topic); setTopicDraftDetails(t.details); }}
+                                          className="p-1 text-alfredo-graphite hover:text-alfredo-teal-dark hover:bg-white rounded transition-colors cursor-pointer"
+                                          title="Editar tópico"
+                                        >
+                                          <Edit2 size={11} />
+                                        </button>
+                                        <button
+                                          onClick={() => setMeetings(prev => prev.map(m => m.id === selectedMeeting.id ? { ...m, topics: (m.topics || []).filter((_, i) => i !== idx) } : m))}
+                                          className="p-1 text-alfredo-graphite hover:text-alfredo-coral hover:bg-white rounded transition-colors cursor-pointer"
+                                          title="Excluir tópico"
+                                        >
+                                          <Trash2 size={11} />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               ))
                             )}
@@ -4483,12 +4611,7 @@ Origem do áudio: Supabase Storage (${storagePath})
                               name,
                               email,
                               role: role || "user",
-                              photoUrl: `https://images.unsplash.com/photo-${[
-                                "1534528741775-53994a69daeb",
-                                "1506794778202-cad84cf45f1d",
-                                "1494790108377-be9c29b29330",
-                                "1507003211169-0a1dd7228f2d"
-                              ][Math.floor(Math.random() * 4)]}?auto=format&fit=crop&w=150&q=80`,
+                              photoUrl: `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(name || email)}`,
                               googleCalendarLinked: false
                             };
 
@@ -4562,7 +4685,7 @@ Origem do áudio: Supabase Storage (${storagePath})
                             >
                               <div className="flex items-center gap-3">
                                 <img
-                                  src={user.photoUrl || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80"}
+                                  src={user.photoUrl || `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(user.name || user.email)}`}
                                   alt={user.name}
                                   className="w-8 h-8 rounded-full object-cover border border-alfredo-border"
                                 />
