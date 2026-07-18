@@ -723,6 +723,11 @@ export default function App() {
   // Active meeting context
   const selectedMeeting = meetings.find(m => m.id === selectedMeetingId) || null;
 
+  // Sai do modo de edição de transcrição ao trocar de reunião (evita draft preso).
+  useEffect(() => {
+    setIsEditingTranscript(false);
+  }, [selectedMeetingId]);
+
   // Triforce logo loading state
   const [logoBase64, setLogoBase64] = useState<string>("");
 
@@ -784,6 +789,9 @@ export default function App() {
 
   // UI state
   const [activeTab, setActiveTab] = useState<"transcript" | "summary">("summary");
+  // Edição manual da transcrição completa
+  const [isEditingTranscript, setIsEditingTranscript] = useState(false);
+  const [transcriptDraft, setTranscriptDraft] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
   
@@ -3159,6 +3167,54 @@ Origem do áudio: Supabase Storage (${storagePath})
                       )}
 
                       <div className="bg-white border border-alfredo-border rounded-xl p-6 shadow-inner">
+                        <div className="flex items-center justify-between gap-3 mb-4 pb-3 border-b border-alfredo-border">
+                          <h4 className="text-xs font-bold text-alfredo-navy uppercase tracking-wider">Transcrição</h4>
+                          {isEditingTranscript ? (
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setIsEditingTranscript(false)}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-alfredo-border bg-white px-3 py-1.5 text-[11px] font-semibold text-alfredo-graphite transition-colors hover:text-alfredo-navy cursor-pointer"
+                              >
+                                <X size={13} /> Cancelar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const txt = transcriptDraft;
+                                  setMeetings(prev =>
+                                    prev.map(m => (m.id === selectedMeeting.id ? { ...m, transcript: txt } : m)),
+                                  );
+                                  setIsEditingTranscript(false);
+                                }}
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-alfredo-teal px-3 py-1.5 text-[11px] font-bold text-alfredo-navy transition-all hover:bg-alfredo-teal active:scale-[0.98] cursor-pointer"
+                              >
+                                <Check size={13} /> Salvar
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setTranscriptDraft(selectedMeeting.transcript || "");
+                                setIsEditingTranscript(true);
+                              }}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-alfredo-border bg-alfredo-offwhite px-3 py-1.5 text-[11px] font-semibold text-alfredo-graphite transition-colors hover:border-alfredo-teal/40 hover:text-alfredo-navy cursor-pointer shrink-0"
+                            >
+                              <Edit2 size={13} /> Editar
+                            </button>
+                          )}
+                        </div>
+                        {isEditingTranscript ? (
+                          <textarea
+                            value={transcriptDraft}
+                            onChange={(e) => setTranscriptDraft(e.target.value)}
+                            rows={22}
+                            spellCheck
+                            className="custom-scrollbar w-full resize-y rounded-lg border border-alfredo-border bg-alfredo-offwhite p-4 font-mono text-sm leading-relaxed text-alfredo-graphite focus:border-alfredo-teal/60 focus:outline-none"
+                            placeholder="Edite o texto completo da transcrição. Use uma linha em branco para separar as falas e o formato 'Nome: fala' para manter os locutores."
+                          />
+                        ) : (
                         <div className="prose prose-invert max-w-none">
                           {formatTranscriptText(selectedMeeting.transcript).split("\n\n").map((para, i) => {
                             // Extract speaker name dynamically
@@ -3216,6 +3272,7 @@ Origem do áudio: Supabase Storage (${storagePath})
                             );
                           })}
                         </div>
+                        )}
                       </div>
                     </div>
                   )}

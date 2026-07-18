@@ -4,29 +4,16 @@
       <stop offset="0%" stop-color="#0D1B2A"/>
       <stop offset="100%" stop-color="#0F3D46"/>
     </linearGradient>
-
-    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow
-        dx="0"
-        dy="26"
-        stdDeviation="34"
-        flood-color="#0D1B2A"
-        flood-opacity="0.24"
-      />
-    </filter>
   </defs>
 
-  <rect
-    x="80"
-    y="80"
-    width="864"
-    height="864"
-    rx="210"
-    fill="url(#app-bg)"
-    filter="url(#soft-shadow)"
-  />
+  <!-- Fundo full-bleed (maskable): preenche todo o canvas, sem cantos próprios
+       nem sombra. O launcher/SO aplica a própria máscara arredondada. Sem a
+       sombra inferior o bounding box fica simétrico e o ícone deixa de "subir". -->
+  <rect x="0" y="0" width="1024" height="1024" fill="url(#app-bg)"/>
 
-  <g transform="translate(232 217) scale(2.55)">
+  <!-- Monograma "A" centralizado no canvas 1024×1024 (dentro da safe zone
+       central do ícone adaptativo). translate = centro - centroLocal*escala. -->
+  <g transform="translate(194 163.25) scale(3)">
     <path
       d="M42 188 L93 61 Q106 28 119 61 L170 188"
       fill="none"
