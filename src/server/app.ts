@@ -79,8 +79,56 @@ const GROQ_CHAT_MODEL = process.env.GROQ_CHAT_MODEL || "llama-3.3-70b-versatile"
 const GROQ_WHISPER_MODEL = process.env.GROQ_WHISPER_MODEL || "whisper-large-v3-turbo";
 const AUDIO_BUCKET = "audio-recordings";
 const MAX_GROQ_AUDIO_BYTES = 24 * 1024 * 1024;
-/** Saída generosa o bastante pra transcrição+ata de uma reunião de 3h sem truncar o JSON. */
-const GROQ_CHAT_MAX_TOKENS = 8000;
+// O tier on_demand da Groq limita ~12.000 tokens/minuto (TPM). A conta que a API
+// faz é tokens_de_entrada + max_tokens (saída reservada) ≤ TPM — por isso um
+// max_tokens alto sozinho já estoura em transcrições longas (erro 413
+// "Request too large"). 4000 de saída cabe uma ata JSON completa e deixa ~8000
+// para a entrada; transcrições longas são reduzidas por chunking (map-reduce)
+// antes da análise final.
+const GROQ_CHAT_MAX_TOKENS = 4000;
+const GROQ_SUMMARY_MAX_TOKENS = 1500;
+// ~3,5 chars/token em pt-BR. 16k chars ≈ 4,6k tokens de entrada por trecho.
+const GROQ_CHUNK_CHARS = 16_000;
+// Acima disso a transcrição é resumida em trechos antes da ata final.
+const GROQ_CHUNK_THRESHOLD_CHARS = 22_000;
+const GROQ_MAX_RATELIMIT_RETRIES = 4;
+
+/** Divide uma string em pedaços de no máximo `size` caracteres. */
+function chunkString(text: string, size: number): string[] {
+  const chunks: string[] = [];
+  for (let i = 0; i < text.length; i += size) chunks.push(text.slice(i, i + size));
+  return chunks.length ? chunks : [text];
+}
+
+/**
+ * POST no chat da Groq com retry/backoff em rate limit (429/413). Trechos
+ * consecutivos podem estourar a janela de 1 min de TPM mesmo cabendo
+ * individualmente; o backoff espera (respeitando `retry-after`) e retenta.
+ */
+async function groqChatRequest(body: Record<string, unknown>): Promise<Response> {
+  const apiKey = getGroqApiKey();
+  let lastResponse: Response | null = null;
+  for (let attempt = 0; attempt <= GROQ_MAX_RATELIMIT_RETRIES; attempt++) {
+    const response = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (response.status !== 429 && response.status !== 413) return response;
+    lastResponse = response;
+    if (attempt === GROQ_MAX_RATELIMIT_RETRIES) break;
+    const retryAfter = Number(response.headers.get("retry-after"));
+    const waitMs =
+      Number.isFinite(retryAfter) && retryAfter > 0
+        ? Math.min(retryAfter * 1000 + 500, 65_000)
+        : Math.min(3_000 * 2 ** attempt, 30_000);
+    console.warn(
+      `[groq] rate limit ${response.status}; aguardando ${Math.round(waitMs / 1000)}s e retentando (${attempt + 1}/${GROQ_MAX_RATELIMIT_RETRIES}).`,
+    );
+    await new Promise((r) => setTimeout(r, waitMs));
+  }
+  return lastResponse as Response;
+}
 
 /** Health check para load balancers / plataformas de deploy. */
 app.get("/health", (_req, res) => {
@@ -142,23 +190,15 @@ function runInBackground(fn: () => Promise<void>): void {
 }
 
 async function groqChatJson(systemPrompt: string, userPrompt: string): Promise<any> {
-  const apiKey = getGroqApiKey();
-  const response = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: GROQ_CHAT_MODEL,
-      temperature: 0.2,
-      max_tokens: GROQ_CHAT_MAX_TOKENS,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-    }),
+  const response = await groqChatRequest({
+    model: GROQ_CHAT_MODEL,
+    temperature: 0.2,
+    max_tokens: GROQ_CHAT_MAX_TOKENS,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
   });
 
   if (!response.ok) {
@@ -191,23 +231,19 @@ async function groqChatJson(systemPrompt: string, userPrompt: string): Promise<a
   }
 }
 
-async function groqChatText(systemPrompt: string, userPrompt: string): Promise<string> {
-  const apiKey = getGroqApiKey();
-  const response = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: GROQ_CHAT_MODEL,
-      temperature: 0.3,
-      max_tokens: GROQ_CHAT_MAX_TOKENS,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-    }),
+async function groqChatText(
+  systemPrompt: string,
+  userPrompt: string,
+  maxTokens: number = GROQ_CHAT_MAX_TOKENS,
+): Promise<string> {
+  const response = await groqChatRequest({
+    model: GROQ_CHAT_MODEL,
+    temperature: 0.3,
+    max_tokens: maxTokens,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
   });
 
   if (!response.ok) {
@@ -449,19 +485,46 @@ async function runTranscriptionBackground(
     });
 
     let transcriptForAnalysis = rawTranscript;
-    if (rawTranscript.length > 60_000) {
-      const parts = rawTranscript.match(/[\s\S]{1,45_000}/g) || [rawTranscript];
+    if (rawTranscript.length > GROQ_CHUNK_THRESHOLD_CHARS) {
+      // Map-reduce: resume cada trecho (request pequena, cabe no TPM) e depois
+      // analisa a síntese. O regex antigo (`{1,45_000}`) era inválido — o `_`
+      // quebra o quantificador — então nunca dividia e mandava a transcrição
+      // inteira, estourando o limite de tokens da Groq (413).
+      const parts = chunkString(rawTranscript, GROQ_CHUNK_CHARS);
       const summaries: string[] = [];
       for (let index = 0; index < parts.length; index++) {
         await updateJob(supabaseAdmin, jobId, {
           progress_message: `Consolidando trecho ${index + 1} de ${parts.length}...`,
         });
-        summaries.push(await groqChatText(
-          "Resuma fielmente este trecho de reunião, preservando nomes, decisões, ações, responsáveis e fatos. Não invente dados.",
-          parts[index],
-        ));
+        summaries.push(
+          await groqChatText(
+            "Resuma fielmente este trecho de reunião, preservando nomes, decisões, ações, responsáveis e fatos. Não invente dados.",
+            parts[index],
+            GROQ_SUMMARY_MAX_TOKENS,
+          ),
+        );
       }
       transcriptForAnalysis = summaries.join("\n\n--- PRÓXIMO TRECHO ---\n\n");
+
+      // Reuniões muito longas: se a soma dos resumos ainda for grande, resume os
+      // resumos (segundo nível do reduce) para caber na análise final.
+      if (transcriptForAnalysis.length > GROQ_CHUNK_THRESHOLD_CHARS) {
+        await updateJob(supabaseAdmin, jobId, {
+          progress_message: "Consolidando síntese final...",
+        });
+        const secondPass = chunkString(transcriptForAnalysis, GROQ_CHUNK_CHARS);
+        const merged: string[] = [];
+        for (const part of secondPass) {
+          merged.push(
+            await groqChatText(
+              "Una e resuma fielmente estes resumos parciais de uma mesma reunião, preservando nomes, decisões, ações e responsáveis. Não invente dados.",
+              part,
+              GROQ_SUMMARY_MAX_TOKENS,
+            ),
+          );
+        }
+        transcriptForAnalysis = merged.join("\n\n");
+      }
     }
 
     let userPrompt = `Transcrição bruta da reunião:

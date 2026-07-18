@@ -44,6 +44,8 @@ import {
   updateOwnProfileName,
   buildAudioStoragePath,
   deleteAudioFromStorage,
+  listCloudAudioRecordings,
+  downloadAudioFromStorage,
 } from "./supabase";
 import {
   connectGoogleCalendar,
@@ -491,6 +493,7 @@ export default function App() {
 
   // LOCAL RECORDINGS BACKUP STATES
   const [localBackups, setLocalBackups] = useState<LocalRecording[]>([]);
+  const [isRecoveringCloud, setIsRecoveringCloud] = useState(false);
 
   // Load backups list
   const loadBackups = async () => {
@@ -499,6 +502,59 @@ export default function App() {
       setLocalBackups(recordings.sort((a, b) => b.id.localeCompare(a.id)));
     } catch (e) {
       console.error("Erro ao carregar gravações locais:", e);
+    }
+  };
+
+  /**
+   * Recupera áudios que estão na nuvem (Storage) mas cujo backup LOCAL foi
+   * perdido — troca de aparelho, limpeza do navegador, ou falha na transcrição.
+   * Baixa cada órfão e o registra como backup local para reprocessamento.
+   */
+  const recoverCloudAudios = async () => {
+    if (!currentUser?.email) return;
+    setIsRecoveringCloud(true);
+    try {
+      const cloud = await listCloudAudioRecordings(currentUser.email);
+      const knownPaths = new Set<string>([
+        ...localBackups.map((b) => b.storagePath || "").filter(Boolean),
+        ...meetings.map((m) => m.audioStoragePath || "").filter(Boolean),
+      ]);
+      const orphans = cloud.filter((c) => !knownPaths.has(c.storagePath));
+      if (orphans.length === 0) {
+        alert("Nenhum áudio novo na nuvem para recuperar — seus backups já estão em dia.");
+        return;
+      }
+      let imported = 0;
+      for (const c of orphans) {
+        try {
+          const blob = await downloadAudioFromStorage(c.storagePath);
+          const recId = c.name.replace(/\.[^.]+$/, "");
+          await saveLocalRecording({
+            id: recId,
+            title: `Áudio recuperado da nuvem (${(c.createdAt || "").slice(0, 10) || "sem data"})`,
+            date: (c.createdAt || "").slice(0, 10) || getLocalDateString(new Date()),
+            duration: 0,
+            mimeType: c.mimeType,
+            audioBlob: blob,
+            status: "failed",
+            createdBy: currentUser.email,
+            storagePath: c.storagePath,
+          });
+          imported += 1;
+        } catch (err) {
+          console.error(`Falha ao recuperar áudio ${c.storagePath}:`, err);
+        }
+      }
+      await loadBackups();
+      alert(
+        imported > 0
+          ? `${imported} áudio(s) recuperado(s) da nuvem para "Backup de Áudios". Clique em "Reprocessar IA" para transcrever.`
+          : "Não foi possível baixar os áudios da nuvem. Tente novamente em instantes.",
+      );
+    } catch (err: any) {
+      alert(`Erro ao recuperar áudios da nuvem: ${err?.message || err}`);
+    } finally {
+      setIsRecoveringCloud(false);
     }
   };
 
@@ -4449,13 +4505,24 @@ Origem do áudio: Supabase Storage (${storagePath})
                           Áudios salvos neste navegador. Ouça, baixe ou reprocesse a transcrição com IA.
                         </p>
                       </div>
-                      <button
-                        onClick={loadBackups}
-                        className="py-1.5 px-3 rounded-lg bg-white hover:bg-alfredo-offwhite text-alfredo-graphite hover:text-alfredo-navy text-xs font-medium border border-alfredo-border hover:border-alfredo-border transition-all flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <RefreshCw size={12} />
-                        Atualizar
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={recoverCloudAudios}
+                          disabled={isRecoveringCloud}
+                          title="Recupera áudios que estão na nuvem mas não têm backup neste navegador (ex.: outro aparelho ou falha na transcrição)."
+                          className="py-1.5 px-3 rounded-lg bg-alfredo-teal/10 hover:bg-alfredo-teal/20 text-alfredo-teal-dark text-xs font-semibold border border-alfredo-teal/30 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+                        >
+                          {isRecoveringCloud ? <RefreshCw size={12} className="animate-spin" /> : <Download size={12} />}
+                          {isRecoveringCloud ? "Recuperando..." : "Recuperar da nuvem"}
+                        </button>
+                        <button
+                          onClick={loadBackups}
+                          className="py-1.5 px-3 rounded-lg bg-white hover:bg-alfredo-offwhite text-alfredo-graphite hover:text-alfredo-navy text-xs font-medium border border-alfredo-border hover:border-alfredo-border transition-all flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <RefreshCw size={12} />
+                          Atualizar
+                        </button>
+                      </div>
                     </div>
 
                     {(() => {

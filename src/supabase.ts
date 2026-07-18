@@ -306,6 +306,60 @@ export const deleteAudioFromStorage = async (storagePath: string): Promise<void>
   }
 };
 
+export type CloudAudio = {
+  name: string;
+  storagePath: string;
+  sizeBytes: number;
+  createdAt: string;
+  mimeType: string;
+};
+
+/**
+ * Lista os áudios finais (`rec_*`) que estão no Storage do usuário. Serve para
+ * recuperar gravações cujo backup LOCAL (IndexedDB) foi perdido — troca de
+ * aparelho, limpeza do navegador, ou falha na transcrição sem backup local.
+ * Ignora as subpastas de sessão (chunks de gravação ao vivo).
+ */
+export const listCloudAudioRecordings = async (
+  ownerEmail: string,
+): Promise<CloudAudio[]> => {
+  if (!isSupabaseConfigured || !ownerEmail) return [];
+  const folder = sanitizeStorageSegment(ownerEmail);
+  const { data, error } = await supabase.storage
+    .from(AUDIO_BUCKET)
+    .list(folder, { limit: 500, sortBy: { column: "created_at", order: "desc" } });
+  if (error) {
+    console.error("Erro ao listar áudios da nuvem:", error.message);
+    return [];
+  }
+  return (data || [])
+    // Só arquivos rec_* (têm metadata/id); pastas de sessão vêm com id nulo.
+    .filter((obj) => obj.id && /^rec_/i.test(obj.name))
+    .map((obj) => {
+      const meta = (obj.metadata || {}) as { size?: number; mimetype?: string };
+      const ext = obj.name.split(".").pop()?.toLowerCase() || "webm";
+      return {
+        name: obj.name,
+        storagePath: `${folder}/${obj.name}`,
+        sizeBytes: Number(meta.size ?? 0),
+        createdAt: obj.created_at || "",
+        mimeType: meta.mimetype || `audio/${ext}`,
+      };
+    });
+};
+
+/** Baixa um áudio do Storage como Blob (para reprocessar um áudio da nuvem). */
+export const downloadAudioFromStorage = async (storagePath: string): Promise<Blob> => {
+  if (!isSupabaseConfigured) throw new Error("Supabase não configurado.");
+  const { data, error } = await supabase.storage.from(AUDIO_BUCKET).download(storagePath);
+  if (error || !data) {
+    throw new Error(
+      `Falha ao baixar o áudio da nuvem (${storagePath}): ${error?.message || "arquivo não encontrado"}`,
+    );
+  }
+  return data;
+};
+
 // --- Auth (Supabase Auth) ---
 
 export type AuthProfile = {
