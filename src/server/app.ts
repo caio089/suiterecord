@@ -195,6 +195,57 @@ function runInBackground(fn: () => Promise<void>): void {
   }
 }
 
+const SUITER_WEBHOOK_URL = process.env.SUITER_WEBHOOK_URL || "";
+const SUITER_WEBHOOK_SECRET = process.env.SUITER_WEBHOOK_SECRET || "";
+
+/**
+ * Webhook "nova ata pronta": avisa o Suiter (ou outro destino) assim que uma
+ * transcrição conclui, enviando a ata completa. Best-effort — não bloqueia nem
+ * derruba o job. O corpo é assinado com HMAC-SHA256 (header X-Alfredo-Signature:
+ * "sha256=<hex>") para o receptor validar a origem.
+ */
+async function dispatchSuiterWebhook(event: {
+  jobId: string;
+  createdBy: string;
+  meeting: Record<string, unknown>;
+}): Promise<void> {
+  if (!SUITER_WEBHOOK_URL) return;
+  try {
+    const body = JSON.stringify({
+      type: "meeting.created",
+      sentAt: new Date().toISOString(),
+      jobId: event.jobId,
+      createdBy: event.createdBy,
+      meeting: event.meeting,
+    });
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "X-System-Source": "Alfredo",
+    };
+    if (SUITER_WEBHOOK_SECRET) {
+      const sig = crypto
+        .createHmac("sha256", SUITER_WEBHOOK_SECRET)
+        .update(body)
+        .digest("hex");
+      headers["X-Alfredo-Signature"] = `sha256=${sig}`;
+    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const resp = await fetch(SUITER_WEBHOOK_URL, {
+      method: "POST",
+      headers,
+      body,
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!resp.ok) {
+      console.error(`[webhook] Destino respondeu ${resp.status} para a ata do job ${event.jobId}.`);
+    }
+  } catch (err) {
+    console.error(`[webhook] Falha ao notificar o destino (job ${event.jobId}):`, err);
+  }
+}
+
 async function groqChatJson(systemPrompt: string, userPrompt: string): Promise<any> {
   const response = await groqChatRequest({
     model: GROQ_CHAT_MODEL,
@@ -405,13 +456,30 @@ async function authenticateApiKey(req: express.Request, res: express.Response, n
   next();
 }
 
+const MEETING_API_FIELDS =
+  "id,title,date,duration,overview,topics,decisions,actions,tags,participants,transcript,created_at";
+
 app.get("/api/v1/meetings", authenticateApiKey, async (_req, res) => {
   if (!res.locals.apiKey.scopes.includes("meetings:read")) return res.status(403).json({ error: "Escopo insuficiente." });
   const admin = getSupabaseAdmin();
   const { data, error } = await admin.from("meetings")
-    .select("id,title,date,duration,overview,topics,decisions,actions,tags,participants,created_at")
+    .select(MEETING_API_FIELDS)
     .eq("owner_id", res.locals.apiKey.owner_id).order("created_at", { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
+  return res.json({ data });
+});
+
+// Exportação sob demanda de uma ata específica.
+app.get("/api/v1/meetings/:id", authenticateApiKey, async (req, res) => {
+  if (!res.locals.apiKey.scopes.includes("meetings:read")) return res.status(403).json({ error: "Escopo insuficiente." });
+  const admin = getSupabaseAdmin();
+  const { data, error } = await admin.from("meetings")
+    .select(MEETING_API_FIELDS)
+    .eq("owner_id", res.locals.apiKey.owner_id)
+    .eq("id", String(req.params.id))
+    .maybeSingle();
+  if (error) return res.status(500).json({ error: error.message });
+  if (!data) return res.status(404).json({ error: "Reunião não encontrada." });
   return res.json({ data });
 });
 
@@ -654,6 +722,31 @@ Todos os campos obrigatórios devem existir. Use português brasileiro.`;
       progress_message: "Sucesso!",
     });
     console.log(`[Job ${jobId}] Processamento Groq concluído com sucesso.`);
+
+    // Webhook "nova ata pronta" (best-effort) — avisa o Suiter/destino externo.
+    if (SUITER_WEBHOOK_URL) {
+      const { data: jobMeta } = await supabaseAdmin
+        .from("transcription_jobs")
+        .select("created_by")
+        .eq("id", jobId)
+        .maybeSingle();
+      runInBackground(() =>
+        dispatchSuiterWebhook({
+          jobId,
+          createdBy: (jobMeta?.created_by as string) || "",
+          meeting: {
+            title: result.title,
+            overview: result.overview,
+            topics: result.topics,
+            decisions: result.decisions,
+            actions: result.actions,
+            tags: result.suggestedTags,
+            participants: result.participants,
+            transcript: result.transcript,
+          },
+        }),
+      );
+    }
   } catch (error: any) {
     console.error(`[Job ${jobId}] Erro na transcrição background:`, error);
     try {
